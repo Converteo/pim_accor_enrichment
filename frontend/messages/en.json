@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "title": "Hotel PIM Validation (Copy)"
+  },
+  "header": {
+    "title": "Enrichment validation",
+    "subtitle": "Accor PIM · Property records",
+    "badge": "Mockup",
+    "language": "Language"
+  },
+  "kpi": {
+    "processed": "Records processed",
+    "auto": "Auto-validatable",
+    "review": "To review",
+    "failure": "Failed"
+  },
+  "status": {
+    "valide": "Validated",
+    "haute": "High confidence",
+    "revoir": "To review",
+    "echec": "Failed"
+  },
+  "tabs": {
+    "all": "All"
+  },
+  "search": {
+    "placeholder": "Search for a hotel or city…"
+  },
+  "filters": {
+    "allBrands": "All brands",
+    "allSources": "All sources",
+    "searchLabel": "Property",
+    "brandLabel": "Brand",
+    "sourceLabel": "Source"
+  },
+  "columns": {
+    "property": "Property record",
+    "source": "Source",
+    "attributes": "Enriched attributes",
+    "score": "Overall score",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "row": {
+    "view": "View details",
+    "attributes": "{count} attributes",
+    "select": "Select {name}",
+    "selectAll": "Select all"
+  },
+  "empty": "No records match these filters.",
+  "note": "Demo data (mockup) — 14 records from Booking.com / Expedia / Salesforce extracts, to demonstrate scoring and review.",
+  "drawer": {
+    "eyebrow": "{brand} · {city} · {source}",
+    "score": "Score {score}",
+    "via": "via {src}",
+    "current": "Current PIM value",
+    "proposed": "Proposed value",
+    "accept": "Accept this attribute",
+    "rejectAttr": "Reject this attribute",
+    "reject": "Reject record",
+    "validate": "Validate record",
+    "close": "Close details"
+  },
+  "bulk": {
+    "cancel": "Cancel",
+    "reject": "Reject selection",
+    "validate": "Validate selection",
+    "count": "{count, plural, one {# record selected} other {# records selected}}"
+  },
+  "legend": {
+    "item": "{label} ({count})"
+  },
+  "percent": "{value}%",
+  "attributes": {
+    "address": "Address & geolocation",
+    "amenities": "Facilities & services",
+    "description": "Marketing description",
+    "classification": "Classification (category)",
+    "contact": "Contact details",
+    "photo": "Cover photo"
+  }
+}

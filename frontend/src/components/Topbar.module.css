@@ -1,0 +1,106 @@
+/* White navigation bar, as on all.accor.com */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.navInner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 14px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.brandBlock {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.logo {
+  display: block;
+  height: 52px;
+  width: auto;
+  flex: none;
+}
+
+.divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border-strong);
+  flex: none;
+}
+
+.product {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+/* WEL badge, loyalty / low emphasis */
+.badge {
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--loyalty);
+  background: var(--loyalty-soft);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Grey-blue hero band, as behind the booking engine */
+.hero {
+  background: var(--band);
+}
+
+.heroInner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 44px 32px 70px;
+}
+
+.title {
+  font-size: 36px;
+  line-height: 48px;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 760px) {
+  .navInner {
+    padding: 12px 16px;
+  }
+
+  .heroInner {
+    padding: 28px 16px 48px;
+  }
+
+  .logo {
+    height: 42px;
+  }
+
+  .brandBlock {
+    gap: 12px;
+  }
+
+  .product {
+    font-size: 14px;
+  }
+
+  .title {
+    font-size: 26px;
+    line-height: 34px;
+    margin-bottom: 18px;
+  }
+}

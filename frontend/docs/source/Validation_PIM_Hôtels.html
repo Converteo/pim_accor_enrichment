@@ -1,0 +1,827 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Validation PIM Hôtels (Copy)</title>
+<style>
+  :root{
+    --bg:#F5F6F8;
+    --surface:#FFFFFF;
+    --surface-alt:#FAFBFC;
+    --border:#E1E5EA;
+    --border-strong:#CBD2DA;
+    --text:#1B2430;
+    --text-muted:#5B6B7D;
+    --text-faint:#8592A3;
+    --accent:#14586B;
+    --accent-hover:#0F4655;
+    --accent-soft:#E4EEF1;
+    --success:#1E8F5F;
+    --success-soft:#E3F5EC;
+    --warn:#B97A16;
+    --warn-soft:#FBF0DC;
+    --danger:#C0392E;
+    --danger-soft:#FBE8E6;
+    --shadow: 0 12px 28px -12px rgba(20,30,40,0.18);
+    --shadow-sm: 0 1px 2px rgba(20,30,40,0.06);
+    --radius:10px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10151C;
+      --surface:#171E27;
+      --surface-alt:#1C2430;
+      --border:#2B3542;
+      --border-strong:#3B4756;
+      --text:#E8ECF1;
+      --text-muted:#9AA8B8;
+      --text-faint:#71808F;
+      --accent:#5CB4C6;
+      --accent-hover:#79C4D4;
+      --accent-soft:#1B333A;
+      --success:#49C08A;
+      --success-soft:#153427;
+      --warn:#E0A63E;
+      --warn-soft:#3A2C11;
+      --danger:#E37468;
+      --danger-soft:#3A1D19;
+      --shadow: 0 12px 28px -12px rgba(0,0,0,0.5);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10151C;
+    --surface:#171E27;
+    --surface-alt:#1C2430;
+    --border:#2B3542;
+    --border-strong:#3B4756;
+    --text:#E8ECF1;
+    --text-muted:#9AA8B8;
+    --text-faint:#71808F;
+    --accent:#5CB4C6;
+    --accent-hover:#79C4D4;
+    --accent-soft:#1B333A;
+    --success:#49C08A;
+    --success-soft:#153427;
+    --warn:#E0A63E;
+    --warn-soft:#3A2C11;
+    --danger:#E37468;
+    --danger-soft:#3A1D19;
+    --shadow: 0 12px 28px -12px rgba(0,0,0,0.5);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important;}
+  }
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Public Sans', -apple-system, "Segoe UI", sans-serif;
+  }
+
+  h1,h2,h3{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    text-wrap:balance;
+    margin:0;
+  }
+
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    padding-inline:20px;
+    padding-block:20px 96px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:20px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:16px;
+  }
+  .topbar-left{ display:flex; align-items:flex-start; gap:12px; }
+  .logo-mark{
+    width:44px; height:44px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--accent-soft); border-radius:12px; font-size:22px;
+  }
+  .titles h1{ font-size:22px; line-height:1.2; }
+  .subtitle{
+    margin:4px 0 0; font-size:13px; color:var(--text-muted);
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .badge-proto{
+    font:600 10.5px/1 'Public Sans', sans-serif;
+    letter-spacing:.06em; text-transform:uppercase;
+    color:var(--warn); background:var(--warn-soft);
+    border:1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+    padding:3px 7px; border-radius:5px;
+  }
+
+  .kpis{ display:flex; gap:10px; flex-wrap:wrap; }
+  .kpi-chip{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:8px 14px; min-width:96px;
+    box-shadow:var(--shadow-sm);
+  }
+  .kpi-chip .val{
+    font:600 19px/1.1 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums;
+  }
+  .kpi-chip .lbl{ font-size:11px; color:var(--text-muted); margin-top:3px; }
+  .kpi-chip.success .val{ color:var(--success); }
+  .kpi-chip.warn .val{ color:var(--warn); }
+  .kpi-chip.danger .val{ color:var(--danger); }
+
+  /* ---------- Status distribution bar ---------- */
+  .status-bar{
+    display:flex; width:100%; height:9px; border-radius:6px; overflow:hidden;
+    background:var(--border); margin-bottom:6px;
+  }
+  .status-bar span{ height:100%; }
+  .status-bar-legend{
+    display:flex; gap:16px; flex-wrap:wrap; margin-bottom:22px;
+    font-size:12px; color:var(--text-muted);
+  }
+  .status-bar-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+    margin-bottom:14px;
+  }
+  .field{
+    background:var(--surface); border:1px solid var(--border-strong);
+    border-radius:8px; padding:8px 12px; font:500 13.5px 'Public Sans', sans-serif;
+    color:var(--text); appearance:none; -webkit-appearance:none; height:36px;
+  }
+  select.field{ height:36px; }
+  .field:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  #searchInput{ flex:1 1 220px; min-width:180px; }
+  select.field{ flex:0 0 auto; }
+
+  .tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
+  .tab{
+    font:600 12.5px 'Public Sans', sans-serif; color:var(--text-muted);
+    background:var(--surface); border:1px solid var(--border);
+    padding:7px 12px; border-radius:999px; cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+  }
+  .tab span{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    background:var(--surface-alt); border-radius:999px; padding:1px 6px;
+  }
+  .tab:hover{ border-color:var(--border-strong); }
+  .tab.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .tab.active span{ background:rgba(255,255,255,.22); color:#fff; }
+  .tab:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- Table ---------- */
+  .table-wrap{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:auto; box-shadow:var(--shadow-sm);
+  }
+  table{ width:100%; border-collapse:collapse; min-width:760px; }
+  thead th{
+    text-align:left; font:600 11px 'Public Sans', sans-serif; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--text-faint);
+    padding:12px 14px; border-bottom:1px solid var(--border);
+    background:var(--surface-alt); position:sticky; top:0;
+  }
+  tbody td{ padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13.5px; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-alt); }
+  tbody tr.is-selected{ background:var(--accent-soft); }
+
+  .hotel-name{ font-weight:600; }
+  .hotel-city{ font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .brand-chip{
+    display:inline-block; font:600 10.5px 'Public Sans',sans-serif; letter-spacing:.02em;
+    color:var(--accent); background:var(--accent-soft); border-radius:5px;
+    padding:2px 6px; margin-top:5px;
+  }
+  .source-chip{
+    font-size:12px; color:var(--text-muted); white-space:nowrap;
+  }
+  .attrs-chip{
+    font:500 12px 'Public Sans', sans-serif; color:var(--text-muted);
+    background:var(--surface-alt); border:1px solid var(--border);
+    padding:3px 9px; border-radius:999px; white-space:nowrap;
+  }
+
+  .score-pill{
+    display:inline-flex; align-items:baseline; gap:3px;
+    font:600 13px 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums;
+    padding:3px 9px; border-radius:6px;
+  }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    font:600 12px 'Public Sans', sans-serif;
+    padding:4px 10px; border-radius:999px; white-space:nowrap;
+  }
+  .status-pill .dot{ width:7px; height:7px; }
+
+  .pill-valide, .dot-valide{ background:var(--success-soft); color:var(--success); }
+  .pill-haute, .dot-haute{ background:var(--accent-soft); color:var(--accent); }
+  .pill-revoir, .dot-revoir{ background:var(--warn-soft); color:var(--warn); }
+  .pill-echec, .dot-echec{ background:var(--danger-soft); color:var(--danger); }
+  .dot-valide{ background:var(--success); }
+  .dot-haute{ background:var(--accent); }
+  .dot-revoir{ background:var(--warn); }
+  .dot-echec{ background:var(--danger); }
+
+  .row-actions{ display:flex; gap:6px; justify-content:flex-end; }
+
+  input[type="checkbox"]{
+    width:16px; height:16px; accent-color:var(--accent); cursor:pointer;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    font:600 13px 'Public Sans', sans-serif; border-radius:8px; padding:9px 15px;
+    border:1px solid transparent; cursor:pointer; white-space:nowrap;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary:hover{ background:var(--accent-hover); }
+  .btn-danger{ background:var(--surface); color:var(--danger); border-color:color-mix(in srgb, var(--danger) 40%, transparent); }
+  .btn-danger:hover{ background:var(--danger-soft); }
+  .btn-ghost{ background:transparent; color:var(--text-muted); border-color:var(--border-strong); }
+  .btn-ghost:hover{ background:var(--surface-alt); }
+  .btn-icon{
+    padding:6px 10px; font-size:12px; background:var(--surface);
+    border:1px solid var(--border-strong); color:var(--text-muted); border-radius:7px;
+  }
+  .btn-icon:hover{ color:var(--text); border-color:var(--text-faint); }
+  .btn-icon.link{ color:var(--accent); border-color:color-mix(in srgb, var(--accent) 40%, transparent); }
+
+  .empty-state{
+    text-align:center; color:var(--text-muted); padding:40px 16px; font-size:14px;
+  }
+
+  /* ---------- Drawer ---------- */
+  .drawer{ position:fixed; inset:0; z-index:40; pointer-events:none; }
+  .drawer-scrim{
+    position:absolute; inset:0; background:rgba(15,20,27,0.42);
+    opacity:0; transition:opacity .18s ease;
+  }
+  .drawer-panel{
+    position:absolute; top:0; right:0; height:100%;
+    width:min(440px, 100vw);
+    background:var(--surface); border-left:1px solid var(--border);
+    box-shadow:var(--shadow); display:flex; flex-direction:column;
+    transform:translateX(100%); transition:transform .22s ease;
+  }
+  .drawer.is-open{ pointer-events:auto; }
+  .drawer.is-open .drawer-scrim{ opacity:1; }
+  .drawer.is-open .drawer-panel{ transform:translateX(0); }
+
+  .drawer-close{
+    position:absolute; top:14px; right:14px; width:30px; height:30px;
+    border-radius:8px; border:1px solid var(--border); background:var(--surface);
+    color:var(--text-muted); cursor:pointer; font-size:14px;
+  }
+  .drawer-close:hover{ color:var(--text); background:var(--surface-alt); }
+
+  .drawer-header{ padding:22px 52px 16px 22px; border-bottom:1px solid var(--border); }
+  .drawer-eyebrow{ font-size:12px; color:var(--text-muted); margin:0 0 4px; }
+  .drawer-header h2{ font-size:19px; line-height:1.25; }
+  .drawer-meta{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+
+  .drawer-body{ padding:16px 22px; overflow-y:auto; flex:1; }
+  .attr-row{
+    border:1px solid var(--border); border-radius:9px; padding:12px 13px;
+    margin-bottom:10px; background:var(--surface-alt);
+  }
+  .attr-row.accepted{ border-color:color-mix(in srgb, var(--success) 45%, var(--border)); }
+  .attr-row.rejected{ border-color:color-mix(in srgb, var(--danger) 45%, var(--border)); opacity:.75; }
+  .attr-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .attr-label{ font:600 12.5px 'Public Sans', sans-serif; }
+  .attr-source{ font-size:11px; color:var(--text-faint); }
+  .attr-vals{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:9px; }
+  .attr-vals .cur, .attr-vals .prop{ font-size:12.5px; line-height:1.4; }
+  .attr-vals .k{ display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); margin-bottom:3px; }
+  .attr-vals .prop{ color:var(--text); font-weight:500; }
+  .attr-bottom{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .score-track{ flex:1; height:5px; background:var(--border); border-radius:4px; overflow:hidden; }
+  .score-fill{ height:100%; border-radius:4px; }
+  .attr-toggle{ display:flex; gap:5px; }
+  .attr-toggle button{
+    width:26px; height:26px; border-radius:7px; border:1px solid var(--border-strong);
+    background:var(--surface); cursor:pointer; font-size:12px; color:var(--text-muted);
+  }
+  .attr-toggle button.on-accept.active{ background:var(--success-soft); color:var(--success); border-color:color-mix(in srgb, var(--success) 50%, transparent); }
+  .attr-toggle button.on-reject.active{ background:var(--danger-soft); color:var(--danger); border-color:color-mix(in srgb, var(--danger) 50%, transparent); }
+
+  .drawer-footer{
+    padding:16px 22px; border-top:1px solid var(--border);
+    display:flex; gap:10px; justify-content:flex-end;
+  }
+
+  @media (max-width: 640px){
+    .attr-vals{ grid-template-columns:1fr; }
+  }
+
+  /* ---------- Bulk bar ---------- */
+  .bulk-bar{
+    position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+    background:var(--text); color:var(--bg); border-radius:12px;
+    padding:12px 14px 12px 18px; box-shadow:var(--shadow);
+    display:flex; align-items:center; gap:16px; z-index:30;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .bulk-bar span{ font:600 13px 'Public Sans', sans-serif; white-space:nowrap; }
+  .bulk-actions{ display:flex; gap:8px; }
+  .bulk-bar .btn-ghost{ color:var(--bg); border-color:color-mix(in srgb, var(--bg) 35%, transparent); }
+  .bulk-bar .btn-ghost:hover{ background:color-mix(in srgb, var(--bg) 12%, transparent); }
+  .bulk-bar .btn-danger{ background:transparent; border-color:color-mix(in srgb, var(--danger) 60%, transparent); }
+
+  @media (max-width: 560px){
+    .kpis{ display:none; }
+    .toolbar{ flex-direction:column; align-items:stretch; }
+    #searchInput{ flex:0 0 auto; min-width:0; }
+    .tabs{ margin-left:0; }
+    .bulk-bar{ left:16px; right:16px; transform:none; flex-wrap:wrap; }
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-mark">🏨</div>
+      <div class="titles">
+        <h1>Validation des enrichissements</h1>
+        <p class="subtitle">PIM Accor · Fiches établissement <span class="badge-proto">Maquette</span></p>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </header>
+
+  <div class="status-bar" id="statusBar"></div>
+  <div class="status-bar-legend" id="statusLegend"></div>
+
+  <div class="toolbar">
+    <input id="searchInput" class="field" type="text" placeholder="Rechercher un hôtel, une ville…" autocomplete="off">
+    <select id="brandFilter" class="field">
+      <option value="">Toutes les marques</option>
+    </select>
+    <select id="sourceFilter" class="field">
+      <option value="">Toutes les sources</option>
+    </select>
+    <div class="tabs" id="statusTabs"></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:34px;"><input type="checkbox" id="selectAll" aria-label="Tout sélectionner"></th>
+          <th>Fiche établissement</th>
+          <th>Source</th>
+          <th>Attributs enrichis</th>
+          <th>Score global</th>
+          <th>Statut</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="fichesBody"></tbody>
+    </table>
+  </div>
+  <p class="empty-state" id="emptyState" hidden>Aucune fiche ne correspond à ces filtres.</p>
+
+  <p style="font-size:11.5px; color:var(--text-faint); margin-top:14px;">
+    Exemple de données (maquette) — 14 fiches issues d'extractions Booking.com / Expedia / Salesforce, à des fins de démonstration de la mécanique de scoring et de revue.
+  </p>
+</div>
+
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-scrim" id="drawerScrim"></div>
+  <div class="drawer-panel" id="drawerPanel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <button class="drawer-close" id="drawerClose" aria-label="Fermer le détail">✕</button>
+    <div class="drawer-header">
+      <p class="drawer-eyebrow" id="drawerBrand"></p>
+      <h2 id="drawerTitle"></h2>
+      <div class="drawer-meta" id="drawerMeta"></div>
+    </div>
+    <div class="drawer-body" id="drawerAttrs"></div>
+    <div class="drawer-footer">
+      <button class="btn btn-danger" id="drawerReject">Rejeter la fiche</button>
+      <button class="btn btn-primary" id="drawerValidate">Valider la fiche</button>
+    </div>
+  </div>
+</div>
+
+<div class="bulk-bar" id="bulkBar" hidden>
+  <span id="bulkCount">0 fiche sélectionnée</span>
+  <div class="bulk-actions">
+    <button class="btn btn-ghost" id="bulkClear">Annuler</button>
+    <button class="btn btn-danger" id="bulkReject">Rejeter la sélection</button>
+    <button class="btn btn-primary" id="bulkValidate">Valider la sélection</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STATUS_LABEL = { valide:"Validée", haute:"Confiance haute", revoir:"À revoir", echec:"Échec" };
+  var STATUS_ORDER = ["valide","haute","revoir","echec"];
+
+  function statusFor(score){
+    if(score >= 1) return "valide";
+    if(score > 0.8) return "haute";
+    if(score > 0.5) return "revoir";
+    return "echec";
+  }
+
+  function attrs(list){
+    return list.map(function(a){ return Object.assign({accepted:null}, a); });
+  }
+
+  var FICHES = [
+    { id:1, name:"Novotel Paris Centre Tour Eiffel", brand:"Novotel", city:"Paris, France", source:"Booking.com", score:1,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"75015 Paris (code postal seul)", proposed:"61 Quai de Grenelle, 75015 Paris — 48.8496, 2.2865", score:1, src:"Booking.com"},
+        {label:"Équipements & services", current:"Wifi", proposed:"Wifi gratuit, salle de sport, bar panoramique, room service, parking payant", score:1, src:"Booking.com"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Hôtel 4★ avec vue sur la Seine, à 10 min à pied de la Tour Eiffel, idéal séjours affaires et loisirs.", score:0.98, src:"Booking.com"},
+        {label:"Classification (catégorie)", current:"Non renseigné", proposed:"4 étoiles", score:1, src:"Booking.com"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+33 1 40 58 20 00 · h0367@accor.com", score:1, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Photo façade HD (vue Seine)", score:0.97, src:"Booking.com"}
+      ])},
+    { id:2, name:"ibis Lyon Part-Dieu", brand:"ibis", city:"Lyon, France", source:"Expedia", score:0.92,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"Lyon (ville seule)", proposed:"28 Rue Maurice Flandin, 69003 Lyon — 45.7614, 4.8574", score:0.96, src:"Expedia"},
+        {label:"Équipements & services", current:"Non renseigné", proposed:"Wifi gratuit, bar, distributeur snacking, parking privé sur réservation", score:0.9, src:"Expedia"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Hôtel économique proche gare Part-Dieu, accès direct métro et tramway.", score:0.9, src:"Expedia"},
+        {label:"Classification (catégorie)", current:"3 étoiles", proposed:"3 étoiles", score:1, src:"Expedia"},
+        {label:"Coordonnées de contact", current:"Téléphone seul", proposed:"+33 4 72 68 31 00 · h1478@accor.com", score:0.92, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Photo basse résolution", proposed:"Photo façade HD", score:0.85, src:"Expedia"}
+      ])},
+    { id:3, name:"Mercure Marseille Vieux-Port", brand:"Mercure", city:"Marseille, France", source:"Booking.com", score:0.88,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"13001 Marseille", proposed:"1 Rue Neuve Saint-Martin, 13001 Marseille — 43.2986, 5.3745", score:0.95, src:"Booking.com"},
+        {label:"Équipements & services", current:"Wifi, Parking", proposed:"Wifi gratuit, parking privé, bar, restaurant, salles de réunion (3)", score:0.86, src:"Booking.com"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"À deux pas du Vieux-Port, hôtel 4★ au décor contemporain inspiré de la Méditerranée.", score:0.83, src:"Booking.com"},
+        {label:"Classification (catégorie)", current:"Non renseigné", proposed:"4 étoiles", score:0.88, src:"Booking.com"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+33 4 96 17 22 22 · h0542@accor.com", score:0.9, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Photo hall d'accueil HD", score:0.84, src:"Booking.com"}
+      ])},
+    { id:4, name:"Sofitel Nice Riviera", brand:"Sofitel", city:"Nice, France", source:"Salesforce - contact center", score:0.45,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"06000 Nice", proposed:"12-14 Avenue Félix Faure, 06000 Nice — coordonnées non confirmées (conflit Booking/Expedia)", score:0.4, src:"Salesforce"},
+        {label:"Équipements & services", current:"Non renseigné", proposed:"Spa, piscine intérieure, 2 restaurants — liste partielle, doublons détectés", score:0.35, src:"Salesforce"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Texte tronqué en cours de collecte, à retravailler avant publication.", score:0.3, src:"Salesforce"},
+        {label:"Classification (catégorie)", current:"5 étoiles", proposed:"4 étoiles (valeur contradictoire avec le PIM)", score:0.4, src:"Salesforce"},
+        {label:"Coordonnées de contact", current:"Téléphone seul", proposed:"+33 4 92 00 00 00 (email non confirmé)", score:0.55, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Aucune photo exploitable collectée", score:0.6, src:"Salesforce"}
+      ])},
+    { id:5, name:"Pullman Bordeaux Aquitania", brand:"Pullman", city:"Bordeaux, France", source:"Expedia", score:0.95,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"Bordeaux (ville seule)", proposed:"Rue Jean Samazeuilh, 33300 Bordeaux — 44.8547, -0.5678", score:0.97, src:"Expedia"},
+        {label:"Équipements & services", current:"Wifi", proposed:"Wifi gratuit, piscine extérieure, bar, restaurant panoramique, centre d'affaires", score:0.96, src:"Expedia"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Hôtel 4★ face au Parc des Expositions, vue sur la Garonne depuis le bar au 15ème étage.", score:0.94, src:"Expedia"},
+        {label:"Classification (catégorie)", current:"4 étoiles", proposed:"4 étoiles", score:1, src:"Expedia"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+33 5 56 69 66 66 · h1445@accor.com", score:0.93, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Photo basse résolution", proposed:"Photo vue Garonne HD", score:0.92, src:"Expedia"}
+      ])},
+    { id:6, name:"MGallery Lille Vauban", brand:"MGallery", city:"Lille, France", source:"Booking.com", score:0.62,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"59000 Lille", proposed:"5 Square Daubenton, 59800 Lille — 50.6394, 3.0553", score:0.8, src:"Booking.com"},
+        {label:"Équipements & services", current:"Non renseigné", proposed:"Wifi gratuit, bar à vins, jardin intérieur — 2 équipements non confirmés", score:0.55, src:"Booking.com"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Ancien couvent du 17ème siècle réhabilité, charme et caractère au cœur du Vieux-Lille.", score:0.75, src:"Booking.com"},
+        {label:"Classification (catégorie)", current:"Non renseigné", proposed:"4 étoiles (à confirmer)", score:0.5, src:"Booking.com"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+33 3 20 06 58 58", score:0.6, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Photo façade historique HD", score:0.55, src:"Booking.com"}
+      ])},
+    { id:7, name:"Novotel Amsterdam City", brand:"Novotel", city:"Amsterdam, Pays-Bas", source:"Booking.com", score:1,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"Amsterdam (ville seule)", proposed:"Europaboulevard 10, 1083 AD Amsterdam — 52.3384, 4.8907", score:1, src:"Booking.com"},
+        {label:"Équipements & services", current:"Wifi", proposed:"Wifi gratuit, piscine, salle de sport, bar, parking privé", score:1, src:"Booking.com"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Hôtel familial proche RAI Convention Centre, accès direct métro vers le centre-ville.", score:0.97, src:"Booking.com"},
+        {label:"Classification (catégorie)", current:"Non renseigné", proposed:"4 étoiles", score:1, src:"Booking.com"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+31 20 541 1123 · h1121@accor.com", score:1, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Photo façade HD", score:0.98, src:"Booking.com"}
+      ])},
+    { id:8, name:"ibis Berlin Mitte", brand:"ibis", city:"Berlin, Allemagne", source:"Expedia", score:0.7,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"Berlin (ville seule)", proposed:"Prenzlauer Allee 4, 10405 Berlin — 52.5283, 13.4155", score:0.85, src:"Expedia"},
+        {label:"Équipements & services", current:"Non renseigné", proposed:"Wifi gratuit, bar, distributeur snacking — équipements sport non confirmés", score:0.65, src:"Expedia"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Hôtel économique proche Alexanderplatz, accès rapide aux transports en commun.", score:0.72, src:"Expedia"},
+        {label:"Classification (catégorie)", current:"3 étoiles", proposed:"3 étoiles", score:1, src:"Expedia"},
+        {label:"Coordonnées de contact", current:"Téléphone seul", proposed:"+49 30 443 1450 (email non confirmé)", score:0.5, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Photo basse résolution", proposed:"Photo façade HD", score:0.68, src:"Expedia"}
+      ])},
+    { id:9, name:"Mercure Milano Centro", brand:"Mercure", city:"Milan, Italie", source:"Booking.com", score:0.83,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"Milano (ville seule)", proposed:"Via Napo Torriani 9, 20124 Milano — 45.4823, 9.2044", score:0.9, src:"Booking.com"},
+        {label:"Équipements & services", current:"Wifi", proposed:"Wifi gratuit, bar, salle de sport, salles de réunion (4)", score:0.85, src:"Booking.com"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"À 200m de la gare centrale, hôtel 4★ au design contemporain pour voyageurs d'affaires.", score:0.8, src:"Booking.com"},
+        {label:"Classification (catégorie)", current:"Non renseigné", proposed:"4 étoiles", score:0.85, src:"Booking.com"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+39 02 6749 9, h0319@accor.com", score:0.78, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Photo hall d'accueil HD", score:0.8, src:"Booking.com"}
+      ])},
+    { id:10, name:"Sofitel Barcelona Skipper", brand:"Sofitel", city:"Barcelone, Espagne", source:"Salesforce - contact center", score:0.58,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"Barcelona (ville seule)", proposed:"Carrer de la Marina 16-18, 08005 Barcelona — 41.3874, 2.1979", score:0.7, src:"Salesforce"},
+        {label:"Équipements & services", current:"Non renseigné", proposed:"Spa, piscine sur toit, restaurant gastronomique — liste à vérifier (source unique)", score:0.5, src:"Salesforce"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Face à la plage de la Barceloneta, hôtel 5★ avec vue sur le port olympique.", score:0.55, src:"Salesforce"},
+        {label:"Classification (catégorie)", current:"Non renseigné", proposed:"5 étoiles (à confirmer)", score:0.5, src:"Salesforce"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+34 932 21 10 00", score:0.6, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Aucune photo exploitable collectée", score:0.55, src:"Salesforce"}
+      ])},
+    { id:11, name:"Pullman Toulouse Centre", brand:"Pullman", city:"Toulouse, France", source:"Expedia", score:0.91,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"Toulouse (ville seule)", proposed:"84 Allées Jean Jaurès, 31000 Toulouse — 43.6096, 1.4558", score:0.95, src:"Expedia"},
+        {label:"Équipements & services", current:"Wifi", proposed:"Wifi gratuit, salle de sport, bar, restaurant, parking privé", score:0.92, src:"Expedia"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Hôtel 4★ au cœur de la Ville Rose, à 5 min à pied de la place du Capitole.", score:0.9, src:"Expedia"},
+        {label:"Classification (catégorie)", current:"4 étoiles", proposed:"4 étoiles", score:1, src:"Expedia"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+33 5 61 10 23 10 · h1076@accor.com", score:0.88, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Photo basse résolution", proposed:"Photo façade HD", score:0.85, src:"Expedia"}
+      ])},
+    { id:12, name:"MGallery Strasbourg Cathédrale", brand:"MGallery", city:"Strasbourg, France", source:"Booking.com", score:0.38,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"67000 Strasbourg", proposed:"Adresse en conflit entre sources — non résolue automatiquement", score:0.3, src:"Booking.com"},
+        {label:"Équipements & services", current:"Non renseigné", proposed:"Liste quasi vide — collecte incomplète côté source", score:0.25, src:"Booking.com"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Texte générique non spécifique à l'établissement, à réécrire.", score:0.35, src:"Booking.com"},
+        {label:"Classification (catégorie)", current:"Non renseigné", proposed:"Non déterminée", score:0.2, src:"Booking.com"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+33 3 88 32 10 10 (email non confirmé)", score:0.55, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Aucune photo exploitable collectée", score:0.6, src:"Booking.com"}
+      ])},
+    { id:13, name:"Novotel Nantes Centre Gare", brand:"Novotel", city:"Nantes, France", source:"Expedia", score:1,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"44000 Nantes", proposed:"1 Boulevard de Stalingrad, 44000 Nantes — 47.2158, -1.5410", score:1, src:"Expedia"},
+        {label:"Équipements & services", current:"Wifi", proposed:"Wifi gratuit, bar, restaurant, parking privé, salles de réunion (2)", score:0.98, src:"Expedia"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Face à la gare SNCF, hôtel 4★ idéal pour une clientèle affaires et TGV.", score:0.97, src:"Expedia"},
+        {label:"Classification (catégorie)", current:"4 étoiles", proposed:"4 étoiles", score:1, src:"Expedia"},
+        {label:"Coordonnées de contact", current:"—", proposed:"+33 2 40 12 91 91 · h0567@accor.com", score:1, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Image générique", proposed:"Photo façade HD", score:0.98, src:"Expedia"}
+      ])},
+    { id:14, name:"ibis Rennes Centre Gare", brand:"ibis", city:"Rennes, France", source:"Booking.com", score:0.76,
+      attrs: attrs([
+        {label:"Adresse & géolocalisation", current:"35000 Rennes", proposed:"22 Boulevard Beaumont, 35000 Rennes — 48.1023, -1.6689", score:0.88, src:"Booking.com"},
+        {label:"Équipements & services", current:"Non renseigné", proposed:"Wifi gratuit, bar, distributeur snacking, parking payant", score:0.78, src:"Booking.com"},
+        {label:"Description commerciale", current:"Non renseigné", proposed:"Hôtel économique à 5 min à pied de la gare, proche du centre historique.", score:0.75, src:"Booking.com"},
+        {label:"Classification (catégorie)", current:"3 étoiles", proposed:"3 étoiles", score:1, src:"Booking.com"},
+        {label:"Coordonnées de contact", current:"Téléphone seul", proposed:"+33 2 99 30 28 28 (email non confirmé)", score:0.55, src:"Salesforce"},
+        {label:"Photo de couverture", current:"Photo basse résolution", proposed:"Photo façade HD", score:0.7, src:"Booking.com"}
+      ])}
+  ];
+
+  FICHES.forEach(function(f){ f.status = statusFor(f.score); f.selected = false; });
+
+  var state = { search:"", brand:"", source:"", tab:"all" };
+
+  // ---- populate filter selects ----
+  var brandSel = document.getElementById("brandFilter");
+  var sourceSel = document.getElementById("sourceFilter");
+  var brands = Array.from(new Set(FICHES.map(function(f){return f.brand;}))).sort();
+  var sources = Array.from(new Set(FICHES.map(function(f){return f.source;}))).sort();
+  brands.forEach(function(b){
+    var o = document.createElement("option"); o.value = b; o.textContent = b; brandSel.appendChild(o);
+  });
+  sources.forEach(function(s){
+    var o = document.createElement("option"); o.value = s; o.textContent = s; sourceSel.appendChild(o);
+  });
+
+  // ---- tabs ----
+  var tabsEl = document.getElementById("statusTabs");
+  function buildTabs(){
+    var counts = { all: FICHES.length, valide:0, haute:0, revoir:0, echec:0 };
+    FICHES.forEach(function(f){ counts[f.status]++; });
+    var defs = [["all","Toutes"]].concat(STATUS_ORDER.map(function(s){ return [s, STATUS_LABEL[s]]; }));
+    tabsEl.innerHTML = defs.map(function(d){
+      var key = d[0], label = d[1];
+      var active = state.tab === key ? " active" : "";
+      return '<button class="tab'+active+'" data-status="'+key+'">'+label+' <span>'+counts[key]+'</span></button>';
+    }).join("");
+    Array.prototype.forEach.call(tabsEl.querySelectorAll(".tab"), function(btn){
+      btn.addEventListener("click", function(){
+        state.tab = btn.getAttribute("data-status");
+        render();
+      });
+    });
+  }
+
+  // ---- kpis + status bar ----
+  var kpisEl = document.getElementById("kpis");
+  var statusBarEl = document.getElementById("statusBar");
+  var legendEl = document.getElementById("statusLegend");
+  function buildSummary(){
+    var total = FICHES.length;
+    var counts = { valide:0, haute:0, revoir:0, echec:0 };
+    FICHES.forEach(function(f){ counts[f.status]++; });
+    var autoRate = Math.round(((counts.valide + counts.haute) / total) * 100);
+
+    kpisEl.innerHTML =
+      '<div class="kpi-chip"><div class="val">'+total+'</div><div class="lbl">Fiches traitées</div></div>' +
+      '<div class="kpi-chip success"><div class="val">'+autoRate+'%</div><div class="lbl">Auto-validables</div></div>' +
+      '<div class="kpi-chip warn"><div class="val">'+counts.revoir+'</div><div class="lbl">À revoir</div></div>' +
+      '<div class="kpi-chip danger"><div class="val">'+counts.echec+'</div><div class="lbl">Échec</div></div>';
+
+    statusBarEl.innerHTML = STATUS_ORDER.map(function(s){
+      var pct = (counts[s] / total * 100).toFixed(2);
+      return '<span class="dot-'+s+'" style="width:'+pct+'%"></span>';
+    }).join("");
+
+    legendEl.innerHTML = STATUS_ORDER.map(function(s){
+      return '<span><i class="dot dot-'+s+'"></i>'+STATUS_LABEL[s]+' ('+counts[s]+')</span>';
+    }).join("");
+  }
+
+  // ---- table ----
+  var tbody = document.getElementById("fichesBody");
+  var emptyState = document.getElementById("emptyState");
+  var selectAllBox = document.getElementById("selectAll");
+
+  function filteredFiches(){
+    return FICHES.filter(function(f){
+      if(state.tab !== "all" && f.status !== state.tab) return false;
+      if(state.brand && f.brand !== state.brand) return false;
+      if(state.source && f.source !== state.source) return false;
+      if(state.search){
+        var q = state.search.toLowerCase();
+        if(f.name.toLowerCase().indexOf(q) === -1 && f.city.toLowerCase().indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderRows(){
+    var list = filteredFiches();
+    emptyState.hidden = list.length !== 0;
+    tbody.innerHTML = list.map(function(f){
+      return '' +
+      '<tr data-id="'+f.id+'" class="'+(f.selected ? "is-selected" : "")+'">' +
+        '<td><input type="checkbox" class="row-check" data-id="'+f.id+'" '+(f.selected?"checked":"")+' aria-label="Sélectionner '+f.name+'"></td>' +
+        '<td>' +
+          '<div class="hotel-name">'+f.name+'</div>' +
+          '<div class="hotel-city">'+f.city+'</div>' +
+          '<span class="brand-chip">'+f.brand+'</span>' +
+        '</td>' +
+        '<td class="source-chip">'+f.source+'</td>' +
+        '<td><span class="attrs-chip">'+f.attrs.length+' attributs</span></td>' +
+        '<td><span class="score-pill pill-'+f.status+'">'+f.score.toFixed(2)+'</span></td>' +
+        '<td><span class="status-pill pill-'+f.status+'"><i class="dot dot-'+f.status+'"></i>'+STATUS_LABEL[f.status]+'</span></td>' +
+        '<td><div class="row-actions">' +
+          '<button class="btn-icon link" data-action="view" data-id="'+f.id+'">Voir détail</button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join("");
+  }
+
+  function render(){
+    buildTabs();
+    buildSummary();
+    renderRows();
+    updateBulkBar();
+    var visible = filteredFiches();
+    selectAllBox.checked = visible.length > 0 && visible.every(function(f){ return f.selected; });
+  }
+
+  // ---- filters wiring ----
+  document.getElementById("searchInput").addEventListener("input", function(e){
+    state.search = e.target.value; render();
+  });
+  brandSel.addEventListener("change", function(e){ state.brand = e.target.value; render(); });
+  sourceSel.addEventListener("change", function(e){ state.source = e.target.value; render(); });
+
+  selectAllBox.addEventListener("change", function(e){
+    var checked = e.target.checked;
+    filteredFiches().forEach(function(f){ f.selected = checked; });
+    render();
+  });
+
+  tbody.addEventListener("click", function(e){
+    var checkbox = e.target.closest(".row-check");
+    if(checkbox){
+      var id = Number(checkbox.getAttribute("data-id"));
+      var f = FICHES.find(function(x){ return x.id === id; });
+      f.selected = checkbox.checked;
+      render();
+      return;
+    }
+    var viewBtn = e.target.closest('[data-action="view"]');
+    if(viewBtn){
+      openDrawer(Number(viewBtn.getAttribute("data-id")));
+      return;
+    }
+    var row = e.target.closest("tr[data-id]");
+    if(row && !e.target.closest("input")){
+      openDrawer(Number(row.getAttribute("data-id")));
+    }
+  });
+
+  // ---- bulk bar ----
+  var bulkBar = document.getElementById("bulkBar");
+  var bulkCount = document.getElementById("bulkCount");
+  function updateBulkBar(){
+    var n = FICHES.filter(function(f){ return f.selected; }).length;
+    bulkBar.hidden = n === 0;
+    bulkCount.textContent = n + (n > 1 ? " fiches sélectionnées" : " fiche sélectionnée");
+  }
+  document.getElementById("bulkClear").addEventListener("click", function(){
+    FICHES.forEach(function(f){ f.selected = false; }); render();
+  });
+  document.getElementById("bulkValidate").addEventListener("click", function(){
+    FICHES.forEach(function(f){ if(f.selected){ f.score = 1; f.status = "valide"; f.selected = false; } });
+    render();
+  });
+  document.getElementById("bulkReject").addEventListener("click", function(){
+    FICHES.forEach(function(f){ if(f.selected){ f.status = "echec"; f.selected = false; } });
+    render();
+  });
+
+  // ---- drawer ----
+  var drawer = document.getElementById("drawer");
+  var currentId = null;
+
+  function openDrawer(id){
+    currentId = id;
+    var f = FICHES.find(function(x){ return x.id === id; });
+    document.getElementById("drawerBrand").textContent = f.brand + " · " + f.city + " · " + f.source;
+    document.getElementById("drawerTitle").textContent = f.name;
+    document.getElementById("drawerMeta").innerHTML =
+      '<span class="score-pill pill-'+f.status+'">Score '+f.score.toFixed(2)+'</span>' +
+      '<span class="status-pill pill-'+f.status+'"><i class="dot dot-'+f.status+'"></i>'+STATUS_LABEL[f.status]+'</span>';
+
+    document.getElementById("drawerAttrs").innerHTML = f.attrs.map(function(a, idx){
+      var st = statusFor(a.score);
+      var cls = a.accepted === true ? "accepted" : (a.accepted === false ? "rejected" : "");
+      return '' +
+      '<div class="attr-row '+cls+'" data-idx="'+idx+'">' +
+        '<div class="attr-top">' +
+          '<span class="attr-label">'+a.label+'</span>' +
+          '<span class="attr-source">via '+a.src+'</span>' +
+        '</div>' +
+        '<div class="attr-vals">' +
+          '<div class="cur"><span class="k">Valeur PIM actuelle</span>'+a.current+'</div>' +
+          '<div class="prop"><span class="k">Valeur proposée</span>'+a.proposed+'</div>' +
+        '</div>' +
+        '<div class="attr-bottom">' +
+          '<div class="score-track"><div class="score-fill dot-'+st+'" style="width:'+(a.score*100)+'%; background:currentColor;"></div></div>' +
+          '<span class="attr-source" style="width:34px;">'+a.score.toFixed(2)+'</span>' +
+          '<div class="attr-toggle">' +
+            '<button class="on-accept'+(a.accepted===true?" active":"")+'" data-idx="'+idx+'" data-val="accept" aria-label="Accepter cet attribut">✓</button>' +
+            '<button class="on-reject'+(a.accepted===false?" active":"")+'" data-idx="'+idx+'" data-val="reject" aria-label="Rejeter cet attribut">✕</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    drawer.classList.add("is-open");
+    drawer.setAttribute("aria-hidden", "false");
+  }
+
+  function closeDrawer(){
+    drawer.classList.remove("is-open");
+    drawer.setAttribute("aria-hidden", "true");
+    currentId = null;
+  }
+
+  document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+  document.getElementById("drawerScrim").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && drawer.classList.contains("is-open")) closeDrawer();
+  });
+
+  document.getElementById("drawerAttrs").addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-val]");
+    if(!btn || currentId === null) return;
+    var f = FICHES.find(function(x){ return x.id === currentId; });
+    var idx = Number(btn.getAttribute("data-idx"));
+    var attr = f.attrs[idx];
+    var val = btn.getAttribute("data-val") === "accept" ? true : false;
+    attr.accepted = attr.accepted === val ? null : val;
+    openDrawer(currentId);
+  });
+
+  document.getElementById("drawerValidate").addEventListener("click", function(){
+    if(currentId === null) return;
+    var f = FICHES.find(function(x){ return x.id === currentId; });
+    f.score = 1; f.status = "valide";
+    closeDrawer(); render();
+  });
+  document.getElementById("drawerReject").addEventListener("click", function(){
+    if(currentId === null) return;
+    var f = FICHES.find(function(x){ return x.id === currentId; });
+    f.status = "echec";
+    closeDrawer(); render();
+  });
+
+  render();
+})();
+</script>
+
+</body></html>

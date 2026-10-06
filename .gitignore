@@ -1,0 +1,26 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+npm-debug.log*
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+# tfvars sans secret versionnés ; overrides locaux ignorés
+*.local.tfvars
+crash.log
+tfplan_*
+.terraform.lock.hcl.bak

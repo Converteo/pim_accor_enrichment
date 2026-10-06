@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "title": "Validation PIM Hôtels (Copy)"
+  },
+  "header": {
+    "title": "Validation des enrichissements",
+    "subtitle": "PIM Accor · Fiches établissement",
+    "badge": "Maquette",
+    "language": "Langue"
+  },
+  "kpi": {
+    "processed": "Fiches traitées",
+    "auto": "Auto-validables",
+    "review": "À revoir",
+    "failure": "Échec"
+  },
+  "status": {
+    "valide": "Validée",
+    "haute": "Confiance haute",
+    "revoir": "À revoir",
+    "echec": "Échec"
+  },
+  "tabs": {
+    "all": "Toutes"
+  },
+  "search": {
+    "placeholder": "Rechercher un hôtel, une ville…"
+  },
+  "filters": {
+    "allBrands": "Toutes les marques",
+    "allSources": "Toutes les sources",
+    "searchLabel": "Établissement",
+    "brandLabel": "Marque",
+    "sourceLabel": "Source"
+  },
+  "columns": {
+    "property": "Fiche établissement",
+    "source": "Source",
+    "attributes": "Attributs enrichis",
+    "score": "Score global",
+    "status": "Statut",
+    "actions": "Actions"
+  },
+  "row": {
+    "view": "Voir détail",
+    "attributes": "{count} attributs",
+    "select": "Sélectionner {name}",
+    "selectAll": "Tout sélectionner"
+  },
+  "empty": "Aucune fiche ne correspond à ces filtres.",
+  "note": "Exemple de données (maquette) — 14 fiches issues d'extractions Booking.com / Expedia / Salesforce, à des fins de démonstration de la mécanique de scoring et de revue.",
+  "drawer": {
+    "eyebrow": "{brand} · {city} · {source}",
+    "score": "Score {score}",
+    "via": "via {src}",
+    "current": "Valeur PIM actuelle",
+    "proposed": "Valeur proposée",
+    "accept": "Accepter cet attribut",
+    "rejectAttr": "Rejeter cet attribut",
+    "reject": "Rejeter la fiche",
+    "validate": "Valider la fiche",
+    "close": "Fermer le détail"
+  },
+  "bulk": {
+    "cancel": "Annuler",
+    "reject": "Rejeter la sélection",
+    "validate": "Valider la sélection",
+    "count": "{count, plural, one {# fiche sélectionnée} other {# fiches sélectionnées}}"
+  },
+  "legend": {
+    "item": "{label} ({count})"
+  },
+  "percent": "{value}%",
+  "attributes": {
+    "address": "Adresse & géolocalisation",
+    "amenities": "Équipements & services",
+    "description": "Description commerciale",
+    "classification": "Classification (catégorie)",
+    "contact": "Coordonnées de contact",
+    "photo": "Photo de couverture"
+  }
+}

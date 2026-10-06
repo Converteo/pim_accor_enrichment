@@ -1,0 +1,106 @@
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.open {
+  pointer-events: auto;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 0, 51, 0.45);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(480px, 100vw);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+}
+
+.open .scrim {
+  opacity: 1;
+}
+
+.open .panel {
+  transform: translateX(0);
+}
+
+/* Round icon button, as the carousel arrows */
+.close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--brand-deep);
+  background: var(--surface);
+  color: var(--brand-deep);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close:hover {
+  background: var(--brand-soft);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.header {
+  padding: 28px 76px 22px 28px;
+  background: var(--band);
+}
+
+.eyebrow {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.heading {
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  align-items: center;
+}
+
+.body {
+  padding: 22px 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.footer {
+  padding: 18px 28px;
+  border-top: 1px solid var(--border-strong);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}

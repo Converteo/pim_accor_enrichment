@@ -1,0 +1,117 @@
+.wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.headCell {
+  text-align: left;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--surface-alt);
+  position: sticky;
+  top: 0;
+  white-space: nowrap;
+}
+
+.checkCol {
+  width: 40px;
+}
+
+.actionsHead {
+  text-align: right;
+}
+
+.cell {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.row {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.row:last-child .cell {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--surface-alt);
+}
+
+.selected,
+.selected:hover {
+  background: var(--brand-soft);
+}
+
+.name {
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.city {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Small badge, as "Membre exclusif" on offer cards */
+.brand {
+  display: inline-block;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-top: 6px;
+}
+
+.source {
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.attrs {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.selected .brand {
+  background: var(--surface);
+}

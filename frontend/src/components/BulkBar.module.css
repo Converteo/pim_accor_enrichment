@@ -1,0 +1,71 @@
+/* Floating navy pill, echoing the "Me connecter" button */
+.bar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: #1e1852;
+  color: #ffffff;
+  border-radius: var(--radius-pill);
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)) 26px;
+  box-shadow: 0 18px 40px -12px rgba(5, 0, 51, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  z-index: 30;
+}
+
+.count {
+  font-weight: 500;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bar :global(.btn-ghost) {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.bar :global(.btn-ghost):hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.bar :global(.btn-danger) {
+  background: transparent;
+  color: #ffd4ea;
+  border-color: rgba(255, 212, 234, 0.6);
+}
+
+.bar :global(.btn-danger):hover {
+  background: rgba(255, 212, 234, 0.14);
+}
+
+/* Inverse button, as "Voir l'offre" on the campaign banner */
+.bar :global(.btn-primary) {
+  background: #ffffff;
+  color: #1e1852;
+  border-color: #ffffff;
+}
+
+.bar :global(.btn-primary):hover {
+  filter: none;
+  background: #e8edff;
+}
+
+@media (max-width: 560px) {
+  .bar {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    flex-wrap: wrap;
+    border-radius: 20px;
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+  }
+}

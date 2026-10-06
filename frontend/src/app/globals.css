@@ -1,0 +1,331 @@
+/*
+ * Design tokens inspired by all.accor.com
+ * - Montserrat 700 for display headings, Roboto for UI text
+ * - Deep navy brand (#050033 / #1E1852), lavender soft surfaces
+ * - Pill buttons (60px radius), 6px cards and inputs, soft shadows
+ */
+:root {
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Surfaces */
+  --bg: #ffffff;
+  --band: #eaedf5;
+  --surface: #ffffff;
+  --surface-alt: #f7f9fb;
+  --footer: #f7f9fb;
+  --border: #e4e4ea;
+  --border-strong: #dadadd;
+
+  /* Text */
+  --ink: #252339;
+  --text: #3e3d48;
+  --text-muted: #6f6e77;
+  --text-faint: #8e8d96;
+
+  /* Brand */
+  --brand: #1e1852;
+  --brand-deep: #050033;
+  --brand-gradient: linear-gradient(75deg, #050033 0%, #524f81 100%);
+  --brand-line: #b7b3ec;
+  --brand-soft: #e8edff;
+  --brand-tile: #f3efff;
+  --brand-icon: #5f5bd2;
+  --on-brand: #f9f9ff;
+  --link: #1264a3;
+  --tab-line: #2d4cd5;
+
+  /* ALL Accor brand palette (WEL design-system tokens) */
+  --accent: #2d4cd5; /* accent */
+  --accent-hover: #183cc7; /* hover-accent */
+  --accent-soft: #f7f5ff; /* accent-container-low */
+  --loyalty: #3a34ab; /* on-loyalty-container */
+  --loyalty-soft: #f3efff; /* loyalty-container-low */
+  --offer: #b40875; /* offer */
+  --offer-hover: #980062; /* hover-offer */
+  --offer-soft: #fff0f4; /* offer-container-low */
+  --offer-line: #ffd4ea; /* offer-container-hi */
+  --neutral: #6d7072; /* neutral-container */
+  --neutral-text: #38364d; /* on-surface-mid */
+  --neutral-soft: #eceef0; /* hover-surface-container-hi */
+
+  /* Status mapping, brand colours only */
+  --success: var(--brand); /* Validée = bleu nuit */
+  --success-soft: var(--brand-soft);
+  --warn: var(--neutral-text); /* À revoir = gris neutre */
+  --warn-soft: var(--neutral-soft);
+  --danger: var(--offer); /* Échec / rejet = magenta */
+  --danger-soft: var(--offer-soft);
+
+  --shadow: 0 16px 40px -16px rgba(5, 0, 51, 0.28);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-field: 0 2px 6px rgba(0, 0, 0, 0.1);
+  --radius: 6px;
+  --radius-pill: 60px;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), Roboto, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), Montserrat, "Segoe UI", sans-serif;
+  font-weight: 700;
+  color: var(--ink);
+  text-wrap: balance;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------- Fields ---------- */
+
+.field {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-field);
+  padding: 8px 14px;
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--ink);
+  appearance: none;
+  -webkit-appearance: none;
+  height: 44px;
+}
+
+.field::placeholder {
+  color: var(--text-muted);
+}
+
+.field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---------- Buttons (Accor pill buttons) ---------- */
+
+.btn {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  border-radius: var(--radius-pill);
+  padding: 11px 22px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    filter 0.15s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* "Rechercher" button on all.accor.com */
+.btn-primary {
+  background: var(--brand-gradient);
+  border-color: var(--brand-line);
+  color: var(--on-brand);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.18);
+}
+
+.btn-danger {
+  background: var(--surface);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+
+.btn-danger:hover {
+  background: var(--danger-soft);
+}
+
+/* "S'inscrire" tertiary button */
+.btn-ghost {
+  background: transparent;
+  color: var(--brand-deep);
+  border-color: var(--brand-deep);
+}
+
+.btn-ghost:hover {
+  background: var(--brand-soft);
+}
+
+.btn-icon {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--brand-deep);
+  color: var(--brand-deep);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.btn-icon:hover {
+  background: var(--brand-soft);
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-icon.link {
+  color: var(--brand-deep);
+  border-color: var(--brand-deep);
+}
+
+.btn-icon.link:hover {
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+}
+
+/* ---------- Pills ---------- */
+
+.score-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-sans), Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.status-pill .dot {
+  width: 7px;
+  height: 7px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Validée: solid navy badge ("high" emphasis) */
+.pill-valide {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.pill-valide .dot {
+  background: #ffffff;
+}
+
+.pill-haute {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px #ccd2ff;
+}
+
+.pill-revoir {
+  background: var(--neutral-soft);
+  color: var(--neutral-text);
+}
+
+.pill-echec {
+  background: var(--offer-soft);
+  color: var(--offer);
+}
+
+.dot-valide {
+  background: var(--brand);
+  color: var(--brand);
+}
+
+.dot-haute {
+  background: var(--accent);
+  color: var(--accent);
+}
+
+.dot-revoir {
+  background: var(--neutral);
+  color: var(--neutral);
+}
+
+.dot-echec {
+  background: var(--offer);
+  color: var(--offer);
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}

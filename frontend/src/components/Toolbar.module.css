@@ -1,0 +1,203 @@
+.toolbar {
+  margin-bottom: 24px;
+}
+
+/* Booking-engine style search bar from all.accor.com */
+.engine {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 18px rgba(5, 0, 51, 0.1);
+  padding: 8px 12px;
+  margin: -34px 0 28px;
+  position: relative;
+}
+
+.segment {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 22px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  position: relative;
+}
+
+.segment + .segment::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  background: var(--border-strong);
+}
+
+.segment:hover {
+  background: var(--surface-alt);
+}
+
+.segment:focus-within {
+  background: var(--surface-alt);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.segment:focus-within::before,
+.segment:focus-within + .segment::before {
+  opacity: 0;
+}
+
+.search {
+  flex: 1.6 1 0;
+}
+
+.segmentLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.segmentLabel svg {
+  color: var(--ink);
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.control {
+  border: 0;
+  background: transparent;
+  padding: 2px 0 2px 28px;
+  height: 28px;
+  font-size: 16px;
+  color: var(--text);
+  width: 100%;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.control::placeholder {
+  color: var(--text-muted);
+}
+
+input.control {
+  cursor: text;
+}
+
+.select {
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236f6e77' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 2px center;
+  text-overflow: ellipsis;
+}
+
+.select option {
+  color: initial;
+}
+
+/* Underlined tabs ("Où allez-vous ? / Explorez des idées") */
+.tabs {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.tab {
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  padding: 12px 0 13px;
+  margin-bottom: -1px;
+  border-bottom: 4px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.active,
+.active:hover {
+  color: var(--ink);
+  border-bottom-color: var(--tab-line);
+}
+
+.count {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0 8px;
+  line-height: 18px;
+  color: var(--text-muted);
+}
+
+.active .count {
+  background: var(--brand-soft);
+  border-color: transparent;
+  color: var(--brand-deep);
+}
+
+@media (max-width: 760px) {
+  .engine {
+    flex-direction: column;
+    border-radius: 16px;
+    padding: 6px;
+    margin-top: -24px;
+  }
+
+  .segment {
+    border-radius: 12px;
+    padding: 10px 14px;
+  }
+
+  .segment + .segment::before {
+    left: 14px;
+    right: 14px;
+    top: 0;
+    bottom: auto;
+    width: auto;
+    height: 1px;
+  }
+}
+
+@media (max-width: 560px) {
+  .tabs {
+    gap: 20px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tab {
+    flex: none;
+  }
+}
