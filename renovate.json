@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Europe/Paris",
+  "schedule": ["before 7am on monday"],
+  "labels": ["dependencies"],
+  "enabledManagers": ["npm", "dockerfile", "terraform"],
+  "packageRules": [
+    {
+      "matchManagers": ["terraform"],
+      "groupName": "terraform providers"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "frontend npm (minor/patch)"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["node"],
+      "allowedVersions": "/^24/"
+    }
+  ]
+}

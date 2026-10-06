@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terraform, expliqué avec ce projet — PIM Accor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #12343b;
+      --ink-soft: #254248;
+      --paper: #f3efe4;
+      --card: #fffdf8;
+      --line: #d4cdc0;
+      --brass: #6e4f12;
+      --brass-soft: #f0e4c8;
+      --teal: #1f6f64;
+      --teal-deep: #0d3d3a;
+      --warn: #9c3d2e;
+      --code-bg: #0f2a2d;
+      --code-fg: #e8f0e9;
+      --shadow: 0 18px 40px -28px rgba(18, 52, 59, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 400px at 80% -10%, #dceee9 0%, transparent 60%),
+        var(--paper);
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 1.05rem;
+      line-height: 1.65;
+    }
+
+    a { color: var(--teal); }
+    code, kbd {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86em;
+    }
+    kbd {
+      background: var(--brass-soft);
+      padding: 0.05em 0.4em;
+      border-radius: 4px;
+      border: 1px solid #e0d3ad;
+    }
+    p code, li code {
+      background: var(--brass-soft);
+      padding: 0.08em 0.35em;
+      border-radius: 4px;
+    }
+
+    .wrap { max-width: 920px; margin: 0 auto; padding: 0 1.4rem 5rem; }
+
+    header.hero {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 3.2rem 1.4rem 1.2rem;
+    }
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: var(--teal);
+      margin: 0 0 0.8rem;
+    }
+    h1, h2, h3 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    h1 { font-size: clamp(2.1rem, 5vw, 3.3rem); font-weight: 800; margin: 0 0 0.8rem; }
+    h2 { font-size: 1.7rem; margin: 2.6rem 0 0.8rem; }
+    h3 { font-size: 1.2rem; margin: 1.6rem 0 0.5rem; }
+    .lede { font-size: 1.22rem; color: var(--ink-soft); max-width: 40rem; }
+
+    nav.toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: 1.6rem 0 0;
+    }
+    nav.toc a {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+    }
+    nav.toc a:hover { border-color: var(--teal); color: var(--teal); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.15rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .analogy {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0.8rem;
+      align-items: stretch;
+      margin: 1.4rem 0;
+    }
+    .analogy .col { padding: 1rem 1.1rem; }
+    .analogy .label {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.02em;
+      color: var(--brass);
+      margin: 0 0 0.4rem;
+    }
+    .vs {
+      align-self: center;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 700;
+      color: var(--brass);
+    }
+
+    .floors { display: grid; gap: 0.55rem; margin: 1.3rem 0 1.6rem; }
+    .floor {
+      display: grid;
+      grid-template-columns: 7.2rem 1fr;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+    }
+    .floor .tag {
+      background: var(--teal-deep);
+      color: #e8f4f1;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      padding: 0.9rem 0.8rem;
+      display: flex;
+      align-items: center;
+    }
+    .floor.mod .tag { background: var(--brass); color: #1a1408; }
+    .floor.env .tag { background: var(--teal); }
+    .floor p { margin: 0.75rem 1rem; }
+
+    .commands { display: grid; gap: 0.7rem; }
+    .cmd {
+      display: grid;
+      grid-template-columns: 5.5rem 1fr;
+      gap: 0.9rem;
+      align-items: start;
+    }
+    .cmd b {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.82rem;
+      background: var(--code-bg);
+      color: #b8e0c8;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .cmd p { margin: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.7rem 0.85rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      background: #efe9da;
+    }
+    tr:last-child td { border-bottom: 0; }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 1rem 1.1rem;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      line-height: 1.55;
+    }
+    .kw { color: #f0c14e; }
+    .str { color: #9ad4b4; }
+
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0.7rem; }
+    .tabs button {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      padding: 0.4rem 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .tabs button[aria-selected="true"] {
+      background: var(--teal-deep);
+      color: #eaf6f3;
+      border-color: var(--teal-deep);
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .callout {
+      background: var(--brass-soft);
+      border-radius: 12px;
+      padding: 0.85rem 1.1rem;
+      margin: 1.2rem 0;
+    }
+    .warn {
+      background: #f6e4df;
+    }
+    .comment { color: #b7d4ce; }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      margin: 1rem 0 1.4rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+    }
+    .chip {
+      background: var(--teal-deep);
+      color: #eaf6f3;
+      padding: 0.45rem 0.7rem;
+      border-radius: 8px;
+    }
+    .chip.alt { background: var(--brass); color: #1a1408; }
+    .arrow { color: var(--ink-soft); }
+
+    footer {
+      margin-top: 3rem;
+      font-size: 0.92rem;
+      color: var(--ink-soft);
+    }
+
+    @media (max-width: 700px) {
+      .analogy { grid-template-columns: 1fr; }
+      .vs { text-align: center; }
+      .floor { grid-template-columns: 1fr; }
+      .cmd { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">Guide débutant · terraform/ de ce repo · environnements dev et stg</p>
+    <h1>Terraform, c’est une liste de courses pour le cloud.</h1>
+    <p class="lede">
+      Tu ne cliques plus dans la console Google Cloud. Tu décris <em>ce que tu veux</em> dans des fichiers,
+      et Terraform se charge de créer, modifier ou (presque jamais) détruire pour coller à cette description.
+      Ce guide utilise <strong>exactement</strong> le Terraform de PIM Accor enrichment.
+    </p>
+    <nav class="toc" aria-label="Sommaire">
+      <a href="#idee">L’idée</a>
+      <a href="#commandes">Les commandes</a>
+      <a href="#fichiers">Les fichiers</a>
+      <a href="#couches">Ce projet</a>
+      <a href="#envs">dev et stg</a>
+      <a href="#module">Les modules</a>
+      <a href="#identites">Qui agit</a>
+      <a href="#state">Le state</a>
+      <a href="#cycle">Le déploiement</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section id="idee">
+      <h2>1. L’idée, en une image mentale</h2>
+      <p>
+        Imagine un hôtel. Toi, tu tiens le <strong>planning des chambres</strong> : « je veux une réception ouverte au public
+        (le <em>front</em>), un back-office réservé au personnel (le <em>back</em>), deux casiers où l’on dépose les fichiers
+        (PIM d’un côté, Expedia / Booking de l’autre), un local à bagages (les images Docker) et un coffre pour les clés (le state) ».
+        Terraform compare ce planning à l’hôtel réel (Google Cloud), puis fait uniquement les travaux nécessaires.
+      </p>
+
+      <div class="analogy">
+        <div class="card col">
+          <p class="label">Ce que tu écris</p>
+          <p><strong>État désiré</strong><br />Les fichiers <code>.tf</code> + les réglages <code>vars/*.tfvars</code>.</p>
+        </div>
+        <div class="vs">→</div>
+        <div class="card col">
+          <p class="label">Ce qui existe déjà</p>
+          <p><strong>État réel</strong><br />Le projet GCP <code>cvto-accor-pim-enrichment-dev</code>.</p>
+        </div>
+      </div>
+
+      <p>
+        Terraform n’est pas un script « crée un bucket, puis un service, puis… ».
+        C’est un <strong>rapprochement</strong> : « la réalité doit ressembler à ces fichiers ».
+        Si tu relances un apply sans rien changer, il dit : <em>No changes</em>. C’est le bon signe.
+      </p>
+    </section>
+
+    <section id="commandes">
+      <h2>2. Trois commandes, toujours les mêmes</h2>
+      <div class="commands card">
+        <div class="cmd">
+          <b>init</b>
+          <p>Prépare le dossier : télécharge le <em>provider</em> Google et se branche sur le bon carnet de state (dev <em>ou</em> stg). À refaire à chaque fois que tu changes d’environnement.</p>
+        </div>
+        <div class="cmd">
+          <b>plan</b>
+          <p>Montre le diff, sans toucher au cloud. « Je vais créer X, modifier Y, détruire Z. » Lis-le toujours, surtout la ligne <code>destroy</code>.</p>
+        </div>
+        <div class="cmd">
+          <b>apply</b>
+          <p>Exécute le plan. Après, le cloud et le state sont à jour.</p>
+        </div>
+      </div>
+      <p>
+        Dans ce repo, un <strong>Makefile</strong> enchaîne ces commandes pour toi. Tu choisis l’environnement avec
+        <code>ENV=dev</code> ou <code>ENV=stg</code> :
+      </p>
+      <pre><span class="comment"># depuis le dossier terraform/</span>
+make init  ENV=dev     <span class="comment"># se branche sur le state de dev</span>
+make plan  ENV=dev     <span class="comment"># calcule le diff et l’enregistre dans core/tfplan_dev</span>
+make apply ENV=dev     <span class="comment"># applique exactement ce plan</span>
+make output ENV=dev    <span class="comment"># relit les URLs, noms de buckets…</span>
+
+make init plan ENV=stg &amp;&amp; make apply ENV=stg</pre>
+      <p>Derrière, le Makefile lance simplement :</p>
+      <pre>terraform -chdir=core init -reconfigure -backend-config=../config/terraform_dev_backend.hcl
+terraform -chdir=core plan  -var-file=../vars/global.tfvars -var-file=../vars/dev.tfvars -out=tfplan_dev
+terraform -chdir=core apply tfplan_dev</pre>
+      <p>
+        <code>-chdir=core</code> veut dire « travaille comme si tu étais dans <code>core/</code> ».
+        <code>-backend-config</code> choisit le carnet de state, et les deux <code>-var-file</code> choisissent les réglages.
+      </p>
+      <div class="callout">
+        <p>
+          <code>make</code> vient avec les outils en ligne de commande d’Apple (<code>xcode-select --install</code> s’ils manquent).
+          Tu peux aussi taper directement les commandes <code>terraform</code> ci-dessus.
+        </p>
+      </div>
+    </section>
+
+    <section id="fichiers">
+      <h2>3. À quoi sert chaque type de fichier</h2>
+      <p>
+        Terraform lit <strong>tous</strong> les <code>.tf</code> d’un dossier et les fusionne.
+        Découper en plusieurs fichiers, c’est juste pour les humains. Clique un onglet :
+      </p>
+
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-tab="versions">versions.tf</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="backend">backend.tf + config/</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="providers">providers.tf</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="variables">variables.tf</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="tfvars">vars/*.tfvars</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="main">main.tf</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="outputs">outputs.tf</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="makefile">Makefile</button>
+      </div>
+
+      <div id="panel-versions" class="panel active card">
+        <h3>Le contrat d’outillage</h3>
+        <p>Quelle version de Terraform, quel plugin cloud. Ici : Terraform ≥ 1.9, provider Google <code>~> 8.5</code> (toute 8.x à partir de 8.5). Le fichier <code>.terraform.lock.hcl</code> fige la version exacte téléchargée : il se commite.</p>
+        <pre>terraform {
+  required_version = <span class="str">">= 1.9"</span>
+  required_providers {
+    google = { source = <span class="str">"hashicorp/google"</span> version = <span class="str">"~> 8.5"</span> }
+  }
+}</pre>
+      </div>
+      <div id="panel-backend" class="panel card">
+        <h3>Où est rangé le carnet de bord</h3>
+        <p>
+          Le <em>state</em> n’est pas dans Git : il vit dans un bucket GCS. <code>core/backend.tf</code> est volontairement
+          <strong>vide</strong> (« backend partiel ») : c’est le fichier <code>config/terraform_&lt;env&gt;_backend.hcl</code>
+          passé à <code>init</code> qui dit dans quel « dossier » (<code>prefix</code>) du bucket écrire.
+        </p>
+        <pre><span class="comment"># core/backend.tf</span>
+terraform {
+  backend <span class="str">"gcs"</span> {}
+}
+
+<span class="comment"># config/terraform_dev_backend.hcl</span>
+bucket                      = <span class="str">"bkt-cvto-accor-pim-enrichment-dev-euw1-tfstate"</span>
+prefix                      = <span class="str">"core/dev"</span>   <span class="comment"># stg : "core/stg"</span>
+impersonate_service_account = <span class="str">"sa-dev-terraform@…"</span></pre>
+      </div>
+      <div id="panel-providers" class="panel card">
+        <h3>Comment parler à Google Cloud</h3>
+        <p>
+          Le provider est le traducteur. Ici il impersonne un service account Terraform :
+          <em>toi</em> tu lances la commande, <em>lui</em> agit dans GCP.
+          <code>default_labels</code> colle automatiquement les mêmes étiquettes (client, env, owner…) sur toutes les ressources.
+        </p>
+        <pre>provider <span class="str">"google"</span> {
+  project                     = var.project_id
+  region                      = var.region
+  impersonate_service_account = var.terraform_service_account
+  default_labels              = local.labels
+}</pre>
+      </div>
+      <div id="panel-variables" class="panel card">
+        <h3>Les paramètres (le « formulaire »)</h3>
+        <p>
+          On déclare <em>quels</em> réglages existent, leur type, parfois une valeur par défaut ou une règle de validation.
+          On n’y met pas les valeurs d’un environnement précis.
+        </p>
+        <pre>variable <span class="str">"env"</span> {
+  type = string
+  validation {
+    condition     = contains([<span class="str">"dev"</span>, <span class="str">"stg"</span>], var.env)
+    error_message = <span class="str">"env doit valoir dev ou stg."</span>
+  }
+}</pre>
+      </div>
+      <div id="panel-tfvars" class="panel card">
+        <h3>Les valeurs, en deux étages</h3>
+        <p>
+          <code>vars/global.tfvars</code> contient ce qui est commun (projet, région, <code>client = "accor"</code>,
+          <code>solution = "pim-enrichment"</code>, liste des APIs). <code>vars/dev.tfvars</code> et <code>vars/stg.tfvars</code>
+          contiennent ce qui change d’un environnement à l’autre. Si une valeur existe dans les deux, le second fichier gagne.
+        </p>
+        <pre><span class="comment"># vars/dev.tfvars</span>
+env                      = <span class="str">"dev"</span>
+manage_project_resources = true
+deploy_branch            = <span class="str">"dev"</span>   <span class="comment"># chaque push sur dev déploie cet env</span>
+front_public             = true</pre>
+        <p>Les tags d’image n’apparaissent plus ici : c’est la CI (Cloud Build) qui choisit l’image déployée.</p>
+      </div>
+      <div id="panel-main" class="panel card">
+        <h3>Ce qu’on veut obtenir</h3>
+        <p>
+          <code>core/main.tf</code> ne crée presque rien directement : il <strong>appelle des modules</strong>
+          (un bucket, un Cloud Run, des APIs…) en leur passant des arguments. Le bloc <code>locals</code> calcule les noms
+          une seule fois pour tout le fichier.
+        </p>
+        <pre>locals {
+  base = <span class="str">"cvto-${var.client}-${var.solution}-${var.env}-${var.region_short}"</span>
+  <span class="comment"># dev → cvto-accor-pim-enrichment-dev-euw1</span>
+}</pre>
+      </div>
+      <div id="panel-outputs" class="panel card">
+        <h3>Ce qu’on veut afficher après un apply</h3>
+        <p>Les URLs front et back, les noms des buckets, les emails des service accounts… Tu les relis avec <code>make output ENV=dev</code>.</p>
+      </div>
+      <div id="panel-makefile" class="panel card">
+        <h3>Les raccourcis</h3>
+        <p>
+          Le Makefile n’est pas du Terraform : c’est un aide-mémoire exécutable. Il évite de se tromper de fichier
+          de backend ou de vars entre dev et stg. Cibles utiles : <code>init</code>, <code>plan</code>, <code>apply</code>,
+          <code>output</code>, <code>fmt</code>, <code>validate</code>.
+        </p>
+      </div>
+    </section>
+
+    <section id="couches">
+      <h2>4. Comment <em>ce</em> projet est structuré</h2>
+      <p>
+        Un seul <strong>plan d’immeuble</strong> (<code>core/</code>), des <strong>pièces types</strong> réutilisables
+        (<code>modules/</code>), et pour chaque environnement : un <strong>carnet</strong> (<code>config/</code>) et des
+        <strong>réglages</strong> (<code>vars/</code>).
+      </p>
+
+      <div class="floors">
+        <article class="floor env">
+          <div class="tag">plan<br />core/</div>
+          <p>
+            Le module racine, celui qu’on lance. Il décrit <strong>tout</strong> un environnement : APIs, dépôt d’images,
+            service accounts, 2 buckets de fichiers, Cloud Run back et front. Il ne contient aucune valeur propre à dev ou stg.
+          </p>
+        </article>
+        <article class="floor mod">
+          <div class="tag">pièces<br />modules/</div>
+          <p>
+            Recettes génériques : <code>apis</code>, <code>artifact_registry</code>, <code>cloud_run</code>,
+            <code>cloud_storage</code>, <code>iam</code>. Jamais lancées seules : <code>core</code> les appelle.
+          </p>
+        </article>
+        <article class="floor">
+          <div class="tag">réglages<br />vars/</div>
+          <p><code>global.tfvars</code> (commun) + <code>dev.tfvars</code> / <code>stg.tfvars</code> (spécifique).</p>
+        </article>
+        <article class="floor">
+          <div class="tag">carnets<br />config/</div>
+          <p>Un fichier backend par environnement : il pointe vers <code>core/dev</code> ou <code>core/stg</code> dans le bucket de state.</p>
+        </article>
+      </div>
+
+      <h3>Ce que <code>core</code> crée, par environnement</h3>
+      <table>
+        <thead>
+          <tr><th>Ressource</th><th>Nom en dev</th><th>Rôle</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cloud Run front</td>
+            <td><code>gcr-cvto-accor-pim-enrichment-dev-euw1-front</code></td>
+            <td>L’interface Next.js, ouverte au public</td>
+          </tr>
+          <tr>
+            <td>Cloud Run back</td>
+            <td><code>gcr-cvto-accor-pim-enrichment-dev-euw1-back</code></td>
+            <td>L’API, <strong>privée</strong> : seul le front peut l’appeler</td>
+          </tr>
+          <tr>
+            <td>Bucket PIM</td>
+            <td><code>bkt-cvto-accor-pim-enrichment-dev-euw1-pim-files</code></td>
+            <td>Fichiers issus du PIM</td>
+          </tr>
+          <tr>
+            <td>Bucket OTA</td>
+            <td><code>bkt-cvto-accor-pim-enrichment-dev-euw1-ota-files</code></td>
+            <td>Fichiers Expedia et Booking</td>
+          </tr>
+          <tr>
+            <td>Artifact Registry</td>
+            <td><code>ar-cvto-accor-pim-enrichment-dev-euw1-docker</code></td>
+            <td>Images Docker de l’environnement</td>
+          </tr>
+          <tr>
+            <td>Service accounts</td>
+            <td><code>sa-dev-frontend</code>, <code>sa-dev-backend</code></td>
+            <td>Identités des conteneurs</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>En stg, c’est exactement la même liste avec <code>stg</code> à la place de <code>dev</code>.</p>
+
+      <div class="callout">
+        <p>
+          Un module n’a <strong>pas</strong> de backend. Ce n’est pas un projet, c’est une fonction
+          que <code>core</code> appelle : « fabrique-moi un Cloud Run avec ces arguments ».
+        </p>
+      </div>
+    </section>
+
+    <section id="envs">
+      <h2>5. Un plan, deux environnements</h2>
+      <p>
+        dev et stg sont construits avec <strong>le même code</strong>. Seuls changent les réglages (<code>vars/</code>)
+        et le carnet (<code>config/</code>). Les deux vivent dans le même projet GCP ; les noms
+        (<code>…-dev-…</code> / <code>…-stg-…</code>) et les states séparés les empêchent de se marcher dessus.
+      </p>
+      <div class="flow">
+        <span class="chip alt">core/ (même code)</span>
+        <span class="arrow">+</span>
+        <span class="chip">vars/dev.tfvars</span>
+        <span class="arrow">+</span>
+        <span class="chip">config/…dev_backend.hcl</span>
+        <span class="arrow">→</span>
+        <span class="chip">dev</span>
+      </div>
+      <div class="flow">
+        <span class="chip alt">core/ (même code)</span>
+        <span class="arrow">+</span>
+        <span class="chip">vars/stg.tfvars</span>
+        <span class="arrow">+</span>
+        <span class="chip">config/…stg_backend.hcl</span>
+        <span class="arrow">→</span>
+        <span class="chip">stg</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Environnement</th><th>Préfixe du state</th><th>URL du front</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>dev</td>
+            <td><code>core/dev</code></td>
+            <td><a href="https://gcr-cvto-accor-pim-enrichment-dev-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-dev-euw1-front…run.app</a></td>
+          </tr>
+          <tr>
+            <td>stg</td>
+            <td><code>core/stg</code></td>
+            <td><a href="https://gcr-cvto-accor-pim-enrichment-stg-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-stg-euw1-front…run.app</a></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <p>
+          <strong>Les ressources uniques au projet n’ont qu’un seul propriétaire.</strong>
+          Le bucket de state et le rôle <code>roles/run.admin</code> du SA Terraform n’existent qu’en un exemplaire.
+          Si dev <em>et</em> stg les géraient, détruire stg les supprimerait aussi pour dev.
+          Ils sont donc créés avec <code>count = var.manage_project_resources ? 1 : 0</code>, et seul
+          <code>dev.tfvars</code> met <code>manage_project_resources = true</code>.
+        </p>
+      </div>
+      <p>
+        Piège classique : <code>make plan ENV=stg</code> juste après avoir travaillé sur dev, <em>sans</em> refaire
+        <code>make init ENV=stg</code>. Terraform comparerait alors les réglages stg au carnet de dev. Le Makefile
+        fait un <code>-reconfigure</code> à chaque <code>init</code> : relance-le à chaque changement d’environnement.
+      </p>
+    </section>
+
+    <section id="module">
+      <h2>6. Resource, variable, local, module : le vocabulaire</h2>
+      <table>
+        <thead>
+          <tr><th>Mot</th><th>En français</th><th>Ici</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>variable</code></td>
+            <td>Entrée paramétrable</td>
+            <td><code>var.deploy_branch</code>, <code>var.env</code></td>
+          </tr>
+          <tr>
+            <td><code>locals</code></td>
+            <td>Calculs internes (noms, chemins)</td>
+            <td><code>local.base</code> → <code>cvto-accor-pim-enrichment-dev-euw1</code></td>
+          </tr>
+          <tr>
+            <td><code>resource</code></td>
+            <td>Objet cloud créé / géré</td>
+            <td>bucket, API, service account, Cloud Run (dans les modules)</td>
+          </tr>
+          <tr>
+            <td><code>module</code></td>
+            <td>Sous-dossier réutilisable</td>
+            <td><code>module "cloud_run_front"</code> et <code>module "cloud_run_back"</code> utilisent tous deux <code>../modules/cloud_run</code></td>
+          </tr>
+          <tr>
+            <td><code>output</code></td>
+            <td>Valeur exposée à la fin</td>
+            <td><code>front_url</code>, <code>back_url</code>, <code>buckets</code></td>
+          </tr>
+          <tr>
+            <td><code>depends_on</code></td>
+            <td>« Attends que ça existe »</td>
+            <td>Activer l’API Run avant de créer les services</td>
+          </tr>
+          <tr>
+            <td><code>for_each</code></td>
+            <td>Une ressource par élément d’une liste</td>
+            <td>Une API Google par entrée de <code>var.apis</code></td>
+          </tr>
+          <tr>
+            <td><code>count</code></td>
+            <td>Créer 0 ou N exemplaires</td>
+            <td>Bucket de state : 1 en dev, 0 en stg</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>Dans <code>core/main.tf</code>, un appel de module ressemble à un appel de fonction :</p>
+      <pre>module <span class="str">"cloud_run_back"</span> {
+  source = <span class="str">"../modules/cloud_run"</span>
+
+  name                  = <span class="str">"gcr-${local.base}-back"</span>
+  image                 = local.placeholder_image   <span class="comment"># image de démarrage, ensuite gérée par la CI</span>
+  service_account_email = module.iam.emails[<span class="str">"back"</span>]
+  invoker_members       = [module.iam.members[<span class="str">"front"</span>]]   <span class="comment"># seul le front peut l’appeler</span>
+
+  env = {
+    PIM_FILES_BUCKET = module.bucket_pim_files.name
+    OTA_FILES_BUCKET = module.bucket_ota_files.name
+  }
+}</pre>
+      <p>
+        Le même module sert au front, avec d’autres arguments : <code>invoker_members = ["allUsers"]</code> quand
+        <code>front_public = true</code> (n’importe qui peut ouvrir l’URL ; plus tard, IAP ou une authentification applicative),
+        et une variable <code>BACKEND_URL</code> qui reçoit l’URL du back.
+      </p>
+      <p>
+        Les modules vérifient aussi la convention de nommage : un nom de Cloud Run qui ne commence pas par <code>gcr-</code>
+        ou un bucket avec un underscore font échouer le <code>plan</code> avant même de contacter Google.
+      </p>
+    </section>
+
+    <section id="identites">
+      <h2>7. Qui a le droit de faire quoi (les 4 identités)</h2>
+      <p>Il y a plusieurs « robots » distincts. Les mélanger, c’est la source n°1 de confusion.</p>
+      <table>
+        <thead>
+          <tr><th>Identité</th><th>À quoi elle sert</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>sa-dev-terraform@…</code></td>
+            <td>
+              <strong>Terraform lui-même</strong>, pour dev comme pour stg. Il crée les buckets, les Cloud Run et pose l’IAM.
+              Ton compte humain doit seulement pouvoir l’<em>impersonner</em>
+              (<code>roles/iam.serviceAccountTokenCreator</code>).
+            </td>
+          </tr>
+          <tr>
+            <td><code>sa-&lt;env&gt;-frontend@…</code></td>
+            <td>
+              <strong>Le conteneur front en train de tourner.</strong> Son seul droit : <code>roles/run.invoker</code>
+              sur le back de son environnement, pour pouvoir l’appeler.
+            </td>
+          </tr>
+          <tr>
+            <td><code>sa-&lt;env&gt;-backend@…</code></td>
+            <td>
+              <strong>Le conteneur back.</strong> Il a <code>roles/storage.objectAdmin</code> (lire, écrire, supprimer des fichiers)
+              sur les buckets PIM et OTA de son environnement, et rien d’autre.
+            </td>
+          </tr>
+          <tr>
+            <td><code>sa-&lt;env&gt;-cloudbuild@…</code></td>
+            <td>
+              <strong>La CI.</strong> Pousse les images dans l’Artifact Registry de son env et publie de nouvelles versions
+              de ses 2 Cloud Run (voir le <a href="ci-cd-cloud-build.html">guide CI/CD</a>).
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Les droits du SA Terraform ont été donnés par l’admin du projet (<code>editor</code>, <code>projectIamAdmin</code>,
+        <code>serviceAccountUser</code>…). <code>editor</code> ne suffit pas pour rendre un Cloud Run public : le code ajoute donc
+        <code>roles/run.admin</code> (variable <code>terraform_sa_extra_roles</code>, gérée par dev).
+        Le rôle <code>serviceAccountUser</code> au niveau projet lui permet de déployer un Cloud Run « en tant que » les SA front et back.
+      </p>
+    </section>
+
+    <section id="state">
+      <h2>8. Le state : le carnet de ce que Terraform « possède »</h2>
+      <p>
+        Après un apply, Terraform écrit un JSON (le state) : IDs des ressources, attributs,
+        dépendances. Sans ce fichier, il ne sait plus que <em>ce bucket-là</em> est « le sien »
+        et risquerait d’en créer un second.
+      </p>
+      <p>
+        D’où le bucket <code>bkt-cvto-accor-pim-enrichment-dev-euw1-tfstate</code> : versionné (les 20 dernières versions de
+        chaque state sont gardées), accès public bloqué, et <code>force_destroy = false</code> (impossible de le supprimer tant qu’il contient des states).
+        Il range un carnet par environnement : <code>core/dev/default.tfstate</code> et <code>core/stg/default.tfstate</code>.
+      </p>
+      <div class="callout warn">
+        <p>
+          <strong>Le paradoxe de l’œuf et de la poule.</strong> Le bucket de state est géré par Terraform,
+          mais Terraform a besoin du bucket pour stocker son state. Comment on s’en est sorti :
+        </p>
+        <ol>
+          <li>une petite couche temporaire (« bootstrap ») a créé le bucket avec un state local, sur le disque ;</li>
+          <li>une fois <code>core</code> en place, on a <strong>importé</strong> le bucket dans le state <code>core/dev</code> (bloc <code>import</code>) : Terraform l’a adopté sans le recréer ;</li>
+          <li>la couche bootstrap a ensuite été supprimée. Elle n’est plus nécessaire.</li>
+        </ol>
+      </div>
+      <p>
+        <strong>Importer</strong>, c’est dire à Terraform : « cette ressource existe déjà, c’est désormais toi qui la gères ».
+        C’est aussi comme ça qu’on a gardé l’Artifact Registry et le SA du front existants lors de la réorganisation.
+      </p>
+    </section>
+
+    <section id="cycle">
+      <h2>9. Et le déploiement de l’application ?</h2>
+      <p>
+        Il ne passe <strong>plus</strong> par Terraform ni par un script : chaque push sur la branche <code>dev</code> ou <code>stg</code>
+        déclenche Cloud Build, qui construit l’image et la met en ligne. Terraform crée les Cloud Run et les triggers, puis
+        <strong>ignore l’image</strong> qui tourne (<code>lifecycle.ignore_changes</code>) pour ne jamais annuler un déploiement.
+      </p>
+      <div class="flow">
+        <span class="chip">push sur dev</span>
+        <span class="arrow">→</span>
+        <span class="chip alt">trigger Cloud Build</span>
+        <span class="arrow">→</span>
+        <span class="chip">build + push Artifact Registry</span>
+        <span class="arrow">→</span>
+        <span class="chip">Cloud Run nouvelle révision</span>
+      </div>
+      <p>Tout est expliqué dans le <a href="ci-cd-cloud-build.html">guide CI/CD Cloud Build</a>.</p>
+
+      <h3>Convention de noms</h3>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Format</th><th>Exemple</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cloud Run</td>
+            <td><code>gcr-cvto-[client]-[solution]-[env]-[region]-[service]</code></td>
+            <td><code>gcr-cvto-accor-pim-enrichment-dev-euw1-front</code></td>
+          </tr>
+          <tr>
+            <td>Bucket</td>
+            <td><code>bkt-cvto-[client]-[solution]-[env]-[region]-[purpose]</code></td>
+            <td><code>bkt-cvto-accor-pim-enrichment-dev-euw1-ota-files</code></td>
+          </tr>
+          <tr>
+            <td>Artifact Registry</td>
+            <td><code>ar-cvto-[client]-[solution]-[env]-[region]-docker</code></td>
+            <td><code>ar-cvto-accor-pim-enrichment-stg-euw1-docker</code></td>
+          </tr>
+          <tr>
+            <td>Service account</td>
+            <td><code>sa-[env]-[rôle]</code></td>
+            <td><code>sa-stg-backend</code> (un SA GCP a 30 caractères max)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Règles : minuscules, chiffres et tirets uniquement, 63 caractères max. Exception pratique :
+        Cloud Run (API v2) refuse au-delà de 49 caractères, le module le vérifie.
+      </p>
+
+      <h3>Mini check-list débutant</h3>
+      <ol>
+        <li><code>gcloud auth login</code> puis <code>gcloud auth application-default login</code></li>
+        <li><code>make init ENV=…</code> à chaque changement d’environnement</li>
+        <li>Toujours <code>plan</code> avant <code>apply</code>, et lire la ligne « to destroy »</li>
+        <li>Le code applicatif se déploie par un push Git, pas par Terraform</li>
+        <li>Ne pas mettre le state dans Git ; ne pas détruire le bucket tfstate</li>
+        <li>Un apply n’est pas « relancer le serveur » : s’il n’y a pas de diff, rien ne change</li>
+      </ol>
+    </section>
+
+    <footer>
+      <p>
+        Fichiers sources de ce guide : <code>terraform/core/</code>, <code>terraform/modules/</code>,
+        <code>terraform/vars/</code>, <code>terraform/config/</code>, <code>terraform/Makefile</code>,
+        <code>cloudbuild.yaml</code> et <code>terraform/README.md</code>.
+      </p>
+    </footer>
+  </main>
+  <script>
+    const buttons = document.querySelectorAll(".tabs button");
+    const panels = document.querySelectorAll(".panel");
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        buttons.forEach((b) => b.setAttribute("aria-selected", "false"));
+        panels.forEach((p) => p.classList.remove("active"));
+        btn.setAttribute("aria-selected", "true");
+        document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>
