@@ -39,6 +39,12 @@ variable "noncurrent_retention_days" {
   default     = null
 }
 
+variable "delete_after_days" {
+  description = "Si renseigné : supprime les objets N jours après leur création."
+  type        = number
+  default     = null
+}
+
 variable "force_destroy" {
   description = "Autorise la suppression d'un bucket non vide. Laisser à false pour les données."
   type        = bool

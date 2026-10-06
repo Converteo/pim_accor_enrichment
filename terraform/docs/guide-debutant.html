@@ -308,7 +308,7 @@
         <div class="vs">→</div>
         <div class="card col">
           <p class="label">Ce qui existe déjà</p>
-          <p><strong>État réel</strong><br />Le projet GCP <code>cvto-accor-pim-enrichment-dev</code>.</p>
+          <p><strong>État réel</strong><br />Le projet GCP du client.</p>
         </div>
       </div>
 
@@ -584,21 +584,14 @@ front_public             = true</pre>
 
       <table>
         <thead>
-          <tr><th>Environnement</th><th>Préfixe du state</th><th>URL du front</th></tr>
+          <tr><th>Environnement</th><th>Préfixe du state</th><th>Cloud Run front</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td>dev</td>
-            <td><code>core/dev</code></td>
-            <td><a href="https://gcr-cvto-accor-pim-enrichment-dev-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-dev-euw1-front…run.app</a></td>
-          </tr>
-          <tr>
-            <td>stg</td>
-            <td><code>core/stg</code></td>
-            <td><a href="https://gcr-cvto-accor-pim-enrichment-stg-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-stg-euw1-front…run.app</a></td>
-          </tr>
+          <tr><td>dev</td><td><code>core/dev</code></td><td><code>gcr-…-dev-euw1-front</code></td></tr>
+          <tr><td>stg</td><td><code>core/stg</code></td><td><code>gcr-…-stg-euw1-front</code></td></tr>
         </tbody>
       </table>
+      <p>Les URLs s’affichent avec <code>make output ENV=dev</code> (valeur <code>front_url</code>).</p>
 
       <div class="callout warn">
         <p>
@@ -771,13 +764,14 @@ front_public             = true</pre>
       <h2>9. Et le déploiement de l’application ?</h2>
       <p>
         Il ne passe <strong>plus</strong> par Terraform ni par un script : chaque push sur la branche <code>dev</code> ou <code>stg</code>
-        déclenche Cloud Build, qui construit l’image et la met en ligne. Terraform crée les Cloud Run et les triggers, puis
+        déclenche un workflow GitHub Actions qui confie le build à Cloud Build, puis met l’image en ligne. Terraform crée les Cloud Run
+        et le pool d’identités GitHub, puis
         <strong>ignore l’image</strong> qui tourne (<code>lifecycle.ignore_changes</code>) pour ne jamais annuler un déploiement.
       </p>
       <div class="flow">
         <span class="chip">push sur dev</span>
         <span class="arrow">→</span>
-        <span class="chip alt">trigger Cloud Build</span>
+        <span class="chip alt">GitHub Actions</span>
         <span class="arrow">→</span>
         <span class="chip">build + push Artifact Registry</span>
         <span class="arrow">→</span>

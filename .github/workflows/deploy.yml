@@ -1,0 +1,68 @@
+# Déploiement continu : un push sur dev ou stg lance Cloud Build (cloudbuild.yaml) sur l'environnement du même nom.
+#
+# Authentification sans clé : Workload Identity Federation. GitHub fournit un jeton OIDC signé
+# ("repo Converteo/pim_accor_enrichment, branche dev, événement push") que GCP échange contre un accès
+# temporaire au SA de build de l'environnement. Côté GCP (Terraform) :
+#   - seul ce repo (ID numérique) et l'événement "push" sont acceptés par le pool ;
+#   - refs/heads/dev ne peut utiliser que sa-dev-cloudbuild, refs/heads/stg que sa-stg-cloudbuild.
+name: Deploy (Cloud Build)
+
+on:
+  push:
+    branches: [dev, stg]
+    # Un push qui ne touche que l'infra ou la doc ne redéploie pas l'application
+    paths-ignore:
+      - "terraform/**"
+      - "**/*.md"
+      - "**/docs/**"
+      - "renovate.json"
+      - "docker-compose.yml"
+
+# Un seul déploiement à la fois par environnement ; les suivants attendent leur tour
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # nécessaire pour obtenir le jeton OIDC GitHub
+
+env:
+  PROJECT_ID: cvto-accor-pim-enrichment-dev
+  PROJECT_NUMBER: "475114935398"
+  REGION: europe-west1
+  WIF_POOL: gh-cvto-accor-pim-enrichment
+
+jobs:
+  deploy:
+    name: Deploy ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: S'authentifier sur GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.WIF_POOL }}/providers/github
+          service_account: sa-${{ github.ref_name }}-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Installer gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Construire et déployer avec Cloud Build
+        run: |
+          ENV="${GITHUB_REF_NAME}"
+          BASE="cvto-accor-pim-enrichment-${ENV}-euw1"
+          TAG="${GITHUB_SHA::7}"
+          echo "Environnement : ${ENV} · image : ${TAG}"
+
+          gcloud builds submit . \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --config=cloudbuild.yaml \
+            --service-account="projects/${PROJECT_ID}/serviceAccounts/sa-${ENV}-cloudbuild@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --gcs-source-staging-dir="gs://bkt-${BASE}-build-sources/source" \
+            --substitutions="_ENV=${ENV},_TAG=${TAG},_REGION=${REGION},_AR_PATH=${REGION}-docker.pkg.dev/${PROJECT_ID}/ar-${BASE}-docker,_FRONT_SERVICE=gcr-${BASE}-front,_BACK_SERVICE=gcr-${BASE}-back"

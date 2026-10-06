@@ -11,12 +11,12 @@ locals {
   build_sa_email  = "sa-${var.env}-cloudbuild@${var.project_id}.iam.gserviceaccount.com"
   build_sa_member = "serviceAccount:${local.build_sa_email}"
 
-  ci_enabled = var.github_app_installation_id != null
+  # Workload Identity Federation (GitHub Actions → GCP), unique au projet
+  wif_pool_id   = "gh-cvto-${var.client}-${var.solution}" # 32 caractères max
+  wif_pool_name = "projects/${data.google_project.this.number}/locations/global/workloadIdentityPools/${local.wif_pool_id}"
 
-  # Ressources Cloud Build propres au projet (une seule connexion GitHub, partagée par dev et stg)
-  project_slug    = "cvto-${var.client}-${var.solution}"
-  connection_name = "gcb-${local.project_slug}-${var.region_short}-github"
-  github_secret   = "sec-${local.project_slug}-github-token"
+  # Identité GitHub autorisée à agir en tant que le SA de build de cet env : un push sur SA branche
+  github_branch_principal = "principalSet://iam.googleapis.com/${local.wif_pool_name}/attribute.ref/refs/heads/${var.deploy_branch}"
 }
 
 data "google_project" "this" {
@@ -77,17 +77,24 @@ module "iam" {
         member = "serviceAccount:${var.terraform_service_account}"
       }
     ] : [],
-    # écrire les logs de build
-    [{ role = "roles/logging.logWriter", member = local.build_sa_member }],
+    [
+      { role = "roles/cloudbuild.builds.editor", member = local.build_sa_member }, # lancer un build (gcloud builds submit)
+      { role = "roles/logging.logWriter", member = local.build_sa_member },        # écrire les logs du build
+      { role = "roles/logging.viewer", member = local.build_sa_member },           # les relire depuis GitHub Actions
+    ],
   )
 
-  # Le SA de build déploie les Cloud Run "en tant que" leurs SA d'exécution
   service_account_iam_members = [
+    # Le SA de build déploie les Cloud Run "en tant que" leurs SA d'exécution
     { sa_key = "front", role = "roles/iam.serviceAccountUser", member = local.build_sa_member },
     { sa_key = "back", role = "roles/iam.serviceAccountUser", member = local.build_sa_member },
+    # ... et lance ses builds en tant que lui-même
+    { sa_key = "build", role = "roles/iam.serviceAccountUser", member = local.build_sa_member },
+    # GitHub Actions (push sur la branche de l'env uniquement) peut se faire passer pour le SA de build
+    { sa_key = "build", role = "roles/iam.workloadIdentityUser", member = local.github_branch_principal },
   ]
 
-  depends_on = [module.apis]
+  depends_on = [module.apis, module.wif]
 }
 
 # ---------- Artifact Registry (un dépôt par env) ----------
@@ -196,59 +203,33 @@ module "cloud_run_front" {
   depends_on = [module.apis]
 }
 
-# ---------- CI/CD : Cloud Build ----------
-# Token GitHub (coffre seulement ; la valeur est ajoutée hors Terraform). Unique au projet → géré par dev.
-module "github_token_secret" {
-  source = "../modules/secrets"
+# ---------- CI/CD : GitHub Actions → Cloud Build ----------
+# Pool d'identités GitHub (unique au projet → géré par dev)
+module "wif" {
+  source = "../modules/workload_identity_federation"
   count  = var.manage_project_resources ? 1 : 0
 
-  project_id       = var.project_id
-  secret_id        = local.github_secret
-  replica_location = var.region
-
-  # L'agent de service Cloud Build lit le token pour parler à GitHub
-  accessors = ["serviceAccount:service-${data.google_project.this.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"]
+  project_id           = var.project_id
+  pool_id              = local.wif_pool_id
+  github_repository_id = var.github_repository_id
+  github_repository    = "${var.github_owner}/${var.github_repo}"
 
   depends_on = [module.apis]
 }
 
-module "cloud_build" {
-  source = "../modules/cloud_build"
-  count  = local.ci_enabled ? 1 : 0
+# Bucket où `gcloud builds submit` dépose le code à construire (purgé après 7 jours)
+module "bucket_build_sources" {
+  source = "../modules/cloud_storage"
 
-  project_id = var.project_id
-  region     = var.region
+  project_id        = var.project_id
+  name              = "bkt-${local.base}-build-sources"
+  location          = var.region
+  delete_after_days = 7
 
-  # Connexion GitHub + repo : créés une seule fois (par dev)
-  create_connection           = var.manage_project_resources
-  connection_name             = local.connection_name
-  github_app_installation_id  = var.github_app_installation_id
-  github_token_secret_version = var.manage_project_resources ? "${module.github_token_secret[0].id}/versions/latest" : null
-  repository_name             = var.github_repo
-  repository_remote_uri       = "https://github.com/${var.github_owner}/${var.github_repo}.git"
-
-  # Trigger : push sur la branche de l'env → cloudbuild.yaml
-  trigger_name          = "gcb-${local.base}-deploy"
-  trigger_description   = "Push sur ${var.deploy_branch} : build + déploiement front/back ${var.env}"
-  branch                = var.deploy_branch
-  service_account_email = local.build_sa_email
-
-  substitutions = {
-    _ENV           = var.env
-    _REGION        = var.region
-    _AR_PATH       = module.artifact_registry.path
-    _FRONT_SERVICE = module.cloud_run_front.name
-    _BACK_SERVICE  = module.cloud_run_back.name
-  }
-
-  # Un push qui ne touche que l'infra ou la doc ne redéploie pas l'application
-  ignored_files = [
-    "terraform/**",
-    "**/*.md",
-    "**/docs/**",
-    "renovate.json",
-    "docker-compose.yml",
+  iam_members = [
+    { role = "roles/storage.objectAdmin", member = local.build_sa_member },
+    { role = "roles/storage.legacyBucketReader", member = local.build_sa_member }, # gcloud vérifie l'existence du bucket
   ]
 
-  depends_on = [module.apis, module.iam, module.github_token_secret]
+  depends_on = [module.apis]
 }

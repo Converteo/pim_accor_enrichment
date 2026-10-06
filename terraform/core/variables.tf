@@ -47,10 +47,9 @@ variable "github_repo" {
   type = string
 }
 
-variable "github_app_installation_id" {
-  description = "ID d'installation de l'app GitHub « Google Cloud Build » sur l'org. null = CI non activée."
-  type        = number
-  default     = null
+variable "github_repository_id" {
+  description = "ID numérique du repo GitHub (seul repo autorisé à déployer via Workload Identity Federation)."
+  type        = string
 }
 
 # ---------- environnement (vars/<env>.tfvars) ----------

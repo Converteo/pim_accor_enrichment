@@ -28,11 +28,11 @@ output "service_accounts" {
 }
 
 output "ci" {
-  description = "CI Cloud Build de l'environnement (null tant que github_app_installation_id n'est pas renseigné)."
-  value = local.ci_enabled ? {
-    branch    = var.deploy_branch
-    trigger   = module.cloud_build[0].trigger_name
-    build_sa  = local.build_sa_email
-    repo_link = module.cloud_build[0].repository_id
-  } : null
+  description = "Valeurs utilisées par .github/workflows/deploy.yml."
+  value = {
+    branch                     = var.deploy_branch
+    build_service_account      = local.build_sa_email
+    source_staging_bucket      = module.bucket_build_sources.name
+    workload_identity_provider = "${local.wif_pool_name}/providers/github"
+  }
 }

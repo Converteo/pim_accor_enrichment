@@ -1,0 +1,10 @@
+# Fichiers NON envoyés à Cloud Build par `gcloud builds submit`
+.git
+.github
+.gcloudignore
+terraform/
+**/docs/
+**/node_modules/
+**/.next/
+*.md
+.DS_Store

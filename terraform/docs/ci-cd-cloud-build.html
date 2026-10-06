@@ -283,23 +283,23 @@
 </head>
 <body>
   <header class="hero">
-    <p class="eyebrow">Guide débutant · CI/CD · cloudbuild.yaml de ce repo</p>
+    <p class="eyebrow">Guide débutant · CI/CD · GitHub Actions + Cloud Build</p>
     <h1>Pousser du code, c’est déployer.</h1>
     <p class="lede">
       Plus de script à lancer depuis ton poste : quand du code arrive sur la branche <code>dev</code> ou <code>stg</code>
-      de GitHub, Google Cloud Build construit l’application et la met en ligne tout seul.
+      de GitHub, l’application est construite par Google Cloud Build et mise en ligne toute seule.
       Ce guide explique comment, avec <strong>exactement</strong> la configuration de PIM Accor enrichment.
     </p>
     <nav class="toc" aria-label="Sommaire">
       <a href="#idee">L’idée</a>
       <a href="#branches">Les branches</a>
       <a href="#parcours">Le parcours d’un commit</a>
-      <a href="#pipeline">cloudbuild.yaml</a>
+      <a href="#wif">La clé sans clé</a>
+      <a href="#pipeline">Les deux fichiers</a>
       <a href="#qui">Qui fait quoi</a>
       <a href="#terraform">CI et Terraform</a>
       <a href="#quotidien">Au quotidien</a>
       <a href="#probleme">En cas de problème</a>
-      <a href="#setup">Mise en place</a>
       <a href="#glossaire">Glossaire</a>
     </nav>
   </header>
@@ -309,9 +309,9 @@
       <h2>1. L’idée, en une image mentale</h2>
       <p>
         Reprenons l’hôtel. Le code sur GitHub, c’est la <strong>recette</strong>. Pousser sur <code>dev</code>, c’est
-        envoyer un bon de commande en cuisine. <strong>Cloud Build</strong>, c’est la brigade : elle prépare le plat
-        (construit l’image Docker), le range en chambre froide (Artifact Registry), puis le sert en salle
-        (nouvelle version sur Cloud Run). Personne n’a besoin d’aller en cuisine.
+        déposer un bon de commande. <strong>GitHub Actions</strong> est le serveur qui porte le bon en cuisine.
+        <strong>Cloud Build</strong>, c’est la brigade : elle prépare le plat (construit l’image Docker), le range
+        en chambre froide (Artifact Registry), puis le sert en salle (nouvelle version sur Cloud Run).
       </p>
       <div class="analogy">
         <div class="card col">
@@ -365,21 +365,68 @@
       <h2>3. Le parcours d’un commit, de ton poste à l’URL</h2>
       <div class="steps">
         <div class="step"><div><strong>Push sur <code>dev</code></strong><p>Directement, ou en fusionnant une PR dans <code>dev</code>.</p></div></div>
-        <div class="step"><div><strong>GitHub prévient Google</strong><p>L’application GitHub « Google Cloud Build », installée sur l’organisation Converteo, signale le push à Cloud Build.</p></div></div>
-        <div class="step"><div><strong>Le trigger se déclenche</strong><p>Le trigger <code>gcb-cvto-accor-pim-enrichment-dev-euw1-deploy</code> écoute la branche <code>dev</code>. Il lance un build en lui passant les paramètres de dev (dépôt d’images, noms des Cloud Run…).</p></div></div>
-        <div class="step"><div><strong>Cloud Build suit la recette</strong><p>Il lit <code>cloudbuild.yaml</code> à la racine du repo : construire l’image, la pousser, déployer.</p></div></div>
-        <div class="step"><div><strong>Nouvelle révision Cloud Run</strong><p>Cloud Run démarre la nouvelle version, vérifie qu’elle répond, puis lui envoie 100 % du trafic. L’ancienne reste disponible pour revenir en arrière.</p></div></div>
-        <div class="step"><div><strong>Retour dans GitHub</strong><p>Le commit affiche une coche verte (réussi) ou une croix rouge (échec), avec un lien vers les logs.</p></div></div>
+        <div class="step"><div><strong>GitHub Actions démarre</strong><p>Le workflow <code>.github/workflows/deploy.yml</code> écoute les branches <code>dev</code> et <code>stg</code>. Il récupère le code sur une machine éphémère fournie par GitHub.</p></div></div>
+        <div class="step"><div><strong>Il s’authentifie auprès de Google, sans mot de passe</strong><p>Il présente un jeton signé par GitHub (« je suis ce repo, branche dev ») et reçoit en échange un accès temporaire au compte <code>sa-dev-cloudbuild</code>. Voir la section suivante.</p></div></div>
+        <div class="step"><div><strong>Il confie le travail à Cloud Build</strong><p><code>gcloud builds submit</code> envoie le code dans le bucket <code>bkt-…-dev-euw1-build-sources</code> et demande à Cloud Build d’exécuter <code>cloudbuild.yaml</code> avec les paramètres de dev.</p></div></div>
+        <div class="step"><div><strong>Cloud Build construit et déploie</strong><p>Image Docker, envoi dans l’Artifact Registry de dev, puis nouvelle révision du Cloud Run front (et back s’il existe).</p></div></div>
+        <div class="step"><div><strong>Retour dans GitHub</strong><p>Le commit affiche une coche verte (réussi) ou une croix rouge (échec). Les logs sont dans l’onglet Actions du repo et dans Cloud Build.</p></div></div>
       </div>
-      <p>Compte en général <strong>3 à 5 minutes</strong> entre le push et la mise en ligne.</p>
+      <p>Compte en général <strong>4 à 6 minutes</strong> entre le push et la mise en ligne.</p>
+    </section>
+
+    <section id="wif">
+      <h2>4. La « clé sans clé » : Workload Identity Federation</h2>
+      <p>
+        Pour agir dans Google Cloud, GitHub Actions doit prouver qui il est. L’ancienne méthode consistait à copier une
+        <em>clé de compte de service</em> (un fichier JSON) dans les secrets GitHub : si elle fuit, n’importe qui peut s’en servir,
+        et elle n’expire jamais. Ici, <strong>aucune clé n’existe</strong>.
+      </p>
+      <div class="analogy">
+        <div class="card col">
+          <p class="label">GitHub</p>
+          <p><strong>Délivre un badge</strong><br />À chaque exécution, un jeton signé, valable quelques minutes : « repo <code>Converteo/pim_accor_enrichment</code>, branche <code>dev</code>, événement push ».</p>
+        </div>
+        <div class="vs">→</div>
+        <div class="card col">
+          <p class="label">Google Cloud</p>
+          <p><strong>Vérifie le badge à l’accueil</strong><br />Le « pool d’identités » <code>gh-cvto-accor-pim-enrichment</code> contrôle la signature et les règles, puis prête un accès temporaire.</p>
+        </div>
+      </div>
+      <h3>Les règles du contrôle d’accès (définies dans Terraform)</h3>
+      <ul>
+        <li>seul <strong>ce repo</strong> est accepté, identifié par son numéro unique (un repo renommé ou recréé sous le même nom serait refusé) ;</li>
+        <li>seul un <strong>push</strong> est accepté : une pull request, même venant d’un fork d’un inconnu, ne peut rien déployer ;</li>
+        <li>la branche <code>dev</code> ne peut emprunter <em>que</em> <code>sa-dev-cloudbuild</code>, la branche <code>stg</code> <em>que</em> <code>sa-stg-cloudbuild</code>.</li>
+      </ul>
+      <div class="callout">
+        <p>
+          Résultat : rien à installer sur GitHub, aucun secret à stocker ni à renouveler, et même dans un repo public
+          personne d’autre ne peut déclencher un déploiement.
+        </p>
+      </div>
     </section>
 
     <section id="pipeline">
-      <h2>4. La recette : <code>cloudbuild.yaml</code></h2>
+      <h2>5. Les deux fichiers de la CI</h2>
+      <h3><code>.github/workflows/deploy.yml</code> : le déclencheur</h3>
+      <p>Il dit <em>quand</em> déployer et <em>où</em>. Le nom de la branche donne l’environnement :</p>
+      <pre>on:
+  push:
+    branches: [dev, stg]
+    paths-ignore: [<span class="str">"terraform/**"</span>, <span class="str">"**/*.md"</span>, <span class="str">"**/docs/**"</span>, …]
+
+<span class="comment"># … authentification (WIF), puis :</span>
+gcloud builds submit . \
+  --config=cloudbuild.yaml \
+  --service-account=…/sa-${ENV}-cloudbuild@… \
+  --substitutions=_ENV=${ENV},_TAG=${TAG},_FRONT_SERVICE=gcr-…-${ENV}-euw1-front,…</pre>
       <p>
-        Un build est une suite d’<strong>étapes</strong> (<code>steps</code>). Chaque étape tourne dans un petit conteneur
-        outil (<code>name</code> : l’outil Docker, l’outil gcloud…). Voici les nôtres :
+        <code>paths-ignore</code> : un push qui ne modifie <strong>que</strong> l’infra ou la doc ne redéploie pas l’application.
+        <code>concurrency</code> : deux pushs rapprochés sur <code>dev</code> sont déployés l’un après l’autre, jamais en même temps.
       </p>
+
+      <h3><code>cloudbuild.yaml</code> : la recette</h3>
+      <p>Il dit <em>comment</em> construire et déployer. Chaque étape tourne dans un petit conteneur outil (Docker, gcloud) :</p>
       <div class="flow">
         <span class="chip">front-build</span><span class="arrow">→</span>
         <span class="chip">front-push</span><span class="arrow">→</span>
@@ -393,112 +440,97 @@
       <table>
         <thead><tr><th>Étape</th><th>Ce qu’elle fait</th></tr></thead>
         <tbody>
-          <tr><td><code>front-build</code></td><td>Lance <code>docker build</code> sur le dossier <code>frontend/</code> (le même Dockerfile que sur ton poste).</td></tr>
+          <tr><td><code>front-build</code></td><td><code>docker build</code> du dossier <code>frontend/</code> (le même Dockerfile que sur ton poste).</td></tr>
           <tr><td><code>front-push</code></td><td>Envoie l’image dans l’Artifact Registry de l’environnement, avec deux étiquettes : le commit (<code>a1b2c3d</code>) et l’env (<code>dev</code>).</td></tr>
           <tr><td><code>front-deploy</code></td><td><code>gcloud run deploy</code> : le Cloud Run front passe sur cette image.</td></tr>
           <tr><td><code>back-…</code></td><td>Même chose pour le backend, mais l’étape se saute elle-même tant qu’il n’y a pas de code backend.</td></tr>
         </tbody>
       </table>
-      <p>Le même fichier sert pour dev <em>et</em> stg. Ce qui change vient du trigger, sous forme de <strong>substitutions</strong> (les variables qui commencent par <code>_</code>) :</p>
-      <pre><span class="comment"># extrait de cloudbuild.yaml</span>
-- id: front-deploy
-  name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-  entrypoint: gcloud
-  args:
-    - run
-    - deploy
-    - ${_FRONT_SERVICE}                              <span class="comment"># gcr-cvto-accor-pim-enrichment-dev-euw1-front</span>
-    - --image=${_AR_PATH}/frontend:${SHORT_SHA}      <span class="comment"># …/ar-…-dev-euw1-docker/frontend:a1b2c3d</span>
-    - --region=${_REGION}</pre>
-      <p><code>SHORT_SHA</code> est fourni par Cloud Build : ce sont les 7 premiers caractères du commit. Chaque image se rattache donc à un commit précis.</p>
+      <p>
+        Les variables qui commencent par <code>_</code> (<code>_ENV</code>, <code>_TAG</code>, <code>_FRONT_SERVICE</code>…) sont des
+        <strong>substitutions</strong> : le même fichier sert pour dev et stg, ce sont les valeurs envoyées par le workflow qui changent.
+        <code>_TAG</code> vaut les 7 premiers caractères du commit : chaque image se rattache à un commit précis.
+      </p>
     </section>
 
     <section id="qui">
-      <h2>5. Qui fait quoi</h2>
+      <h2>6. Qui fait quoi</h2>
       <table>
         <thead><tr><th>Élément</th><th>Nom</th><th>Rôle</th></tr></thead>
         <tbody>
           <tr>
-            <td>App GitHub</td>
-            <td>« Google Cloud Build »</td>
-            <td>Installée sur l’org Converteo : elle autorise Google à voir le repo et à recevoir les pushs.</td>
+            <td>Workflow GitHub</td>
+            <td><code>.github/workflows/deploy.yml</code></td>
+            <td>Se déclenche sur push <code>dev</code> / <code>stg</code>, s’authentifie, lance Cloud Build.</td>
           </tr>
           <tr>
-            <td>Connexion</td>
-            <td><code>gcb-cvto-accor-pim-enrichment-euw1-github</code></td>
-            <td>Le lien GitHub ↔ Cloud Build. Une seule pour le projet, partagée par dev et stg.</td>
-          </tr>
-          <tr>
-            <td>Token GitHub</td>
-            <td>secret <code>sec-cvto-accor-pim-enrichment-github-token</code></td>
-            <td>Rangé dans Secret Manager, jamais dans le code. Seul l’agent Cloud Build peut le lire.</td>
-          </tr>
-          <tr>
-            <td>Triggers</td>
-            <td><code>gcb-…-dev-euw1-deploy</code>, <code>gcb-…-stg-euw1-deploy</code></td>
-            <td>« Quand la branche X reçoit un push, lance <code>cloudbuild.yaml</code> avec les paramètres de l’env X ».</td>
+            <td>Pool d’identités</td>
+            <td><code>gh-cvto-accor-pim-enrichment</code> (fournisseur <code>github</code>)</td>
+            <td>Vérifie les badges GitHub. Un seul pour le projet, géré par l’env dev dans Terraform.</td>
           </tr>
           <tr>
             <td>SA de build</td>
             <td><code>sa-dev-cloudbuild</code>, <code>sa-stg-cloudbuild</code></td>
-            <td>L’identité du build. Elle a le strict nécessaire, et uniquement sur <em>son</em> environnement.</td>
+            <td>L’identité empruntée par le workflow, puis utilisée par Cloud Build. Strict nécessaire, sur <em>son</em> env.</td>
+          </tr>
+          <tr>
+            <td>Bucket de sources</td>
+            <td><code>bkt-…-&lt;env&gt;-euw1-build-sources</code></td>
+            <td>Zone de dépôt du code à construire. Vidé automatiquement après 7 jours.</td>
+          </tr>
+          <tr>
+            <td>Artifact Registry</td>
+            <td><code>ar-…-&lt;env&gt;-euw1-docker</code></td>
+            <td>Les images construites, une par commit déployé.</td>
           </tr>
         </tbody>
       </table>
       <h3>Les droits du SA de build (ex. dev)</h3>
       <ul>
-        <li><code>artifactregistry.writer</code> sur le dépôt <code>ar-…-dev-euw1-docker</code> : pousser des images ;</li>
+        <li><code>cloudbuild.builds.editor</code> : lancer un build ;</li>
+        <li><code>storage.objectAdmin</code> sur le bucket de sources dev : y déposer le code ;</li>
+        <li><code>artifactregistry.writer</code> sur le dépôt dev : pousser des images ;</li>
         <li><code>run.developer</code> sur les 2 Cloud Run dev : publier une nouvelle version ;</li>
-        <li><code>iam.serviceAccountUser</code> sur <code>sa-dev-frontend</code> et <code>sa-dev-backend</code> : lancer les conteneurs avec leur identité ;</li>
-        <li><code>logging.logWriter</code> : écrire les logs du build.</li>
+        <li><code>iam.serviceAccountUser</code> sur <code>sa-dev-frontend</code>, <code>sa-dev-backend</code> et lui-même : lancer les conteneurs et le build avec ces identités ;</li>
+        <li><code>logging.logWriter</code> / <code>logging.viewer</code> : écrire les logs du build et les afficher dans GitHub.</li>
       </ul>
       <div class="callout">
         <p>
-          Conséquence : un build déclenché par <code>dev</code> <strong>ne peut pas</strong> toucher à stg, même par erreur.
-          Il ne peut pas non plus modifier l’infrastructure (buckets, droits…).
+          Conséquence : un push sur <code>dev</code> <strong>ne peut pas</strong> toucher aux Cloud Run de stg, même par erreur,
+          et la CI ne peut pas modifier l’infrastructure (buckets de données, droits…).
         </p>
       </div>
     </section>
 
     <section id="terraform">
-      <h2>6. CI et Terraform : qui possède quoi ?</h2>
+      <h2>7. CI et Terraform : qui possède quoi ?</h2>
       <p>Deux outils agissent sur les mêmes Cloud Run. Pour qu’ils ne se contredisent pas, on a partagé les rôles :</p>
       <div class="analogy">
         <div class="card col">
           <p class="label">Terraform (à la main, rarement)</p>
-          <p><strong>Construit l’hôtel</strong><br />Services Cloud Run, buckets, droits, triggers, secret… Lancé avec <code>make plan</code> / <code>make apply</code>.</p>
+          <p><strong>Construit l’hôtel</strong><br />Services Cloud Run, buckets, droits, pool d’identités… Lancé avec <code>make plan</code> / <code>make apply</code>.</p>
         </div>
         <div class="vs">≠</div>
         <div class="card col">
-          <p class="label">Cloud Build (à chaque push)</p>
+          <p class="label">La CI (à chaque push)</p>
           <p><strong>Change le menu</strong><br />Seulement l’image qui tourne dans les Cloud Run.</p>
         </div>
       </div>
-      <p>
-        Dans le module <code>cloud_run</code>, Terraform crée le service avec une image de démarrage, puis
-        <strong>ignore l’image</strong> :
-      </p>
+      <p>Dans le module <code>cloud_run</code>, Terraform crée le service avec une image de démarrage, puis <strong>ignore l’image</strong> :</p>
       <pre>lifecycle {
   ignore_changes = [
-    template[0].containers[0].image,   <span class="comment"># gérée par Cloud Build</span>
+    template[0].containers[0].image,   <span class="comment"># gérée par la CI</span>
     client, client_version,
   ]
 }</pre>
       <p>
         Sans ça, chaque <code>make apply</code> remettrait l’ancienne image et annulerait le dernier déploiement.
-        C’est aussi pour ça qu’il n’y a plus de <code>front_image_tag</code> dans <code>vars/*.tfvars</code>, ni de script de déploiement.
+        C’est aussi pour ça qu’il n’y a plus de tag d’image dans <code>vars/*.tfvars</code>, ni de script de déploiement.
       </p>
-      <div class="callout">
-        <p>
-          Un push qui ne modifie <strong>que</strong> <code>terraform/**</code>, de la doc (<code>*.md</code>, <code>docs/**</code>),
-          <code>renovate.json</code> ou <code>docker-compose.yml</code> ne lance pas de build (<code>ignored_files</code> du trigger).
-          Inutile de redéployer l’application pour une modif de doc.
-        </p>
-      </div>
     </section>
 
     <section id="quotidien">
-      <h2>7. Au quotidien</h2>
+      <h2>8. Au quotidien</h2>
       <h3>Livrer une modification en dev</h3>
       <pre>git checkout dev &amp;&amp; git pull
 git checkout -b feature/mon-changement
@@ -508,33 +540,28 @@ git push -u origin feature/mon-changement
 <span class="comment"># sur GitHub : ouvrir une PR feature/mon-changement → dev, faire relire, Merge</span></pre>
       <h3>Promouvoir dev vers stg</h3>
       <p>Sur GitHub, ouvrir une PR <code>dev → stg</code>, relire la liste des commits, Merge. stg se déploie avec <strong>exactement</strong> le même code que dev.</p>
-      <h3>Suivre un build</h3>
+      <h3>Suivre un déploiement</h3>
       <ul>
-        <li>Sur GitHub : l’icône à côté du commit (rond orange = en cours, coche verte, croix rouge), puis « Details ».</li>
-        <li>Dans la console GCP : <a href="https://console.cloud.google.com/cloud-build/builds;region=europe-west1?project=cvto-accor-pim-enrichment-dev">Cloud Build › Historique (europe-west1)</a>.</li>
+        <li>Sur GitHub : onglet <strong>Actions</strong> du repo, ou l’icône à côté du commit (rond orange = en cours, coche verte, croix rouge).</li>
+        <li>Dans la console GCP : <strong>Cloud Build › Historique</strong>, région <code>europe-west1</code>.</li>
       </ul>
-      <h3>Vérifier le résultat</h3>
-      <table>
-        <thead><tr><th>Env</th><th>URL du front</th></tr></thead>
-        <tbody>
-          <tr><td>dev</td><td><a href="https://gcr-cvto-accor-pim-enrichment-dev-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-dev-euw1-front…run.app</a></td></tr>
-          <tr><td>stg</td><td><a href="https://gcr-cvto-accor-pim-enrichment-stg-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-stg-euw1-front…run.app</a></td></tr>
-        </tbody>
-      </table>
+      <h3>Trouver l’URL de l’application</h3>
+      <p><code>make output ENV=dev</code> dans <code>terraform/</code> (valeur <code>front_url</code>), ou console GCP › Cloud Run › <code>gcr-…-dev-euw1-front</code>.</p>
     </section>
 
     <section id="probleme">
-      <h2>8. En cas de problème</h2>
-      <h3>Le build est rouge</h3>
+      <h2>9. En cas de problème</h2>
+      <h3>Le workflow est rouge</h3>
       <p>
-        Rien n’a été mis en ligne : Cloud Run garde la version précédente. Ouvre les logs, trouve la première étape en échec.
-        Le plus souvent c’est <code>front-build</code> : une erreur TypeScript ou une règle métier (<code>npm run check</code>) qui casse.
-        Corrige, re-pousse.
+        Rien n’a été mis en ligne : Cloud Run garde la version précédente. Ouvre le run dans l’onglet Actions et trouve la première étape en échec :
       </p>
-      <h3>Le build est vert mais l’appli est cassée</h3>
-      <p>Deux façons de revenir en arrière :</p>
       <ul>
-        <li><strong>La bonne</strong> : <code>git revert</code> du commit fautif puis push. L’historique reste propre et la CI redéploie l’ancienne version.</li>
+        <li>échec à « S’authentifier sur GCP » : souci de droits WIF (la branche n’est pas <code>dev</code>/<code>stg</code>, ou la config Terraform a changé) ;</li>
+        <li>échec dans « Construire et déployer » : ouvre le lien du build Cloud Build. Le plus souvent c’est <code>front-build</code>, à cause d’une erreur TypeScript ou d’une règle métier (<code>npm run check</code>). Corrige, re-pousse.</li>
+      </ul>
+      <h3>Le déploiement est vert mais l’appli est cassée</h3>
+      <ul>
+        <li><strong>La bonne méthode</strong> : <code>git revert</code> du commit fautif puis push. L’historique reste propre et la CI redéploie l’ancienne version.</li>
         <li><strong>L’urgence</strong> : console Cloud Run › le service › Révisions › « Gérer le trafic » : remettre 100 % sur la révision précédente. Effet immédiat, mais le prochain push redéploiera la branche : il faut quand même corriger le code.</li>
       </ul>
       <div class="callout warn">
@@ -545,39 +572,19 @@ git push -u origin feature/mon-changement
       </div>
     </section>
 
-    <section id="setup">
-      <h2>9. Mise en place (une seule fois)</h2>
-      <table>
-        <thead><tr><th>Étape</th><th>Qui</th><th>Statut</th></tr></thead>
-        <tbody>
-          <tr><td>APIs Cloud Build et Secret Manager, SA de build dev et stg et leurs droits</td><td>Terraform</td><td><span class="status done">fait</span></td></tr>
-          <tr><td>Secret (vide) pour le token GitHub, lisible par l’agent Cloud Build</td><td>Terraform</td><td><span class="status done">fait</span></td></tr>
-          <tr><td><code>cloudbuild.yaml</code> dans le repo, branches <code>dev</code> et <code>stg</code></td><td>Repo</td><td><span class="status done">fait</span></td></tr>
-          <tr><td>Passer le repo GitHub en privé</td><td>Admin du repo</td><td><span class="status todo">à faire</span></td></tr>
-          <tr><td>Installer l’app GitHub « Google Cloud Build » sur l’org Converteo (accès au repo <code>pim_accor_enrichment</code>) et relever l’<em>installation ID</em></td><td>Admin de l’org GitHub</td><td><span class="status todo">à faire</span></td></tr>
-          <tr><td>Créer un token GitHub et le déposer dans le secret</td><td>Toi + Aside</td><td><span class="status todo">à faire</span></td></tr>
-          <tr><td>Renseigner <code>github_app_installation_id</code> dans <code>vars/global.tfvars</code>, puis <code>make plan apply</code> en dev puis en stg (crée la connexion et les 2 triggers)</td><td>Terraform</td><td><span class="status todo">à faire</span></td></tr>
-          <tr><td>Premier push de test sur <code>dev</code></td><td>Toi</td><td><span class="status todo">à faire</span></td></tr>
-        </tbody>
-      </table>
-      <p>
-        Tant que <code>github_app_installation_id = null</code>, la partie CI de Terraform est simplement désactivée :
-        on peut appliquer le reste de l’infra sans attendre.
-      </p>
-    </section>
-
     <section id="glossaire">
       <h2>10. Glossaire</h2>
       <table>
         <thead><tr><th>Mot</th><th>En clair</th></tr></thead>
         <tbody>
-          <tr><td>Build</td><td>Une exécution de la recette <code>cloudbuild.yaml</code>.</td></tr>
-          <tr><td>Trigger</td><td>La règle « tel événement GitHub → tel build ».</td></tr>
+          <tr><td>GitHub Actions</td><td>Le moteur d’automatisation intégré à GitHub : exécute un workflow quand un événement arrive (ici, un push).</td></tr>
+          <tr><td>Workflow</td><td>Le fichier YAML qui décrit l’automatisation (<code>.github/workflows/deploy.yml</code>).</td></tr>
+          <tr><td>Build</td><td>Une exécution de la recette <code>cloudbuild.yaml</code> par Cloud Build.</td></tr>
+          <tr><td>Workload Identity Federation</td><td>Le mécanisme qui laisse GitHub emprunter une identité Google sans clé ni mot de passe.</td></tr>
+          <tr><td>OIDC</td><td>Le standard du « badge signé » que GitHub délivre à chaque exécution.</td></tr>
           <tr><td>Image</td><td>L’application emballée (code + Node.js + dépendances), prête à tourner n’importe où.</td></tr>
           <tr><td>Tag</td><td>L’étiquette d’une image : ici le commit (<code>a1b2c3d</code>) et l’env (<code>dev</code>).</td></tr>
-          <tr><td>Artifact Registry</td><td>L’entrepôt d’images Docker du projet, un dépôt par env.</td></tr>
           <tr><td>Révision</td><td>Une version figée d’un service Cloud Run. Chaque déploiement en crée une nouvelle.</td></tr>
-          <tr><td>Substitution</td><td>Variable passée par le trigger au <code>cloudbuild.yaml</code> (<code>_ENV</code>, <code>_FRONT_SERVICE</code>…).</td></tr>
           <tr><td>Service account</td><td>Identité d’un programme (ici : le build, le front, le back), avec ses propres droits.</td></tr>
         </tbody>
       </table>
@@ -585,8 +592,9 @@ git push -u origin feature/mon-changement
 
     <footer>
       <p>
-        Fichiers sources : <code>cloudbuild.yaml</code>, <code>terraform/modules/cloud_build/</code>, <code>terraform/modules/secrets/</code>,
-        <code>terraform/core/main.tf</code> (bloc « CI/CD : Cloud Build ») et <code>terraform/README.md</code>.
+        Fichiers sources : <code>.github/workflows/deploy.yml</code>, <code>cloudbuild.yaml</code>, <code>.gcloudignore</code>,
+        <code>terraform/modules/workload_identity_federation/</code>, <code>terraform/core/main.tf</code>
+        (blocs « CI/CD ») et <code>terraform/README.md</code>.
         Voir aussi le <a href="guide-debutant.html">guide Terraform débutant</a>.
       </p>
     </footer>

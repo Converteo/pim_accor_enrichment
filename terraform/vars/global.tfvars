@@ -23,12 +23,10 @@ apis = [
   "run.googleapis.com",
   "artifactregistry.googleapis.com",
   "cloudbuild.googleapis.com",
-  "secretmanager.googleapis.com",
+  "sts.googleapis.com", # échange de jetons GitHub → GCP (Workload Identity Federation)
 ]
 
-# Dépôt GitHub (CI Cloud Build)
-github_owner = "Converteo"
-github_repo  = "pim_accor_enrichment"
-# ID d'installation de l'app GitHub « Google Cloud Build » sur l'org Converteo.
-# null = CI pas encore activée.
-github_app_installation_id = null
+# Dépôt GitHub autorisé à déployer (GitHub Actions + Workload Identity Federation)
+github_owner         = "Converteo"
+github_repo          = "pim_accor_enrichment"
+github_repository_id = "1405481297" # api.github.com/repos/Converteo/pim_accor_enrichment → id

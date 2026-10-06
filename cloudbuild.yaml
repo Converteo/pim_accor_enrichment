@@ -1,16 +1,16 @@
 # Pipeline de déploiement applicatif (CI/CD).
 #
-# Déclenché par les triggers Cloud Build créés par Terraform (terraform/core/main.tf, module "cloud_build") :
+# Lancé par GitHub Actions (.github/workflows/deploy.yml) avec `gcloud builds submit` :
 #   push sur la branche dev → environnement dev
 #   push sur la branche stg → environnement stg
 #
-# Substitutions fournies par le trigger :
+# Substitutions fournies par le workflow :
 #   _ENV            dev | stg
 #   _REGION         europe-west1
 #   _AR_PATH        europe-west1-docker.pkg.dev/<projet>/ar-cvto-accor-pim-enrichment-<env>-euw1-docker
 #   _FRONT_SERVICE  gcr-cvto-accor-pim-enrichment-<env>-euw1-front
 #   _BACK_SERVICE   gcr-cvto-accor-pim-enrichment-<env>-euw1-back
-# SHORT_SHA (7 premiers caractères du commit) est fourni automatiquement par Cloud Build.
+#   _TAG            7 premiers caractères du commit (tag de l'image)
 
 steps:
   # ---------- Frontend ----------
@@ -18,7 +18,7 @@ steps:
     name: gcr.io/cloud-builders/docker
     args:
       - build
-      - --tag=${_AR_PATH}/frontend:${SHORT_SHA}
+      - --tag=${_AR_PATH}/frontend:${_TAG}
       - --tag=${_AR_PATH}/frontend:${_ENV}
       - frontend
 
@@ -33,7 +33,7 @@ steps:
       - run
       - deploy
       - ${_FRONT_SERVICE}
-      - --image=${_AR_PATH}/frontend:${SHORT_SHA}
+      - --image=${_AR_PATH}/frontend:${_TAG}
       - --region=${_REGION}
       - --quiet
 
@@ -46,7 +46,7 @@ steps:
       - -c
       - |
         if [ -f backend/Dockerfile ]; then
-          docker build --tag=${_AR_PATH}/backend:${SHORT_SHA} --tag=${_AR_PATH}/backend:${_ENV} backend
+          docker build --tag=${_AR_PATH}/backend:${_TAG} --tag=${_AR_PATH}/backend:${_ENV} backend
           docker push --all-tags ${_AR_PATH}/backend
         else
           echo "Pas de backend/Dockerfile : étape backend ignorée."
@@ -60,7 +60,7 @@ steps:
       - -c
       - |
         if [ -f backend/Dockerfile ]; then
-          gcloud run deploy ${_BACK_SERVICE} --image=${_AR_PATH}/backend:${SHORT_SHA} --region=${_REGION} --quiet
+          gcloud run deploy ${_BACK_SERVICE} --image=${_AR_PATH}/backend:${_TAG} --region=${_REGION} --quiet
         else
           echo "Pas de backend/Dockerfile : déploiement backend ignoré."
         fi

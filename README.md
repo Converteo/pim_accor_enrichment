@@ -8,7 +8,8 @@ Interface de validation des enrichissements de fiches établissement (PIM Accor)
 frontend/            Next.js 16 (App Router, next-intl FR/EN), design ALL Accor
   Dockerfile         image de production multi-étapes (build standalone, utilisateur non-root)
 terraform/           infrastructure GCP dev + stg (Cloud Run front/back, buckets, Artifact Registry) — voir terraform/README.md
-cloudbuild.yaml      pipeline CI/CD (Cloud Build) : build + déploiement Cloud Run sur push dev / stg
+.github/workflows/   deploy.yml : sur push dev / stg, authentification WIF puis Cloud Build
+cloudbuild.yaml      recette de build : image Docker + push Artifact Registry + déploiement Cloud Run
 renovate.json        mises à jour automatiques (npm, Dockerfile, providers Terraform)
 docker-compose.yml   lancement local de la stack
 ```
@@ -37,11 +38,10 @@ npm run build    # build de production (standalone)
 
 ## Déploiement GCP
 
-Projet `cvto-accor-pim-enrichment-dev`, région `europe-west1`, Cloud Run.
+Région `europe-west1`, Cloud Run, environnements dev et stg.
 
-- URL dev : https://gcr-cvto-accor-pim-enrichment-dev-euw1-front-ibibg7vx6q-ew.a.run.app
-- URL stg : https://gcr-cvto-accor-pim-enrichment-stg-euw1-front-ibibg7vx6q-ew.a.run.app
-- Nouvelle version : push sur la branche `dev` (déploie dev) ou `stg` (déploie stg), via Cloud Build
+- URLs : `cd terraform && make output ENV=dev` (ou `ENV=stg`), valeur `front_url`
+- Nouvelle version : push sur la branche `dev` (déploie dev) ou `stg` (déploie stg) : GitHub Actions lance Cloud Build
 - Process expliqué pas à pas : [terraform/docs/ci-cd-cloud-build.html](terraform/docs/ci-cd-cloud-build.html)
 
 ## Branches

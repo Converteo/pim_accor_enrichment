@@ -27,6 +27,18 @@ resource "google_storage_bucket" "this" {
   }
 
   dynamic "lifecycle_rule" {
+    for_each = var.delete_after_days == null ? [] : [var.delete_after_days]
+    content {
+      condition {
+        age = lifecycle_rule.value
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
+
+  dynamic "lifecycle_rule" {
     for_each = var.noncurrent_retention_days == null ? [] : [var.noncurrent_retention_days]
     content {
       condition {

@@ -4,9 +4,9 @@ env = "dev"
 manage_project_resources = true
 # editor ne permet pas de poser de l'IAM au niveau d'une ressource : ces rôles le permettent
 terraform_sa_extra_roles = [
-  "roles/run.admin",              # IAM des services Cloud Run (invoker, developer)
-  "roles/artifactregistry.admin", # IAM des dépôts Docker (writer pour la CI)
-  "roles/secretmanager.admin",    # IAM du secret du token GitHub (lecture par Cloud Build)
+  "roles/run.admin",                     # IAM des services Cloud Run (invoker, developer)
+  "roles/artifactregistry.admin",        # IAM des dépôts Docker (writer pour la CI)
+  "roles/iam.workloadIdentityPoolAdmin", # pool d'identités GitHub Actions (WIF)
 ]
 
 # Chaque push sur cette branche déploie l'environnement (Cloud Build)
