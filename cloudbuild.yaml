@@ -1,0 +1,72 @@
+# Pipeline de déploiement applicatif (CI/CD).
+#
+# Déclenché par les triggers Cloud Build créés par Terraform (terraform/core/main.tf, module "cloud_build") :
+#   push sur la branche dev → environnement dev
+#   push sur la branche stg → environnement stg
+#
+# Substitutions fournies par le trigger :
+#   _ENV            dev | stg
+#   _REGION         europe-west1
+#   _AR_PATH        europe-west1-docker.pkg.dev/<projet>/ar-cvto-accor-pim-enrichment-<env>-euw1-docker
+#   _FRONT_SERVICE  gcr-cvto-accor-pim-enrichment-<env>-euw1-front
+#   _BACK_SERVICE   gcr-cvto-accor-pim-enrichment-<env>-euw1-back
+# SHORT_SHA (7 premiers caractères du commit) est fourni automatiquement par Cloud Build.
+
+steps:
+  # ---------- Frontend ----------
+  - id: front-build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag=${_AR_PATH}/frontend:${SHORT_SHA}
+      - --tag=${_AR_PATH}/frontend:${_ENV}
+      - frontend
+
+  - id: front-push
+    name: gcr.io/cloud-builders/docker
+    args: [push, --all-tags, "${_AR_PATH}/frontend"]
+
+  - id: front-deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_FRONT_SERVICE}
+      - --image=${_AR_PATH}/frontend:${SHORT_SHA}
+      - --region=${_REGION}
+      - --quiet
+
+  # ---------- Backend (seulement si backend/Dockerfile existe) ----------
+  - id: back-build-push
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"] # démarre en parallèle du frontend
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ -f backend/Dockerfile ]; then
+          docker build --tag=${_AR_PATH}/backend:${SHORT_SHA} --tag=${_AR_PATH}/backend:${_ENV} backend
+          docker push --all-tags ${_AR_PATH}/backend
+        else
+          echo "Pas de backend/Dockerfile : étape backend ignorée."
+        fi
+
+  - id: back-deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: ["back-build-push"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ -f backend/Dockerfile ]; then
+          gcloud run deploy ${_BACK_SERVICE} --image=${_AR_PATH}/backend:${SHORT_SHA} --region=${_REGION} --quiet
+        else
+          echo "Pas de backend/Dockerfile : déploiement backend ignoré."
+        fi
+
+options:
+  # Obligatoire avec un service account dédié : les logs vont dans Cloud Logging
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s

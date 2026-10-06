@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Déployer avec Cloud Build, expliqué avec ce projet · PIM Accor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #12343b;
+      --ink-soft: #254248;
+      --paper: #f3efe4;
+      --card: #fffdf8;
+      --line: #d4cdc0;
+      --brass: #6e4f12;
+      --brass-soft: #f0e4c8;
+      --teal: #1f6f64;
+      --teal-deep: #0d3d3a;
+      --warn: #9c3d2e;
+      --code-bg: #0f2a2d;
+      --code-fg: #e8f0e9;
+      --shadow: 0 18px 40px -28px rgba(18, 52, 59, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 400px at 80% -10%, #dceee9 0%, transparent 60%),
+        var(--paper);
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 1.05rem;
+      line-height: 1.65;
+    }
+
+    a { color: var(--teal); }
+    code, kbd {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86em;
+    }
+    kbd {
+      background: var(--brass-soft);
+      padding: 0.05em 0.4em;
+      border-radius: 4px;
+      border: 1px solid #e0d3ad;
+    }
+    p code, li code {
+      background: var(--brass-soft);
+      padding: 0.08em 0.35em;
+      border-radius: 4px;
+    }
+
+    .wrap { max-width: 920px; margin: 0 auto; padding: 0 1.4rem 5rem; }
+
+    header.hero {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 3.2rem 1.4rem 1.2rem;
+    }
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: var(--teal);
+      margin: 0 0 0.8rem;
+    }
+    h1, h2, h3 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    h1 { font-size: clamp(2.1rem, 5vw, 3.3rem); font-weight: 800; margin: 0 0 0.8rem; }
+    h2 { font-size: 1.7rem; margin: 2.6rem 0 0.8rem; }
+    h3 { font-size: 1.2rem; margin: 1.6rem 0 0.5rem; }
+    .lede { font-size: 1.22rem; color: var(--ink-soft); max-width: 40rem; }
+
+    nav.toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: 1.6rem 0 0;
+    }
+    nav.toc a {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+    }
+    nav.toc a:hover { border-color: var(--teal); color: var(--teal); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.15rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .analogy {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0.8rem;
+      align-items: stretch;
+      margin: 1.4rem 0;
+    }
+    .analogy .col { padding: 1rem 1.1rem; }
+    .analogy .label {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.02em;
+      color: var(--brass);
+      margin: 0 0 0.4rem;
+    }
+    .vs {
+      align-self: center;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 700;
+      color: var(--brass);
+    }
+
+    .floors { display: grid; gap: 0.55rem; margin: 1.3rem 0 1.6rem; }
+    .floor {
+      display: grid;
+      grid-template-columns: 7.2rem 1fr;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+    }
+    .floor .tag {
+      background: var(--teal-deep);
+      color: #e8f4f1;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      padding: 0.9rem 0.8rem;
+      display: flex;
+      align-items: center;
+    }
+    .floor.mod .tag { background: var(--brass); color: #1a1408; }
+    .floor.env .tag { background: var(--teal); }
+    .floor p { margin: 0.75rem 1rem; }
+
+    .commands { display: grid; gap: 0.7rem; }
+    .cmd {
+      display: grid;
+      grid-template-columns: 5.5rem 1fr;
+      gap: 0.9rem;
+      align-items: start;
+    }
+    .cmd b {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.82rem;
+      background: var(--code-bg);
+      color: #b8e0c8;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .cmd p { margin: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.7rem 0.85rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      background: #efe9da;
+    }
+    tr:last-child td { border-bottom: 0; }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 1rem 1.1rem;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      line-height: 1.55;
+    }
+    .kw { color: #f0c14e; }
+    .str { color: #9ad4b4; }
+
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0.7rem; }
+    .tabs button {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      padding: 0.4rem 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .tabs button[aria-selected="true"] {
+      background: var(--teal-deep);
+      color: #eaf6f3;
+      border-color: var(--teal-deep);
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .callout {
+      background: var(--brass-soft);
+      border-radius: 12px;
+      padding: 0.85rem 1.1rem;
+      margin: 1.2rem 0;
+    }
+    .warn {
+      background: #f6e4df;
+    }
+    .comment { color: #b7d4ce; }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      margin: 1rem 0 1.4rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+    }
+    .chip {
+      background: var(--teal-deep);
+      color: #eaf6f3;
+      padding: 0.45rem 0.7rem;
+      border-radius: 8px;
+    }
+    .chip.alt { background: var(--brass); color: #1a1408; }
+    .arrow { color: var(--ink-soft); }
+
+    footer {
+      margin-top: 3rem;
+      font-size: 0.92rem;
+      color: var(--ink-soft);
+    }
+
+    @media (max-width: 700px) {
+      .analogy { grid-template-columns: 1fr; }
+      .vs { text-align: center; }
+      .floor { grid-template-columns: 1fr; }
+      .cmd { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  
+    .steps { counter-reset: step; display: grid; gap: 0.7rem; margin: 1rem 0 1.4rem; }
+    .step { display: grid; grid-template-columns: 2.4rem 1fr; gap: 0.9rem; align-items: start; }
+    .step::before {
+      counter-increment: step; content: counter(step);
+      font-family: "Bricolage Grotesque", sans-serif; font-weight: 800;
+      background: var(--teal-deep); color: #eaf6f3; border-radius: 10px;
+      height: 2.4rem; display: flex; align-items: center; justify-content: center;
+    }
+    .step p { margin: 0.3rem 0 0; }
+    .status { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 6px; white-space: nowrap; }
+    .status.done { background: #d9ede7; color: var(--teal-deep); }
+    .status.todo { background: #f6e4df; color: var(--warn); }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">Guide débutant · CI/CD · cloudbuild.yaml de ce repo</p>
+    <h1>Pousser du code, c’est déployer.</h1>
+    <p class="lede">
+      Plus de script à lancer depuis ton poste : quand du code arrive sur la branche <code>dev</code> ou <code>stg</code>
+      de GitHub, Google Cloud Build construit l’application et la met en ligne tout seul.
+      Ce guide explique comment, avec <strong>exactement</strong> la configuration de PIM Accor enrichment.
+    </p>
+    <nav class="toc" aria-label="Sommaire">
+      <a href="#idee">L’idée</a>
+      <a href="#branches">Les branches</a>
+      <a href="#parcours">Le parcours d’un commit</a>
+      <a href="#pipeline">cloudbuild.yaml</a>
+      <a href="#qui">Qui fait quoi</a>
+      <a href="#terraform">CI et Terraform</a>
+      <a href="#quotidien">Au quotidien</a>
+      <a href="#probleme">En cas de problème</a>
+      <a href="#setup">Mise en place</a>
+      <a href="#glossaire">Glossaire</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section id="idee">
+      <h2>1. L’idée, en une image mentale</h2>
+      <p>
+        Reprenons l’hôtel. Le code sur GitHub, c’est la <strong>recette</strong>. Pousser sur <code>dev</code>, c’est
+        envoyer un bon de commande en cuisine. <strong>Cloud Build</strong>, c’est la brigade : elle prépare le plat
+        (construit l’image Docker), le range en chambre froide (Artifact Registry), puis le sert en salle
+        (nouvelle version sur Cloud Run). Personne n’a besoin d’aller en cuisine.
+      </p>
+      <div class="analogy">
+        <div class="card col">
+          <p class="label">Avant</p>
+          <p><strong>Déploiement à la main</strong><br />Un script lancé depuis un Mac : Docker, gcloud, Terraform installés, droits sur le projet, et on espère que tout le monde fait pareil.</p>
+        </div>
+        <div class="vs">→</div>
+        <div class="card col">
+          <p class="label">Maintenant</p>
+          <p><strong>CI/CD</strong><br />Un <code>git push</code>. Le build se fait chez Google, toujours de la même façon, et il est tracé (qui, quel commit, quand).</p>
+        </div>
+      </div>
+      <p>
+        <strong>CI</strong> (intégration continue) : construire et vérifier automatiquement chaque changement.
+        <strong>CD</strong> (déploiement continu) : le mettre en ligne automatiquement.
+      </p>
+    </section>
+
+    <section id="branches">
+      <h2>2. Les branches : une par environnement</h2>
+      <p>Chaque branche « longue » correspond à un environnement. Le code avance de gauche à droite :</p>
+      <div class="flow">
+        <span class="chip alt">feature/ma-modif</span>
+        <span class="arrow">─PR→</span>
+        <span class="chip">dev</span>
+        <span class="arrow">─PR→</span>
+        <span class="chip">stg</span>
+        <span class="arrow">─PR→</span>
+        <span class="chip alt">main</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Branche</th><th>Que se passe-t-il quand elle reçoit du code ?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>feature/…</code></td><td>Rien. C’est ton brouillon personnel.</td></tr>
+          <tr><td><code>dev</code></td><td>Déploiement automatique sur l’environnement <strong>dev</strong> : on vérifie que ça marche « en vrai ».</td></tr>
+          <tr><td><code>stg</code></td><td>Déploiement automatique sur <strong>stg</strong> (staging) : la répétition générale, montrée au client.</td></tr>
+          <tr><td><code>main</code></td><td>Rien pour l’instant. C’est la version de référence ; elle déploiera la production le jour où elle existera.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p>
+          Une <strong>PR</strong> (pull request) est une demande de fusion sur GitHub : on montre ses changements,
+          quelqu’un relit, puis on clique « Merge ». La fusion est un push sur la branche cible, donc elle déclenche le déploiement.
+        </p>
+      </div>
+    </section>
+
+    <section id="parcours">
+      <h2>3. Le parcours d’un commit, de ton poste à l’URL</h2>
+      <div class="steps">
+        <div class="step"><div><strong>Push sur <code>dev</code></strong><p>Directement, ou en fusionnant une PR dans <code>dev</code>.</p></div></div>
+        <div class="step"><div><strong>GitHub prévient Google</strong><p>L’application GitHub « Google Cloud Build », installée sur l’organisation Converteo, signale le push à Cloud Build.</p></div></div>
+        <div class="step"><div><strong>Le trigger se déclenche</strong><p>Le trigger <code>gcb-cvto-accor-pim-enrichment-dev-euw1-deploy</code> écoute la branche <code>dev</code>. Il lance un build en lui passant les paramètres de dev (dépôt d’images, noms des Cloud Run…).</p></div></div>
+        <div class="step"><div><strong>Cloud Build suit la recette</strong><p>Il lit <code>cloudbuild.yaml</code> à la racine du repo : construire l’image, la pousser, déployer.</p></div></div>
+        <div class="step"><div><strong>Nouvelle révision Cloud Run</strong><p>Cloud Run démarre la nouvelle version, vérifie qu’elle répond, puis lui envoie 100 % du trafic. L’ancienne reste disponible pour revenir en arrière.</p></div></div>
+        <div class="step"><div><strong>Retour dans GitHub</strong><p>Le commit affiche une coche verte (réussi) ou une croix rouge (échec), avec un lien vers les logs.</p></div></div>
+      </div>
+      <p>Compte en général <strong>3 à 5 minutes</strong> entre le push et la mise en ligne.</p>
+    </section>
+
+    <section id="pipeline">
+      <h2>4. La recette : <code>cloudbuild.yaml</code></h2>
+      <p>
+        Un build est une suite d’<strong>étapes</strong> (<code>steps</code>). Chaque étape tourne dans un petit conteneur
+        outil (<code>name</code> : l’outil Docker, l’outil gcloud…). Voici les nôtres :
+      </p>
+      <div class="flow">
+        <span class="chip">front-build</span><span class="arrow">→</span>
+        <span class="chip">front-push</span><span class="arrow">→</span>
+        <span class="chip">front-deploy</span>
+      </div>
+      <div class="flow">
+        <span class="chip alt">back-build-push</span><span class="arrow">→</span>
+        <span class="chip alt">back-deploy</span>
+        <span class="arrow">(en parallèle, seulement si <code>backend/Dockerfile</code> existe)</span>
+      </div>
+      <table>
+        <thead><tr><th>Étape</th><th>Ce qu’elle fait</th></tr></thead>
+        <tbody>
+          <tr><td><code>front-build</code></td><td>Lance <code>docker build</code> sur le dossier <code>frontend/</code> (le même Dockerfile que sur ton poste).</td></tr>
+          <tr><td><code>front-push</code></td><td>Envoie l’image dans l’Artifact Registry de l’environnement, avec deux étiquettes : le commit (<code>a1b2c3d</code>) et l’env (<code>dev</code>).</td></tr>
+          <tr><td><code>front-deploy</code></td><td><code>gcloud run deploy</code> : le Cloud Run front passe sur cette image.</td></tr>
+          <tr><td><code>back-…</code></td><td>Même chose pour le backend, mais l’étape se saute elle-même tant qu’il n’y a pas de code backend.</td></tr>
+        </tbody>
+      </table>
+      <p>Le même fichier sert pour dev <em>et</em> stg. Ce qui change vient du trigger, sous forme de <strong>substitutions</strong> (les variables qui commencent par <code>_</code>) :</p>
+      <pre><span class="comment"># extrait de cloudbuild.yaml</span>
+- id: front-deploy
+  name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  entrypoint: gcloud
+  args:
+    - run
+    - deploy
+    - ${_FRONT_SERVICE}                              <span class="comment"># gcr-cvto-accor-pim-enrichment-dev-euw1-front</span>
+    - --image=${_AR_PATH}/frontend:${SHORT_SHA}      <span class="comment"># …/ar-…-dev-euw1-docker/frontend:a1b2c3d</span>
+    - --region=${_REGION}</pre>
+      <p><code>SHORT_SHA</code> est fourni par Cloud Build : ce sont les 7 premiers caractères du commit. Chaque image se rattache donc à un commit précis.</p>
+    </section>
+
+    <section id="qui">
+      <h2>5. Qui fait quoi</h2>
+      <table>
+        <thead><tr><th>Élément</th><th>Nom</th><th>Rôle</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>App GitHub</td>
+            <td>« Google Cloud Build »</td>
+            <td>Installée sur l’org Converteo : elle autorise Google à voir le repo et à recevoir les pushs.</td>
+          </tr>
+          <tr>
+            <td>Connexion</td>
+            <td><code>gcb-cvto-accor-pim-enrichment-euw1-github</code></td>
+            <td>Le lien GitHub ↔ Cloud Build. Une seule pour le projet, partagée par dev et stg.</td>
+          </tr>
+          <tr>
+            <td>Token GitHub</td>
+            <td>secret <code>sec-cvto-accor-pim-enrichment-github-token</code></td>
+            <td>Rangé dans Secret Manager, jamais dans le code. Seul l’agent Cloud Build peut le lire.</td>
+          </tr>
+          <tr>
+            <td>Triggers</td>
+            <td><code>gcb-…-dev-euw1-deploy</code>, <code>gcb-…-stg-euw1-deploy</code></td>
+            <td>« Quand la branche X reçoit un push, lance <code>cloudbuild.yaml</code> avec les paramètres de l’env X ».</td>
+          </tr>
+          <tr>
+            <td>SA de build</td>
+            <td><code>sa-dev-cloudbuild</code>, <code>sa-stg-cloudbuild</code></td>
+            <td>L’identité du build. Elle a le strict nécessaire, et uniquement sur <em>son</em> environnement.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Les droits du SA de build (ex. dev)</h3>
+      <ul>
+        <li><code>artifactregistry.writer</code> sur le dépôt <code>ar-…-dev-euw1-docker</code> : pousser des images ;</li>
+        <li><code>run.developer</code> sur les 2 Cloud Run dev : publier une nouvelle version ;</li>
+        <li><code>iam.serviceAccountUser</code> sur <code>sa-dev-frontend</code> et <code>sa-dev-backend</code> : lancer les conteneurs avec leur identité ;</li>
+        <li><code>logging.logWriter</code> : écrire les logs du build.</li>
+      </ul>
+      <div class="callout">
+        <p>
+          Conséquence : un build déclenché par <code>dev</code> <strong>ne peut pas</strong> toucher à stg, même par erreur.
+          Il ne peut pas non plus modifier l’infrastructure (buckets, droits…).
+        </p>
+      </div>
+    </section>
+
+    <section id="terraform">
+      <h2>6. CI et Terraform : qui possède quoi ?</h2>
+      <p>Deux outils agissent sur les mêmes Cloud Run. Pour qu’ils ne se contredisent pas, on a partagé les rôles :</p>
+      <div class="analogy">
+        <div class="card col">
+          <p class="label">Terraform (à la main, rarement)</p>
+          <p><strong>Construit l’hôtel</strong><br />Services Cloud Run, buckets, droits, triggers, secret… Lancé avec <code>make plan</code> / <code>make apply</code>.</p>
+        </div>
+        <div class="vs">≠</div>
+        <div class="card col">
+          <p class="label">Cloud Build (à chaque push)</p>
+          <p><strong>Change le menu</strong><br />Seulement l’image qui tourne dans les Cloud Run.</p>
+        </div>
+      </div>
+      <p>
+        Dans le module <code>cloud_run</code>, Terraform crée le service avec une image de démarrage, puis
+        <strong>ignore l’image</strong> :
+      </p>
+      <pre>lifecycle {
+  ignore_changes = [
+    template[0].containers[0].image,   <span class="comment"># gérée par Cloud Build</span>
+    client, client_version,
+  ]
+}</pre>
+      <p>
+        Sans ça, chaque <code>make apply</code> remettrait l’ancienne image et annulerait le dernier déploiement.
+        C’est aussi pour ça qu’il n’y a plus de <code>front_image_tag</code> dans <code>vars/*.tfvars</code>, ni de script de déploiement.
+      </p>
+      <div class="callout">
+        <p>
+          Un push qui ne modifie <strong>que</strong> <code>terraform/**</code>, de la doc (<code>*.md</code>, <code>docs/**</code>),
+          <code>renovate.json</code> ou <code>docker-compose.yml</code> ne lance pas de build (<code>ignored_files</code> du trigger).
+          Inutile de redéployer l’application pour une modif de doc.
+        </p>
+      </div>
+    </section>
+
+    <section id="quotidien">
+      <h2>7. Au quotidien</h2>
+      <h3>Livrer une modification en dev</h3>
+      <pre>git checkout dev &amp;&amp; git pull
+git checkout -b feature/mon-changement
+<span class="comment"># … modifications, tests en local (npm run dev ou docker compose up) …</span>
+git commit -am "feat: mon changement"
+git push -u origin feature/mon-changement
+<span class="comment"># sur GitHub : ouvrir une PR feature/mon-changement → dev, faire relire, Merge</span></pre>
+      <h3>Promouvoir dev vers stg</h3>
+      <p>Sur GitHub, ouvrir une PR <code>dev → stg</code>, relire la liste des commits, Merge. stg se déploie avec <strong>exactement</strong> le même code que dev.</p>
+      <h3>Suivre un build</h3>
+      <ul>
+        <li>Sur GitHub : l’icône à côté du commit (rond orange = en cours, coche verte, croix rouge), puis « Details ».</li>
+        <li>Dans la console GCP : <a href="https://console.cloud.google.com/cloud-build/builds;region=europe-west1?project=cvto-accor-pim-enrichment-dev">Cloud Build › Historique (europe-west1)</a>.</li>
+      </ul>
+      <h3>Vérifier le résultat</h3>
+      <table>
+        <thead><tr><th>Env</th><th>URL du front</th></tr></thead>
+        <tbody>
+          <tr><td>dev</td><td><a href="https://gcr-cvto-accor-pim-enrichment-dev-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-dev-euw1-front…run.app</a></td></tr>
+          <tr><td>stg</td><td><a href="https://gcr-cvto-accor-pim-enrichment-stg-euw1-front-ibibg7vx6q-ew.a.run.app">gcr-…-stg-euw1-front…run.app</a></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="probleme">
+      <h2>8. En cas de problème</h2>
+      <h3>Le build est rouge</h3>
+      <p>
+        Rien n’a été mis en ligne : Cloud Run garde la version précédente. Ouvre les logs, trouve la première étape en échec.
+        Le plus souvent c’est <code>front-build</code> : une erreur TypeScript ou une règle métier (<code>npm run check</code>) qui casse.
+        Corrige, re-pousse.
+      </p>
+      <h3>Le build est vert mais l’appli est cassée</h3>
+      <p>Deux façons de revenir en arrière :</p>
+      <ul>
+        <li><strong>La bonne</strong> : <code>git revert</code> du commit fautif puis push. L’historique reste propre et la CI redéploie l’ancienne version.</li>
+        <li><strong>L’urgence</strong> : console Cloud Run › le service › Révisions › « Gérer le trafic » : remettre 100 % sur la révision précédente. Effet immédiat, mais le prochain push redéploiera la branche : il faut quand même corriger le code.</li>
+      </ul>
+      <div class="callout warn">
+        <p>
+          Ne pas déployer « à la main » avec <code>gcloud run deploy</code> depuis son poste : la version en ligne ne correspondrait
+          plus à aucune branche, et le push suivant l’écraserait.
+        </p>
+      </div>
+    </section>
+
+    <section id="setup">
+      <h2>9. Mise en place (une seule fois)</h2>
+      <table>
+        <thead><tr><th>Étape</th><th>Qui</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td>APIs Cloud Build et Secret Manager, SA de build dev et stg et leurs droits</td><td>Terraform</td><td><span class="status done">fait</span></td></tr>
+          <tr><td>Secret (vide) pour le token GitHub, lisible par l’agent Cloud Build</td><td>Terraform</td><td><span class="status done">fait</span></td></tr>
+          <tr><td><code>cloudbuild.yaml</code> dans le repo, branches <code>dev</code> et <code>stg</code></td><td>Repo</td><td><span class="status done">fait</span></td></tr>
+          <tr><td>Passer le repo GitHub en privé</td><td>Admin du repo</td><td><span class="status todo">à faire</span></td></tr>
+          <tr><td>Installer l’app GitHub « Google Cloud Build » sur l’org Converteo (accès au repo <code>pim_accor_enrichment</code>) et relever l’<em>installation ID</em></td><td>Admin de l’org GitHub</td><td><span class="status todo">à faire</span></td></tr>
+          <tr><td>Créer un token GitHub et le déposer dans le secret</td><td>Toi + Aside</td><td><span class="status todo">à faire</span></td></tr>
+          <tr><td>Renseigner <code>github_app_installation_id</code> dans <code>vars/global.tfvars</code>, puis <code>make plan apply</code> en dev puis en stg (crée la connexion et les 2 triggers)</td><td>Terraform</td><td><span class="status todo">à faire</span></td></tr>
+          <tr><td>Premier push de test sur <code>dev</code></td><td>Toi</td><td><span class="status todo">à faire</span></td></tr>
+        </tbody>
+      </table>
+      <p>
+        Tant que <code>github_app_installation_id = null</code>, la partie CI de Terraform est simplement désactivée :
+        on peut appliquer le reste de l’infra sans attendre.
+      </p>
+    </section>
+
+    <section id="glossaire">
+      <h2>10. Glossaire</h2>
+      <table>
+        <thead><tr><th>Mot</th><th>En clair</th></tr></thead>
+        <tbody>
+          <tr><td>Build</td><td>Une exécution de la recette <code>cloudbuild.yaml</code>.</td></tr>
+          <tr><td>Trigger</td><td>La règle « tel événement GitHub → tel build ».</td></tr>
+          <tr><td>Image</td><td>L’application emballée (code + Node.js + dépendances), prête à tourner n’importe où.</td></tr>
+          <tr><td>Tag</td><td>L’étiquette d’une image : ici le commit (<code>a1b2c3d</code>) et l’env (<code>dev</code>).</td></tr>
+          <tr><td>Artifact Registry</td><td>L’entrepôt d’images Docker du projet, un dépôt par env.</td></tr>
+          <tr><td>Révision</td><td>Une version figée d’un service Cloud Run. Chaque déploiement en crée une nouvelle.</td></tr>
+          <tr><td>Substitution</td><td>Variable passée par le trigger au <code>cloudbuild.yaml</code> (<code>_ENV</code>, <code>_FRONT_SERVICE</code>…).</td></tr>
+          <tr><td>Service account</td><td>Identité d’un programme (ici : le build, le front, le back), avec ses propres droits.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>
+        Fichiers sources : <code>cloudbuild.yaml</code>, <code>terraform/modules/cloud_build/</code>, <code>terraform/modules/secrets/</code>,
+        <code>terraform/core/main.tf</code> (bloc « CI/CD : Cloud Build ») et <code>terraform/README.md</code>.
+        Voir aussi le <a href="guide-debutant.html">guide Terraform débutant</a>.
+      </p>
+    </footer>
+  </main>
+</body>
+</html>
