@@ -323,7 +323,8 @@ resource "google_firestore_database" "pipeline" {
   delete_protection_state           = "DELETE_PROTECTION_DISABLED"
   deletion_policy                   = "DELETE"
 
-  depends_on = [module.apis]
+  # module.iam pose roles/datastore.owner au SA Terraform (environnement qui gère les ressources du projet)
+  depends_on = [module.apis, module.iam]
 }
 
 # ---------- Secret : clé API du PIM Accor (lecture seule) ----------

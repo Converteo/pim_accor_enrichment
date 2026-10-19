@@ -55,6 +55,7 @@ environments = {
       "roles/iam.workloadIdentityPoolAdmin", # pool d'identités GitHub Actions (WIF)
       "roles/bigquery.admin",                # IAM des datasets du pipeline
       "roles/secretmanager.admin",           # IAM du secret de la clé API du PIM
+      "roles/datastore.owner",               # création de la base Firestore du pipeline (editor ne suffit pas)
     ]
 
     front_public  = true
