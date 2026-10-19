@@ -15,7 +15,7 @@ dépôt   gs://bkt-<base>-ota-files/<source>/<fichier>.csv     (CSV « ; », UTF
 gcr-<base>-load-bq      chargement dans raw.<source> (chaque dépôt conservé : depot_id, load_dts), puis démarrage du workflow
    │
 wf-<base>-enrichment
-   1. gcrj-…-extract-pim   PIM par API, lecture seule, sans contacts (sauté si extrait il y a moins de 12 h)   → raw.pim_*
+   1. gcrj-…-extract-pim   PIM par API, lecture seule, sans contacts — seulement après un dépôt (voir ci-dessous)   → raw.pim_*
    2. gcrj-…-matching      brique 1, sans IA : RID, identité, page OTA, pré-verdict                          → matching.candidats
    3. gcrj-…-judge         brique 2, agent juge : score 0-100 et statut                                       → matching.jugements
    4. gcrj-…-enrich        brique 3, agent d'enrichissement, une exécution par famille                        → enhanced.enrichissements
@@ -27,6 +27,21 @@ gcrj-…-export           fichier plat du PIM enrichi, quand plus rien n'est en 
 ```
 
 `<base>` = `cvto-accor-pim-enrichment-<env>-euw1` (datasets : `cvto_accor_pim_enrichment_<env>_euw1_<dataset>`).
+## Appels à l'API du PIM : le moins possible
+
+Seul le job `extract-pim` appelle l'API ; toutes les autres étapes travaillent sur la copie du PIM dans BigQuery.
+
+- **Une extraction par partage de scrapings.** Le workflow n'extrait que s'il est lancé par un dépôt (ou avec
+  `{"extract": true}`). Plusieurs fichiers déposés ensemble = une seule extraction : la première exécution extrait, les
+  autres attendent qu'elle finisse puis réutilisent son résultat (pas de nouvel appel pendant 12 h, `PIM_MAX_AGE_HOURS`).
+  L'enrichissement ne démarre qu'une fois le PIM chargé.
+- **Le planificateur et les lancements manuels n'appellent jamais l'API.**
+- **Extraction légère** (méthode de l'audit) : seulement les champs utiles et les 8 types d'entités liées, lots de
+  20 hôtels ; ~390 appels de données plus un par liste de valeurs, ~5 minutes pour ~7 800 hôtels (mesuré à l’audit).
+- **Garde-fous** : au plus 4 appels à la fois, ramenés à 1 si l'API sature (429, 5xx), `Retry-After` respecté ; une
+  clé refusée (401, 403) ou une API toujours en erreur après 5 tentatives arrête tout, sans envoyer les lots restants.
+  Le nombre d'appels et la durée de chaque extraction sont dans les logs du job (`api_calls`, `minutes`).
+
 Un planificateur relance le workflow toutes les 15 minutes, sans extraction du PIM, pour enrichir les hôtels dont le
 rapprochement vient d'être validé dans l'interface.
 
@@ -101,7 +116,7 @@ python tools/check_prompts.py prompts
 - **Déposer un scraping** : `gcloud storage cp resultats_equipements.csv gs://bkt-cvto-accor-pim-enrichment-dev-euw1-ota-files/booking_equipements/`
 - **Lancer le workflow à la main** :
   `gcloud workflows run wf-cvto-accor-pim-enrichment-dev-euw1-enrichment --location=europe-west1 --data='{"priorites": "P1"}'`
-- **Forcer une nouvelle extraction du PIM** : exécuter le job `extract-pim` avec `FORCE=true`.
+- **Forcer une nouvelle extraction du PIM** (rarement) : `gcloud run jobs execute gcrj-cvto-accor-pim-enrichment-dev-euw1-extract-pim --region=europe-west1 --update-env-vars=FORCE=true`.
 - **Calibrer l'agent juge** : ajuster `judge_threshold_high` et `judge_threshold_low` après une revue des 774 cas à
   valider et des 34 rejets, puis `terraform apply`.
 - **Planificateur** : le reprendre (`environments.dev.pipeline = { scheduler_paused = false }`) quand la chaîne a tourné de bout en bout.

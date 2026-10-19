@@ -1,4 +1,4 @@
-"""Number of batches sent to Gemini at the same time, adapted to Vertex saturation.
+"""Number of calls sent at the same time to a saturable API (Gemini on Vertex, the PIM API), adapted to its saturation.
 
 Calls run under a limit between 1 and the configured concurrency. A saturation
 error (429, 503) halves the limit; a few successful calls in a row raise it by one. On busy days
@@ -15,8 +15,9 @@ RAISE_AFTER = 3  # successful calls in a row before one more batch runs at the s
 
 
 class AdaptiveLimit:
-    def __init__(self, maximum: int):
+    def __init__(self, maximum: int, name: str = "Vertex"):
         self.maximum = self.limit = max(1, maximum)
+        self.name = name
         self.active = 0
         self.successes = 0
         self._condition = threading.Condition()
@@ -38,7 +39,7 @@ class AdaptiveLimit:
             self.successes = 0
             if self.limit > 1:
                 self.limit //= 2
-                logger.info("Vertex saturated: %d batch(es) at a time", self.limit)
+                logger.info("%s saturated: %d call(s) at a time", self.name, self.limit)
 
     def succeeded(self) -> None:
         with self._condition:
@@ -46,5 +47,5 @@ class AdaptiveLimit:
             if self.successes >= RAISE_AFTER and self.limit < self.maximum:
                 self.limit += 1
                 self.successes = 0
-                logger.info("Vertex responding: %d batch(es) at a time", self.limit)
+                logger.info("%s responding: %d call(s) at a time", self.name, self.limit)
                 self._condition.notify_all()
