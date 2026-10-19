@@ -14,7 +14,7 @@ from decisions import DEJA_RENSEIGNEE, ECART, NON_TRAITEE, PROPOSEE, REJETEE, en
 NEW_ENTITY = "nouvelle"
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 EXTRACT_CAP_SCORE = 50  # score kept when the cited excerpt is not found in the source
-MAX_EXTRACT_PART = 3
+MAX_EXTRACT_PART = 10  # parts of a cited excerpt checked in the source
 
 
 # ------------------------------------------------------------------ targets
@@ -78,11 +78,11 @@ def _norm(text) -> str:
 
 
 def extract_found(extrait: str | None, source_text: str | None) -> bool:
-    """The cited excerpt is in the cited source field (parts split on « ... » each found)."""
+    """The cited excerpt is in the cited source field (parts split on « ... » or « ; », each found)."""
     if not extrait or not source_text:
         return False
     haystack = _norm(source_text)
-    parts = [p.strip(" .,;:") for p in re.split(r"\.{3}|…", _norm(extrait))]
+    parts = [p.strip(" .,;:") for p in re.split(r"\.{3}|…|;", _norm(extrait))]
     parts = [p for p in parts if p][:MAX_EXTRACT_PART]
     return bool(parts) and all(p in haystack for p in parts)
 
@@ -180,6 +180,11 @@ def rows_for_hotel(hotel: dict, targets: list[dict], answer, skipped: list, cham
         if v is None:
             rows.append({**base, "statut": NON_TRAITEE, "motif": skipped_keys.get(key) or skipped_keys.get((key[0], None))
                          or "absent de la réponse du modèle"})
+            continue
+        if not (v.extrait_source or "").strip():
+            # No excerpt, no value: missing information is never a False or a default
+            rows.append({**base, "statut": REJETEE, "valeur": v.valeur, "methode": v.methode, "source": v.source,
+                         "score": 0, "niveau": niveau(0), "motif": "pas d'extrait de la source"})
             continue
         source_text = hotel["sources"].get(v.source, {}).get(v.champ_source or "", None)
         found = extract_found(v.extrait_source, source_text)

@@ -153,6 +153,9 @@ def test_extract_found():
     assert core.extract_found("Free private parking", "[Free private parking is possible on site.]")
     assert core.extract_found("From 15:00 ... ", "From 15:00")
     assert not core.extract_found("Paid parking", "[Free private parking is possible on site.]")
+    spa = "[Spa lounge/relaxation area, Hammam, Hot tub/Jacuzzi, Sauna, Massage]"
+    assert core.extract_found("Spa lounge/relaxation area ; Hammam ; Hot tub/Jacuzzi ; Sauna", spa)
+    assert not core.extract_found("Hammam ; Sauna ; Massage ; Steam room", spa)  # an invented 4th part is caught
 
 
 def valeur(champ, id_entite, value, extrait, champ_source, score=95):
@@ -189,6 +192,14 @@ def test_rows_cap_score_when_excerpt_not_found_and_number_new_entities():
     assert set(by_id) == {"nouvelle_1", "nouvelle_2"}
     assert by_id["nouvelle_1"]["score"] == 95 and by_id["nouvelle_1"]["libelle_valeur"] == "Outdoor"
     assert by_id["nouvelle_2"]["score"] == core.EXTRACT_CAP_SCORE and "introuvable" in by_id["nouvelle_2"]["alerte"]
+
+
+def test_value_without_excerpt_is_rejected_not_proposed():
+    # Seen on the first dev run: "wheelchair accessible = False" proposed with no excerpt ("absent des sources")
+    targets = [{"champ_pim": "PoolType", "entite": "Pool", "id_entite": core.NEW_ENTITY, "valeur_pim": None}]
+    answer = HotelEnrichi(rid="0952", valeurs=[valeur("PoolType", "nouvelle_1", "Outdoor", "", "piscine_1")])
+    rows = core.rows_for_hotel(HOTEL, targets, answer, [], CHAMPS, ALLOWED, {}, CONTEXT, None)
+    assert [(r["statut"], r["motif"]) for r in rows] == [(core.REJETEE, "pas d'extrait de la source")]
 
 
 def test_rejected_value_and_skipped_reason():

@@ -25,10 +25,13 @@ Les champs cibles, leur type et leurs valeurs autorisées sont décrits plus bas
 1. Cherche l'information dans les sources. Booking (champs structurés) est plus fiable que le texte libre d'Expedia.
 2. Si tu la trouves, convertis-la au format du champ : code de la liste PIM (jamais le libellé), heure HH:MM, nombre, True ou False.
 3. Recopie dans `extrait_source` la phrase exacte de la source qui justifie la valeur, sans la reformuler, et indique
-   `source` (ex. `booking_equipements`) et `champ_source` (la colonne, ex. `parking`).
+   `source` (ex. `booking_equipements`) et `champ_source` (la colonne, ex. `parking`). Si la valeur s'appuie sur
+   plusieurs passages, sépare-les par « ; » (ex. `Hammam ; Sauna`).
 4. Donne un `score` de 0 à 100 : 90 et plus si la source le dit mot pour mot, 60 à 89 si tu as dû convertir ou interpréter,
    moins de 60 si c'est une déduction. `methode` vaut `extrait` (lu tel quel), `converti` (ex. 3 PM → 15:00) ou `deduit`.
 5. Si tu ne trouves rien, mets la cible dans `non_traitees` avec un motif court (« absent des sources », « source ambiguë »).
+   L'absence d'une information n'est jamais une réponse : ne propose pas False (ni « non », ni 0) parce qu'un
+   équipement n'est pas cité. False ne se propose que si la source le dit (ex. « No pets allowed »).
 
 # Entités liées
 
