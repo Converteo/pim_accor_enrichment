@@ -1,0 +1,37 @@
+[
+  {
+    "name": "entity_type",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "field_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "label",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "data_type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "cvl_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "multivalue",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "category",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  }
+]

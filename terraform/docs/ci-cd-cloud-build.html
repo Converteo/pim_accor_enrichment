@@ -508,7 +508,7 @@ gcloud builds submit . \
       <div class="analogy">
         <div class="card col">
           <p class="label">Terraform (à la main, rarement)</p>
-          <p><strong>Construit l’hôtel</strong><br />Services Cloud Run, buckets, droits, pool d’identités… Lancé avec <code>make plan</code> / <code>make apply</code>.</p>
+          <p><strong>Construit l’hôtel</strong><br />Services Cloud Run, buckets, droits, pool d’identités… Lancé avec <code>terraform plan</code> / <code>terraform apply</code> dans le workspace de l’environnement.</p>
         </div>
         <div class="vs">≠</div>
         <div class="card col">
@@ -524,8 +524,8 @@ gcloud builds submit . \
   ]
 }</pre>
       <p>
-        Sans ça, chaque <code>make apply</code> remettrait l’ancienne image et annulerait le dernier déploiement.
-        C’est aussi pour ça qu’il n’y a plus de tag d’image dans <code>vars/*.tfvars</code>, ni de script de déploiement.
+        Sans ça, chaque <code>terraform apply</code> remettrait l’ancienne image et annulerait le dernier déploiement.
+        C’est aussi pour ça qu’il n’y a plus de tag d’image dans <code>terraform.tfvars</code>, ni de script de déploiement.
       </p>
     </section>
 
@@ -546,7 +546,7 @@ git push -u origin feature/mon-changement
         <li>Dans la console GCP : <strong>Cloud Build › Historique</strong>, région <code>europe-west1</code>.</li>
       </ul>
       <h3>Trouver l’URL de l’application</h3>
-      <p><code>make output ENV=dev</code> dans <code>terraform/</code> (valeur <code>front_url</code>), ou console GCP › Cloud Run › <code>gcr-…-dev-euw1-front</code>.</p>
+      <p><code>terraform output front_url</code> dans <code>terraform/core/</code>, workspace <code>dev</code>, ou console GCP › Cloud Run › <code>gcr-…-dev-euw1-front</code>.</p>
     </section>
 
     <section id="probleme">

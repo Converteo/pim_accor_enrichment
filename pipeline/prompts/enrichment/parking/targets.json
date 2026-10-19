@@ -1,0 +1,133 @@
+{
+  "famille": "parking",
+  "version_prompts": "enrich-v1",
+  "sources": {
+    "booking_equipements": [
+      "parking"
+    ],
+    "expedia": [
+      "policies",
+      "important_info",
+      "property_about"
+    ]
+  },
+  "champs": [
+    {
+      "champ_pim": "ParkingCharged",
+      "entite": "Parking",
+      "libelle": "Parking charged",
+      "type_pim": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priorite": "P1",
+      "format": null,
+      "false_est_une_reponse": true,
+      "consigne": "False si le parking est gratuit (« Free parking »), True s'il est payant (« costs », « charge »).",
+      "source_audit": "Booking Parking (free / costs …)"
+    },
+    {
+      "champ_pim": "ParkingIndoorOutdoor",
+      "entite": "Parking",
+      "libelle": "Indoor/Outdoor",
+      "type_pim": "CVL",
+      "cvl_id": "IndoorOutdoor",
+      "multivalue": false,
+      "priorite": "P1",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": null,
+      "source_audit": "Booking Parking « Parking garage »"
+    },
+    {
+      "champ_pim": "ParkingSecurityAccessibility",
+      "entite": "Parking",
+      "libelle": "Parking security and accessibility",
+      "type_pim": "CVL",
+      "cvl_id": "ParkingSecurityAccessibility",
+      "multivalue": true,
+      "priorite": "P1",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": null,
+      "source_audit": "Booking Parking « Accessible parking »"
+    },
+    {
+      "champ_pim": "ParkingServices",
+      "entite": "Parking",
+      "libelle": "Parking services",
+      "type_pim": "CVL",
+      "cvl_id": "ParkingServices",
+      "multivalue": true,
+      "priorite": "P1",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": null,
+      "source_audit": "Booking Parking « Valet parking »"
+    },
+    {
+      "champ_pim": "ParkingCost",
+      "entite": "Parking",
+      "libelle": "Cost (if paying)",
+      "type_pim": "Double",
+      "cvl_id": null,
+      "multivalue": false,
+      "priorite": "P2",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": "Montant seul, sans devise ; signale la devise dans l'alerte.",
+      "source_audit": "Booking Parking (« costs US$79 per day »)"
+    },
+    {
+      "champ_pim": "ParkingLocationOfParking",
+      "entite": "Parking",
+      "libelle": "Location of parking",
+      "type_pim": "CVL",
+      "cvl_id": "PoolWellParSpaLocation",
+      "multivalue": false,
+      "priorite": "P2",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": null,
+      "source_audit": "Booking Parking (on site / nearby)"
+    },
+    {
+      "champ_pim": "ParkingPricingMode",
+      "entite": "Parking",
+      "libelle": "Pricing mode (if paying)",
+      "type_pim": "CVL",
+      "cvl_id": "Applicability",
+      "multivalue": false,
+      "priorite": "P2",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": null,
+      "source_audit": "Booking Parking (per day / per hour)"
+    },
+    {
+      "champ_pim": "ParkingTypeOfParking",
+      "entite": "Parking",
+      "libelle": "Type of parking",
+      "type_pim": "CVL",
+      "cvl_id": "ParkingType",
+      "multivalue": false,
+      "priorite": "P2",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": null,
+      "source_audit": "Booking Parking (private / public)"
+    },
+    {
+      "champ_pim": "ParkingAvailableChargingTerminal",
+      "entite": "Parking",
+      "libelle": "Electric charging terminal in the parking",
+      "type_pim": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priorite": "P3",
+      "format": null,
+      "false_est_une_reponse": false,
+      "consigne": null,
+      "source_audit": "Booking Parking « Electric vehicle charging station »"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "export_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "chemin",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "lignes",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "hotels",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "fichiers",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "lance_par",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "exported_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

@@ -10,6 +10,12 @@ out/
 *.tsbuildinfo
 npm-debug.log*
 
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+
 # Env files
 .env
 .env.*
@@ -19,8 +25,8 @@ npm-debug.log*
 .terraform/
 *.tfstate
 *.tfstate.*
-# tfvars sans secret versionnés ; overrides locaux ignorés
+# terraform.tfvars sans secret, versionné ; overrides locaux ignorés
 *.local.tfvars
 crash.log
-tfplan_*
+tfplan*
 .terraform.lock.hcl.bak

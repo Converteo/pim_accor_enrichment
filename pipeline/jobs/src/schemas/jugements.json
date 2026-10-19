@@ -1,0 +1,95 @@
+[
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "lot_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "rid",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_hash",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "pre_verdict",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pre_motif",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "verdict",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "meme_hotel | autre_hotel | indetermine"
+  },
+  {
+    "name": "score",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "niveau",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "haut | moyen | bas"
+  },
+  {
+    "name": "motif",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "justification",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "statut",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "valide_auto | a_valider | rejete_auto"
+  },
+  {
+    "name": "seuil_haut",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "seuil_bas",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "llm_model",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "prompt_version",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "judged_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

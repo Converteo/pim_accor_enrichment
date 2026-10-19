@@ -7,4 +7,8 @@ terraform/
 **/node_modules/
 **/.next/
 *.md
+# ... sauf les prompts du pipeline, synchronisés par cloudbuild.yaml
+!pipeline/prompts/**
+**/__pycache__/
+**/.pytest_cache/
 .DS_Store
