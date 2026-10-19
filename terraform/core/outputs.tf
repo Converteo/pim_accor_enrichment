@@ -1,5 +1,5 @@
 output "env" {
-  value = var.env
+  value = local.env
 }
 
 output "front_url" {
@@ -30,7 +30,7 @@ output "service_accounts" {
 output "ci" {
   description = "Valeurs utilisées par .github/workflows/deploy.yml."
   value = {
-    branch                     = var.deploy_branch
+    branch                     = local.cfg.deploy_branch
     build_service_account      = local.build_sa_email
     source_staging_bucket      = module.bucket_build_sources.name
     workload_identity_provider = "${local.wif_pool_name}/providers/github"

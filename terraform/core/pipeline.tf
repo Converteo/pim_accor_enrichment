@@ -56,7 +56,7 @@ locals {
   # Les ressources qui les utilisent dépendent de module.iam_pipeline.
   pipeline_sa = {
     for k in ["load-bq", "extract-pim", "matching", "judge", "enrich", "export", "workflows", "scheduler", "eventarc"] :
-    k => "serviceAccount:sa-${var.env}-${k}@${var.project_id}.iam.gserviceaccount.com"
+    k => "serviceAccount:sa-${local.env}-${k}@${var.project_id}.iam.gserviceaccount.com"
   }
 
   dataset_refs = { for k, d in google_bigquery_dataset.pipeline : k => "${var.project_id}.${d.dataset_id}" }
@@ -68,19 +68,19 @@ locals {
     BQ_VALIDATION_DATASET = google_bigquery_dataset.pipeline["validation"].dataset_id
     BQ_ENHANCED_DATASET   = google_bigquery_dataset.pipeline["enhanced"].dataset_id
     FIRESTORE_DATABASE    = google_firestore_database.pipeline.name
-    SCOPE_STATUS          = var.pipeline.scope_status
+    SCOPE_STATUS          = local.cfg.pipeline.scope_status
   }
 
   jobs_llm_env = {
     GCS_PROMPTS_BUCKET   = module.bucket_prompts.name
-    VERTEX_LOCATION      = var.pipeline.vertex_location
-    GEMINI_MODEL         = var.pipeline.gemini_model
-    THINKING_LEVEL       = var.pipeline.thinking_level
-    LLM_CONCURRENCY      = tostring(var.pipeline.llm_concurrency)
-    JUDGE_THRESHOLD_HIGH = tostring(var.pipeline.judge_threshold_high)
-    JUDGE_THRESHOLD_LOW  = tostring(var.pipeline.judge_threshold_low)
+    VERTEX_LOCATION      = local.cfg.pipeline.vertex_location
+    GEMINI_MODEL         = local.cfg.pipeline.gemini_model
+    THINKING_LEVEL       = local.cfg.pipeline.thinking_level
+    LLM_CONCURRENCY      = tostring(local.cfg.pipeline.llm_concurrency)
+    JUDGE_THRESHOLD_HIGH = tostring(local.cfg.pipeline.judge_threshold_high)
+    JUDGE_THRESHOLD_LOW  = tostring(local.cfg.pipeline.judge_threshold_low)
     # Vide = pas de validation automatique des enrichissements : tout passe par l'interface
-    ENRICH_AUTO_VALIDATE_SCORE = var.pipeline.enrich_auto_validate_score == null ? "" : tostring(var.pipeline.enrich_auto_validate_score)
+    ENRICH_AUTO_VALIDATE_SCORE = local.cfg.pipeline.enrich_auto_validate_score == null ? "" : tostring(local.cfg.pipeline.enrich_auto_validate_score)
   }
 
   jobs_extra_env = {
@@ -100,15 +100,15 @@ module "iam_pipeline" {
   project_id = var.project_id
 
   service_accounts = {
-    load-bq     = { account_id = "sa-${var.env}-load-bq", display_name = "Chargement des scrapings (${var.env})", description = "Charge chaque dépôt de scraping dans BigQuery et lance le workflow." }
-    extract-pim = { account_id = "sa-${var.env}-extract-pim", display_name = "Extraction PIM (${var.env})", description = "Extrait le PIM Accor (API inriver, lecture seule) dans BigQuery." }
-    matching    = { account_id = "sa-${var.env}-matching", display_name = "Rapprochement (${var.env})", description = "Rapprochement déterministe des scrapings avec le PIM (brique 1)." }
-    judge       = { account_id = "sa-${var.env}-judge", display_name = "Agent juge (${var.env})", description = "Agent juge des rapprochements (brique 2)." }
-    enrich      = { account_id = "sa-${var.env}-enrich", display_name = "Agent d'enrichissement (${var.env})", description = "Agent d'enrichissement (brique 3)." }
-    export      = { account_id = "sa-${var.env}-export", display_name = "Export (${var.env})", description = "Export du fichier plat du PIM enrichi." }
-    workflows   = { account_id = "sa-${var.env}-workflows", display_name = "Workflow (${var.env})", description = "Orchestration des jobs du pipeline." }
-    scheduler   = { account_id = "sa-${var.env}-scheduler", display_name = "Planificateur (${var.env})", description = "Relance périodique du workflow." }
-    eventarc    = { account_id = "sa-${var.env}-eventarc", display_name = "Eventarc (${var.env})", description = "Transmet les dépôts du bucket OTA au service load-bq." }
+    load-bq     = { account_id = "sa-${local.env}-load-bq", display_name = "Chargement des scrapings (${local.env})", description = "Charge chaque dépôt de scraping dans BigQuery et lance le workflow." }
+    extract-pim = { account_id = "sa-${local.env}-extract-pim", display_name = "Extraction PIM (${local.env})", description = "Extrait le PIM Accor (API inriver, lecture seule) dans BigQuery." }
+    matching    = { account_id = "sa-${local.env}-matching", display_name = "Rapprochement (${local.env})", description = "Rapprochement déterministe des scrapings avec le PIM (brique 1)." }
+    judge       = { account_id = "sa-${local.env}-judge", display_name = "Agent juge (${local.env})", description = "Agent juge des rapprochements (brique 2)." }
+    enrich      = { account_id = "sa-${local.env}-enrich", display_name = "Agent d'enrichissement (${local.env})", description = "Agent d'enrichissement (brique 3)." }
+    export      = { account_id = "sa-${local.env}-export", display_name = "Export (${local.env})", description = "Export du fichier plat du PIM enrichi." }
+    workflows   = { account_id = "sa-${local.env}-workflows", display_name = "Workflow (${local.env})", description = "Orchestration des jobs du pipeline." }
+    scheduler   = { account_id = "sa-${local.env}-scheduler", display_name = "Planificateur (${local.env})", description = "Relance périodique du workflow." }
+    eventarc    = { account_id = "sa-${local.env}-eventarc", display_name = "Eventarc (${local.env})", description = "Transmet les dépôts du bucket OTA au service load-bq." }
   }
 
   project_roles = concat(
@@ -140,7 +140,7 @@ module "iam_pipeline" {
 
 # Cloud Storage publie les événements de dépôt lus par Eventarc (une fois par projet)
 resource "google_project_iam_member" "gcs_pubsub_publisher" {
-  count = var.manage_project_resources ? 1 : 0
+  count = local.cfg.manage_project_resources ? 1 : 0
 
   project = var.project_id
   role    = "roles/pubsub.publisher"
@@ -486,7 +486,7 @@ resource "google_cloud_scheduler_job" "enrichment" {
   schedule         = "*/15 * * * *"
   time_zone        = "Europe/Paris"
   attempt_deadline = "600s"
-  paused           = var.pipeline.scheduler_paused
+  paused           = local.cfg.pipeline.scheduler_paused
 
   http_target {
     uri         = "https://workflowexecutions.googleapis.com/v1/${google_workflows_workflow.enrichment.id}/executions"

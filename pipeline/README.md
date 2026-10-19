@@ -60,7 +60,8 @@ piscine, parking, bien-être et sport. Une nouvelle source de scraping = un doss
 
 ## Réglages
 
-Dans `terraform/vars/<env>.tfvars`, variable `pipeline` (valeurs par défaut dans `terraform/core/variables.tf`) :
+Dans `terraform/core/terraform.tfvars`, attribut `pipeline` de l'environnement (`environments.dev.pipeline`, valeurs par
+défaut dans `terraform/core/variables.tf`) :
 modèle Gemini, seuils de l'agent juge, validation automatique des enrichissements, périmètre (`scope_status`),
 planificateur en pause ou non. Ils sont posés en variables d'environnement des jobs par Terraform ; la CI ne change que
 les images.
@@ -85,7 +86,7 @@ python tools/check_prompts.py prompts
 
 ## Mise en service (par environnement)
 
-1. `cd terraform && make init plan ENV=dev && make apply ENV=dev` : crée datasets, tables, vues, Firestore, secret,
+1. `cd terraform/core && terraform workspace select dev && terraform plan -out=tfplan && terraform apply tfplan` : crée datasets, tables, vues, Firestore, secret,
    jobs, service de chargement, Eventarc, workflow (coquille) et planificateur (en pause).
 2. Ajouter la clé API du PIM (compte Reader, lecture seule) dans le secret créé vide :
    ```bash
@@ -102,8 +103,8 @@ python tools/check_prompts.py prompts
   `gcloud workflows run wf-cvto-accor-pim-enrichment-dev-euw1-enrichment --location=europe-west1 --data='{"priorites": "P1"}'`
 - **Forcer une nouvelle extraction du PIM** : exécuter le job `extract-pim` avec `FORCE=true`.
 - **Calibrer l'agent juge** : ajuster `judge_threshold_high` et `judge_threshold_low` après une revue des 774 cas à
-  valider et des 34 rejets, puis `make apply`.
-- **Planificateur** : le reprendre (`pipeline = { scheduler_paused = false }`) quand la chaîne a tourné de bout en bout.
+  valider et des 34 rejets, puis `terraform apply`.
+- **Planificateur** : le reprendre (`environments.dev.pipeline = { scheduler_paused = false }`) quand la chaîne a tourné de bout en bout.
 
 ## Points ouverts
 

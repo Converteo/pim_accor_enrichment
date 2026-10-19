@@ -43,7 +43,7 @@ npm run build    # build de production (standalone)
 
 Région `europe-west1`, Cloud Run, environnements dev et stg.
 
-- URLs : `cd terraform && make output ENV=dev` (ou `ENV=stg`), valeur `front_url`
+- URLs : `cd terraform/core && terraform workspace select dev && terraform output front_url` (ou `stg`)
 - Nouvelle version : push sur la branche `dev` (déploie dev) ou `stg` (déploie stg) : GitHub Actions lance Cloud Build
 - Process expliqué pas à pas : [terraform/docs/ci-cd-cloud-build.html](terraform/docs/ci-cd-cloud-build.html)
 

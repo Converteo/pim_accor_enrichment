@@ -1,14 +1,19 @@
 locals {
-  # [client]-[solution]-[env]-[region] → accor-pim-enrichment-dev-euw1
-  base = "cvto-${var.client}-${var.solution}-${var.env}-${var.region_short}"
+  # Un workspace Terraform = un environnement (terraform workspace select dev|stg).
+  # Le workspace "default" n'est pas un environnement : var.environments["default"] échoue, rien n'est planifié.
+  env = terraform.workspace
+  cfg = var.environments[terraform.workspace]
 
-  labels = merge(var.labels, { env = var.env })
+  # [client]-[solution]-[env]-[region] → accor-pim-enrichment-dev-euw1
+  base = "cvto-${var.client}-${var.solution}-${local.env}-${var.region_short}"
+
+  labels = merge(var.labels, { env = local.env })
 
   # Image de démarrage d'un service neuf. Ensuite, c'est Cloud Build qui déploie les vraies images
   # (le module cloud_run ignore les changements d'image).
   placeholder_image = "us-docker.pkg.dev/cloudrun/container/hello"
 
-  build_sa_email  = "sa-${var.env}-cloudbuild@${var.project_id}.iam.gserviceaccount.com"
+  build_sa_email  = "sa-${local.env}-cloudbuild@${var.project_id}.iam.gserviceaccount.com"
   build_sa_member = "serviceAccount:${local.build_sa_email}"
 
   # Workload Identity Federation (GitHub Actions → GCP), unique au projet
@@ -16,7 +21,7 @@ locals {
   wif_pool_name = "projects/${data.google_project.this.number}/locations/global/workloadIdentityPools/${local.wif_pool_id}"
 
   # Identité GitHub autorisée à agir en tant que le SA de build de cet env : un push sur SA branche
-  github_branch_principal = "principalSet://iam.googleapis.com/${local.wif_pool_name}/attribute.ref/refs/heads/${var.deploy_branch}"
+  github_branch_principal = "principalSet://iam.googleapis.com/${local.wif_pool_name}/attribute.ref/refs/heads/${local.cfg.deploy_branch}"
 }
 
 data "google_project" "this" {
@@ -34,7 +39,7 @@ module "apis" {
 # ---------- Bucket de state Terraform (unique au projet) ----------
 module "tfstate_bucket" {
   source = "../modules/cloud_storage"
-  count  = var.manage_project_resources ? 1 : 0
+  count  = local.cfg.manage_project_resources ? 1 : 0
 
   project_id                  = var.project_id
   name                        = var.tfstate_bucket_name
@@ -54,25 +59,25 @@ module "iam" {
 
   service_accounts = {
     front = {
-      account_id   = "sa-${var.env}-frontend"
-      display_name = "Cloud Run frontend (${var.env})"
+      account_id   = "sa-${local.env}-frontend"
+      display_name = "Cloud Run frontend (${local.env})"
       description  = "Identité d'exécution du Cloud Run frontend."
     }
     back = {
-      account_id   = "sa-${var.env}-backend"
-      display_name = "Cloud Run backend (${var.env})"
+      account_id   = "sa-${local.env}-backend"
+      display_name = "Cloud Run backend (${local.env})"
       description  = "Identité d'exécution du Cloud Run backend (lecture/écriture des buckets PIM et OTA)."
     }
     build = {
-      account_id   = "sa-${var.env}-cloudbuild"
-      display_name = "Cloud Build deploy (${var.env})"
-      description  = "Exécute la CI de la branche ${var.deploy_branch} : build, push Artifact Registry, déploiement Cloud Run."
+      account_id   = "sa-${local.env}-cloudbuild"
+      display_name = "Cloud Build deploy (${local.env})"
+      description  = "Exécute la CI de la branche ${local.cfg.deploy_branch} : build, push Artifact Registry, déploiement Cloud Run."
     }
   }
 
   project_roles = concat(
-    var.manage_project_resources ? [
-      for r in var.terraform_sa_extra_roles : {
+    local.cfg.manage_project_resources ? [
+      for r in local.cfg.terraform_sa_extra_roles : {
         role   = r
         member = "serviceAccount:${var.terraform_service_account}"
       }
@@ -104,7 +109,7 @@ module "artifact_registry" {
   project_id    = var.project_id
   region        = var.region
   repository_id = "ar-${local.base}-docker"
-  description   = "Images Docker PIM Accor enrichment (${var.env})"
+  description   = "Images Docker PIM Accor enrichment (${local.env})"
 
   # La CI pousse les images de cet environnement
   iam_members = [
@@ -156,8 +161,8 @@ module "cloud_run_back" {
   name                  = "gcr-${local.base}-back"
   image                 = local.placeholder_image
   service_account_email = module.iam.emails["back"]
-  min_instances         = var.back_scaling.min
-  max_instances         = var.back_scaling.max
+  min_instances         = local.cfg.back_scaling.min
+  max_instances         = local.cfg.back_scaling.max
   labels                = { component = "back" }
 
   # Seul le frontend peut appeler le backend
@@ -185,11 +190,11 @@ module "cloud_run_front" {
   name                  = "gcr-${local.base}-front"
   image                 = local.placeholder_image
   service_account_email = module.iam.emails["front"]
-  min_instances         = var.front_scaling.min
-  max_instances         = var.front_scaling.max
+  min_instances         = local.cfg.front_scaling.min
+  max_instances         = local.cfg.front_scaling.max
   labels                = { component = "front" }
 
-  invoker_members = var.front_public ? ["allUsers"] : []
+  invoker_members = local.cfg.front_public ? ["allUsers"] : []
 
   iam_members = [
     { role = "roles/run.developer", member = local.build_sa_member },
@@ -207,7 +212,7 @@ module "cloud_run_front" {
 # Pool d'identités GitHub (unique au projet → géré par dev)
 module "wif" {
   source = "../modules/workload_identity_federation"
-  count  = var.manage_project_resources ? 1 : 0
+  count  = local.cfg.manage_project_resources ? 1 : 0
 
   project_id           = var.project_id
   pool_id              = local.wif_pool_id

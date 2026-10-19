@@ -303,7 +303,7 @@
       <div class="analogy">
         <div class="card col">
           <p class="label">Ce que tu écris</p>
-          <p><strong>État désiré</strong><br />Les fichiers <code>.tf</code> + les réglages <code>vars/*.tfvars</code>.</p>
+          <p><strong>État désiré</strong><br />Les fichiers <code>.tf</code> + les réglages <code>core/terraform.tfvars</code>.</p>
         </div>
         <div class="vs">→</div>
         <div class="card col">
@@ -336,30 +336,19 @@
         </div>
       </div>
       <p>
-        Dans ce repo, un <strong>Makefile</strong> enchaîne ces commandes pour toi. Tu choisis l’environnement avec
-        <code>ENV=dev</code> ou <code>ENV=stg</code> :
+        Dans ce repo, <strong>un workspace Terraform = un environnement</strong>. Tu choisis l’environnement en
+        sélectionnant son workspace, puis tu lances les commandes Terraform, sans option :
       </p>
-      <pre><span class="comment"># depuis le dossier terraform/</span>
-make init  ENV=dev     <span class="comment"># se branche sur le state de dev</span>
-make plan  ENV=dev     <span class="comment"># calcule le diff et l’enregistre dans core/tfplan_dev</span>
-make apply ENV=dev     <span class="comment"># applique exactement ce plan</span>
-make output ENV=dev    <span class="comment"># relit les URLs, noms de buckets…</span>
-
-make init plan ENV=stg &amp;&amp; make apply ENV=stg</pre>
-      <p>Derrière, le Makefile lance simplement :</p>
-      <pre>terraform -chdir=core init -reconfigure -backend-config=../config/terraform_dev_backend.hcl
-terraform -chdir=core plan  -var-file=../vars/global.tfvars -var-file=../vars/dev.tfvars -out=tfplan_dev
-terraform -chdir=core apply tfplan_dev</pre>
+      <pre><span class="comment"># depuis le dossier terraform/core/</span>
+terraform init                   <span class="comment"># une seule fois : se branche sur le bucket de state</span>
+terraform workspace select dev   <span class="comment"># ou stg ; terraform workspace show pour vérifier</span>
+terraform plan -out=tfplan       <span class="comment"># calcule le diff et l’enregistre</span>
+terraform apply tfplan           <span class="comment"># applique exactement ce plan</span>
+terraform output                 <span class="comment"># relit les URLs, noms de buckets…</span></pre>
       <p>
-        <code>-chdir=core</code> veut dire « travaille comme si tu étais dans <code>core/</code> ».
-        <code>-backend-config</code> choisit le carnet de state, et les deux <code>-var-file</code> choisissent les réglages.
+        <code>terraform.tfvars</code> est chargé automatiquement, et chaque workspace a son propre carnet de state dans le
+        bucket. Le code lit le nom du workspace (<code>terraform.workspace</code>) pour savoir quel environnement il construit.
       </p>
-      <div class="callout">
-        <p>
-          <code>make</code> vient avec les outils en ligne de commande d’Apple (<code>xcode-select --install</code> s’ils manquent).
-          Tu peux aussi taper directement les commandes <code>terraform</code> ci-dessus.
-        </p>
-      </div>
     </section>
 
     <section id="fichiers">
@@ -371,13 +360,12 @@ terraform -chdir=core apply tfplan_dev</pre>
 
       <div class="tabs" role="tablist">
         <button type="button" role="tab" aria-selected="true" data-tab="versions">versions.tf</button>
-        <button type="button" role="tab" aria-selected="false" data-tab="backend">backend.tf + config/</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="backend">backend.tf</button>
         <button type="button" role="tab" aria-selected="false" data-tab="providers">providers.tf</button>
         <button type="button" role="tab" aria-selected="false" data-tab="variables">variables.tf</button>
-        <button type="button" role="tab" aria-selected="false" data-tab="tfvars">vars/*.tfvars</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="tfvars">terraform.tfvars</button>
         <button type="button" role="tab" aria-selected="false" data-tab="main">main.tf</button>
         <button type="button" role="tab" aria-selected="false" data-tab="outputs">outputs.tf</button>
-        <button type="button" role="tab" aria-selected="false" data-tab="makefile">Makefile</button>
       </div>
 
       <div id="panel-versions" class="panel active card">
@@ -393,19 +381,17 @@ terraform -chdir=core apply tfplan_dev</pre>
       <div id="panel-backend" class="panel card">
         <h3>Où est rangé le carnet de bord</h3>
         <p>
-          Le <em>state</em> n’est pas dans Git : il vit dans un bucket GCS. <code>core/backend.tf</code> est volontairement
-          <strong>vide</strong> (« backend partiel ») : c’est le fichier <code>config/terraform_&lt;env&gt;_backend.hcl</code>
-          passé à <code>init</code> qui dit dans quel « dossier » (<code>prefix</code>) du bucket écrire.
+          Le <em>state</em> n’est pas dans Git : il vit dans un bucket GCS. Un seul backend pour tous les environnements :
+          le backend GCS range le carnet de chaque workspace sous <code>&lt;prefix&gt;/&lt;workspace&gt;.tfstate</code>.
         </p>
         <pre><span class="comment"># core/backend.tf</span>
 terraform {
-  backend <span class="str">"gcs"</span> {}
-}
-
-<span class="comment"># config/terraform_dev_backend.hcl</span>
-bucket                      = <span class="str">"bkt-cvto-accor-pim-enrichment-dev-euw1-tfstate"</span>
-prefix                      = <span class="str">"core/dev"</span>   <span class="comment"># stg : "core/stg"</span>
-impersonate_service_account = <span class="str">"sa-dev-terraform@…"</span></pre>
+  backend <span class="str">"gcs"</span> {
+    bucket                      = <span class="str">"bkt-cvto-accor-pim-enrichment-dev-euw1-tfstate"</span>
+    prefix                      = <span class="str">"core"</span>   <span class="comment"># → core/dev.tfstate, core/stg.tfstate</span>
+    impersonate_service_account = <span class="str">"sa-dev-terraform@…"</span>
+  }
+}</pre>
       </div>
       <div id="panel-providers" class="panel card">
         <h3>Comment parler à Google Cloud</h3>
@@ -425,29 +411,34 @@ impersonate_service_account = <span class="str">"sa-dev-terraform@…"</span></p
         <h3>Les paramètres (le « formulaire »)</h3>
         <p>
           On déclare <em>quels</em> réglages existent, leur type, parfois une valeur par défaut ou une règle de validation.
-          On n’y met pas les valeurs d’un environnement précis.
+          Les réglages propres à un environnement sont regroupés dans une map indexée par nom de workspace.
         </p>
-        <pre>variable <span class="str">"env"</span> {
-  type = string
-  validation {
-    condition     = contains([<span class="str">"dev"</span>, <span class="str">"stg"</span>], var.env)
-    error_message = <span class="str">"env doit valoir dev ou stg."</span>
-  }
+        <pre>variable <span class="str">"environments"</span> {
+  type = map(object({
+    deploy_branch            = string
+    manage_project_resources = optional(bool, false)
+    front_public             = optional(bool, false)
+    <span class="comment"># …</span>
+  }))
 }</pre>
       </div>
       <div id="panel-tfvars" class="panel card">
-        <h3>Les valeurs, en deux étages</h3>
+        <h3>Les valeurs, dans un seul fichier</h3>
         <p>
-          <code>vars/global.tfvars</code> contient ce qui est commun (projet, région, <code>client = "accor"</code>,
-          <code>solution = "pim-enrichment"</code>, liste des APIs). <code>vars/dev.tfvars</code> et <code>vars/stg.tfvars</code>
-          contiennent ce qui change d’un environnement à l’autre. Si une valeur existe dans les deux, le second fichier gagne.
+          <code>core/terraform.tfvars</code> (chargé automatiquement) contient ce qui est commun (projet, région,
+          <code>client = "accor"</code>, <code>solution = "pim-enrichment"</code>, liste des APIs), puis les réglages
+          de chaque environnement dans <code>environments</code>. Le code prend ceux du workspace courant :
+          <code>local.cfg = var.environments[terraform.workspace]</code>.
         </p>
-        <pre><span class="comment"># vars/dev.tfvars</span>
-env                      = <span class="str">"dev"</span>
-manage_project_resources = true
-deploy_branch            = <span class="str">"dev"</span>   <span class="comment"># chaque push sur dev déploie cet env</span>
-front_public             = true</pre>
-        <p>Les tags d’image n’apparaissent plus ici : c’est la CI (Cloud Build) qui choisit l’image déployée.</p>
+        <pre>environments = {
+  dev = {
+    deploy_branch            = <span class="str">"dev"</span>   <span class="comment"># chaque push sur dev déploie cet env</span>
+    manage_project_resources = true
+    front_public             = true
+  }
+  stg = { deploy_branch = <span class="str">"stg"</span>, front_public = true }
+}</pre>
+        <p>Les tags d’image n’apparaissent pas ici : c’est la CI (Cloud Build) qui choisit l’image déployée.</p>
       </div>
       <div id="panel-main" class="panel card">
         <h3>Ce qu’on veut obtenir</h3>
@@ -457,21 +448,14 @@ front_public             = true</pre>
           une seule fois pour tout le fichier.
         </p>
         <pre>locals {
-  base = <span class="str">"cvto-${var.client}-${var.solution}-${var.env}-${var.region_short}"</span>
+  env  = terraform.workspace
+  base = <span class="str">"cvto-${var.client}-${var.solution}-${local.env}-${var.region_short}"</span>
   <span class="comment"># dev → cvto-accor-pim-enrichment-dev-euw1</span>
 }</pre>
       </div>
       <div id="panel-outputs" class="panel card">
         <h3>Ce qu’on veut afficher après un apply</h3>
-        <p>Les URLs front et back, les noms des buckets, les emails des service accounts… Tu les relis avec <code>make output ENV=dev</code>.</p>
-      </div>
-      <div id="panel-makefile" class="panel card">
-        <h3>Les raccourcis</h3>
-        <p>
-          Le Makefile n’est pas du Terraform : c’est un aide-mémoire exécutable. Il évite de se tromper de fichier
-          de backend ou de vars entre dev et stg. Cibles utiles : <code>init</code>, <code>plan</code>, <code>apply</code>,
-          <code>output</code>, <code>fmt</code>, <code>validate</code>.
-        </p>
+        <p>Les URLs front et back, les noms des buckets, les emails des service accounts… Tu les relis avec <code>terraform output</code>, dans le workspace voulu.</p>
       </div>
     </section>
 
@@ -479,8 +463,8 @@ front_public             = true</pre>
       <h2>4. Comment <em>ce</em> projet est structuré</h2>
       <p>
         Un seul <strong>plan d’immeuble</strong> (<code>core/</code>), des <strong>pièces types</strong> réutilisables
-        (<code>modules/</code>), et pour chaque environnement : un <strong>carnet</strong> (<code>config/</code>) et des
-        <strong>réglages</strong> (<code>vars/</code>).
+        (<code>modules/</code>), et pour chaque environnement : un <strong>carnet</strong> (son workspace) et des
+        <strong>réglages</strong> (<code>environments.&lt;env&gt;</code> dans <code>terraform.tfvars</code>).
       </p>
 
       <div class="floors">
@@ -495,16 +479,16 @@ front_public             = true</pre>
           <div class="tag">pièces<br />modules/</div>
           <p>
             Recettes génériques : <code>apis</code>, <code>artifact_registry</code>, <code>cloud_run</code>,
-            <code>cloud_storage</code>, <code>iam</code>. Jamais lancées seules : <code>core</code> les appelle.
+            <code>cloud_run_job</code>, <code>cloud_storage</code>, <code>iam</code>. Jamais lancées seules : <code>core</code> les appelle.
           </p>
         </article>
         <article class="floor">
-          <div class="tag">réglages<br />vars/</div>
-          <p><code>global.tfvars</code> (commun) + <code>dev.tfvars</code> / <code>stg.tfvars</code> (spécifique).</p>
+          <div class="tag">réglages<br />terraform.tfvars</div>
+          <p>Valeurs communes + <code>environments.dev</code> / <code>environments.stg</code> (spécifique).</p>
         </article>
         <article class="floor">
-          <div class="tag">carnets<br />config/</div>
-          <p>Un fichier backend par environnement : il pointe vers <code>core/dev</code> ou <code>core/stg</code> dans le bucket de state.</p>
+          <div class="tag">carnets<br />workspaces</div>
+          <p>Un workspace par environnement : <code>core/dev.tfstate</code> ou <code>core/stg.tfstate</code> dans le bucket de state.</p>
         </article>
       </div>
 
@@ -559,53 +543,53 @@ front_public             = true</pre>
     <section id="envs">
       <h2>5. Un plan, deux environnements</h2>
       <p>
-        dev et stg sont construits avec <strong>le même code</strong>. Seuls changent les réglages (<code>vars/</code>)
-        et le carnet (<code>config/</code>). Les deux vivent dans le même projet GCP ; les noms
+        dev et stg sont construits avec <strong>le même code</strong>. Seuls changent les réglages
+        (<code>environments.&lt;env&gt;</code>) et le carnet (le workspace). Les deux vivent dans le même projet GCP ; les noms
         (<code>…-dev-…</code> / <code>…-stg-…</code>) et les states séparés les empêchent de se marcher dessus.
       </p>
       <div class="flow">
         <span class="chip alt">core/ (même code)</span>
         <span class="arrow">+</span>
-        <span class="chip">vars/dev.tfvars</span>
+        <span class="chip">environments.dev</span>
         <span class="arrow">+</span>
-        <span class="chip">config/…dev_backend.hcl</span>
+        <span class="chip">workspace dev</span>
         <span class="arrow">→</span>
         <span class="chip">dev</span>
       </div>
       <div class="flow">
         <span class="chip alt">core/ (même code)</span>
         <span class="arrow">+</span>
-        <span class="chip">vars/stg.tfvars</span>
+        <span class="chip">environments.stg</span>
         <span class="arrow">+</span>
-        <span class="chip">config/…stg_backend.hcl</span>
+        <span class="chip">workspace stg</span>
         <span class="arrow">→</span>
         <span class="chip">stg</span>
       </div>
 
       <table>
         <thead>
-          <tr><th>Environnement</th><th>Préfixe du state</th><th>Cloud Run front</th></tr>
+          <tr><th>Workspace</th><th>State</th><th>Cloud Run front</th></tr>
         </thead>
         <tbody>
-          <tr><td>dev</td><td><code>core/dev</code></td><td><code>gcr-…-dev-euw1-front</code></td></tr>
-          <tr><td>stg</td><td><code>core/stg</code></td><td><code>gcr-…-stg-euw1-front</code></td></tr>
+          <tr><td>dev</td><td><code>core/dev.tfstate</code></td><td><code>gcr-…-dev-euw1-front</code></td></tr>
+          <tr><td>stg</td><td><code>core/stg.tfstate</code></td><td><code>gcr-…-stg-euw1-front</code></td></tr>
         </tbody>
       </table>
-      <p>Les URLs s’affichent avec <code>make output ENV=dev</code> (valeur <code>front_url</code>).</p>
+      <p>Les URLs s’affichent avec <code>terraform output front_url</code>.</p>
 
       <div class="callout warn">
         <p>
           <strong>Les ressources uniques au projet n’ont qu’un seul propriétaire.</strong>
           Le bucket de state et le rôle <code>roles/run.admin</code> du SA Terraform n’existent qu’en un exemplaire.
           Si dev <em>et</em> stg les géraient, détruire stg les supprimerait aussi pour dev.
-          Ils sont donc créés avec <code>count = var.manage_project_resources ? 1 : 0</code>, et seul
-          <code>dev.tfvars</code> met <code>manage_project_resources = true</code>.
+          Ils sont donc créés avec <code>count = local.cfg.manage_project_resources ? 1 : 0</code>, et seul
+          <code>environments.dev</code> met <code>manage_project_resources = true</code> (une validation l’impose).
         </p>
       </div>
       <p>
-        Piège classique : <code>make plan ENV=stg</code> juste après avoir travaillé sur dev, <em>sans</em> refaire
-        <code>make init ENV=stg</code>. Terraform comparerait alors les réglages stg au carnet de dev. Le Makefile
-        fait un <code>-reconfigure</code> à chaque <code>init</code> : relance-le à chaque changement d’environnement.
+        Piège classique : lancer un <code>apply</code> sans vérifier le workspace actif. Toujours
+        <code>terraform workspace show</code> avant, et relire les noms dans le plan (<code>…-dev-…</code> ou <code>…-stg-…</code>).
+        Le workspace <code>default</code> n’est pas un environnement : un plan y échoue sans rien créer.
       </p>
     </section>
 
@@ -619,7 +603,7 @@ front_public             = true</pre>
           <tr>
             <td><code>variable</code></td>
             <td>Entrée paramétrable</td>
-            <td><code>var.deploy_branch</code>, <code>var.env</code></td>
+            <td><code>var.project_id</code>, <code>var.environments</code></td>
           </tr>
           <tr>
             <td><code>locals</code></td>
@@ -741,7 +725,7 @@ front_public             = true</pre>
       <p>
         D’où le bucket <code>bkt-cvto-accor-pim-enrichment-dev-euw1-tfstate</code> : versionné (les 20 dernières versions de
         chaque state sont gardées), accès public bloqué, et <code>force_destroy = false</code> (impossible de le supprimer tant qu’il contient des states).
-        Il range un carnet par environnement : <code>core/dev/default.tfstate</code> et <code>core/stg/default.tfstate</code>.
+        Il range un carnet par workspace : <code>core/dev.tfstate</code> et <code>core/stg.tfstate</code>.
       </p>
       <div class="callout warn">
         <p>
@@ -750,7 +734,7 @@ front_public             = true</pre>
         </p>
         <ol>
           <li>une petite couche temporaire (« bootstrap ») a créé le bucket avec un state local, sur le disque ;</li>
-          <li>une fois <code>core</code> en place, on a <strong>importé</strong> le bucket dans le state <code>core/dev</code> (bloc <code>import</code>) : Terraform l’a adopté sans le recréer ;</li>
+          <li>une fois <code>core</code> en place, on a <strong>importé</strong> le bucket dans le state de dev (bloc <code>import</code>) : Terraform l’a adopté sans le recréer ;</li>
           <li>la couche bootstrap a ensuite été supprimée. Elle n’est plus nécessaire.</li>
         </ol>
       </div>
@@ -815,7 +799,7 @@ front_public             = true</pre>
       <h3>Mini check-list débutant</h3>
       <ol>
         <li><code>gcloud auth login</code> puis <code>gcloud auth application-default login</code></li>
-        <li><code>make init ENV=…</code> à chaque changement d’environnement</li>
+        <li><code>terraform workspace show</code> avant chaque <code>plan</code> / <code>apply</code></li>
         <li>Toujours <code>plan</code> avant <code>apply</code>, et lire la ligne « to destroy »</li>
         <li>Le code applicatif se déploie par un push Git, pas par Terraform</li>
         <li>Ne pas mettre le state dans Git ; ne pas détruire le bucket tfstate</li>
@@ -826,7 +810,6 @@ front_public             = true</pre>
     <footer>
       <p>
         Fichiers sources de ce guide : <code>terraform/core/</code>, <code>terraform/modules/</code>,
-        <code>terraform/vars/</code>, <code>terraform/config/</code>, <code>terraform/Makefile</code>,
         <code>cloudbuild.yaml</code> et <code>terraform/README.md</code>.
       </p>
     </footer>

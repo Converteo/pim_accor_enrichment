@@ -1,4 +1,4 @@
-# Valeurs communes à tous les environnements (dev et stg partagent le même projet GCP)
+# Valeurs communes à tous les environnements (dev et stg partagent le même projet GCP). Chargé automatiquement par Terraform.
 project_id                = "cvto-accor-pim-enrichment-dev"
 region                    = "europe-west1"
 region_short              = "euw1"
@@ -40,3 +40,33 @@ apis = [
 github_owner         = "Converteo"
 github_repo          = "pim_accor_enrichment"
 github_repository_id = "1405481297" # api.github.com/repos/Converteo/pim_accor_enrichment → id
+
+# Réglages par environnement : la clé est le nom du workspace (terraform workspace select dev|stg)
+environments = {
+  dev = {
+    deploy_branch = "dev" # chaque push sur cette branche déploie l'environnement (Cloud Build)
+
+    # dev porte les ressources uniques au projet : bucket de state, rôles du SA Terraform, pool WIF
+    manage_project_resources = true
+    # editor ne permet pas de poser de l'IAM au niveau d'une ressource : ces rôles le permettent
+    terraform_sa_extra_roles = [
+      "roles/run.admin",                     # IAM des services Cloud Run (invoker, developer)
+      "roles/artifactregistry.admin",        # IAM des dépôts Docker (writer pour la CI)
+      "roles/iam.workloadIdentityPoolAdmin", # pool d'identités GitHub Actions (WIF)
+      "roles/bigquery.admin",                # IAM des datasets du pipeline
+      "roles/secretmanager.admin",           # IAM du secret de la clé API du PIM
+    ]
+
+    front_public  = true
+    front_scaling = { min = 0, max = 2 }
+    back_scaling  = { min = 0, max = 2 }
+  }
+
+  stg = {
+    deploy_branch = "stg"
+
+    front_public  = true
+    front_scaling = { min = 0, max = 2 }
+    back_scaling  = { min = 0, max = 2 }
+  }
+}

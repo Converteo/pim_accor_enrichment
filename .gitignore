@@ -25,8 +25,8 @@ __pycache__/
 .terraform/
 *.tfstate
 *.tfstate.*
-# tfvars sans secret versionnés ; overrides locaux ignorés
+# terraform.tfvars sans secret, versionné ; overrides locaux ignorés
 *.local.tfvars
 crash.log
-tfplan_*
+tfplan*
 .terraform.lock.hcl.bak
