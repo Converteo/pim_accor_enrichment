@@ -14,17 +14,27 @@
 main:
   params: [args]
   steps:
+    # args is null when the workflow is run without arguments (args itself cannot be reassigned)
     - init:
         assign:
-          - args: ${default(args, {})}
+          - input: {}
           - project: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
           - jobs_root: ${"projects/" + project + "/locations/" + sys.get_env("GOOGLE_CLOUD_LOCATION") + "/jobs/"}
           - bucket: ${sys.get_env("PROMPTS_BUCKET")}
-          - extract: ${default(map.get(args, "extract"), map.get(args, "source") != null) and not default(map.get(args, "skip_extract"), false)}
-          - deposited_at: ${default(map.get(args, "deposited_at"), "")}
-          - priorites: ${default(map.get(args, "priorites"), "P1,P2,P3")}
           - familles: []
           - failures: []
+
+    - read_args:
+        switch:
+          - condition: ${args != null}
+            assign:
+              - input: ${args}
+
+    - settings:
+        assign:
+          - extract: ${default(map.get(input, "extract"), map.get(input, "source") != null) and not default(map.get(input, "skip_extract"), false)}
+          - deposited_at: ${default(map.get(input, "deposited_at"), "")}
+          - priorites: ${default(map.get(input, "priorites"), "P1,P2,P3")}
 
     - log_start:
         call: sys.log
@@ -32,7 +42,7 @@ main:
           severity: INFO
           json:
             message: "Pipeline started"
-            args: ${args}
+            args: ${input}
 
     - extract_pim:
         switch:
