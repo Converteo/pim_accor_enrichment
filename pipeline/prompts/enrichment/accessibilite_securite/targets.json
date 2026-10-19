@@ -1,6 +1,6 @@
 {
   "famille": "accessibilite_securite",
-  "version_prompts": "enrich-v1",
+  "version_prompts": "enrich-v2",
   "sources": {
     "booking_equipements": [
       "accessibility",
