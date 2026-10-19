@@ -227,3 +227,13 @@ def test_flat_files_one_file_per_entity_type():
     assert set(files) == {"pim_product.csv", "pim_pool.csv", "tracabilite.csv"}
     assert files["pim_product.csv"].splitlines()[1] == "101;0952;15:00"
     assert "NOUVELLE-0952-nouvelle_1;101;0952;True;Outdoor" in files["pim_pool.csv"]
+
+
+def test_enrichment_reads_only_sources_with_a_validated_match():
+    from enrich import sources_to_read
+
+    family = ["booking_equipements", "expedia"]
+    # Only Booking deposited so far: Expedia has no raw table and must not be queried
+    assert sources_to_read(family, {"0952": ["booking_equipements"], "1802": ["booking_equipements"]}) == ["booking_equipements"]
+    assert sources_to_read(family, {"0952": ["expedia", "booking_equipements"]}) == family
+    assert sources_to_read(family, {}) == []

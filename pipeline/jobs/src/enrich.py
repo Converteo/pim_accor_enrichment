@@ -71,6 +71,12 @@ def run(settings: Settings) -> int:
     return 1 if failed else 0
 
 
+def sources_to_read(family_sources: list[str], valid_sources: dict[str, list[str]]) -> list[str]:
+    """Sources of the family with at least one validated match, in the family's order."""
+    used = {s for sources in valid_sources.values() for s in sources}
+    return [s for s in family_sources if s in used]
+
+
 def load_context(client: bigquery.Client, settings: Settings, targets: dict, champs: list[dict]):
     family_sources = [s for s in targets["sources"] if s in SOURCES]
     valid = bq.rows(client, f"""
@@ -81,9 +87,11 @@ def load_context(client: bigquery.Client, settings: Settings, targets: dict, cha
     """, {"sources": family_sources})
     valid_sources = {r["rid"]: sorted(r["sources"]) for r in valid}
     rids = sorted(valid_sources)
+    # Only the sources with a validated match are read: a source never deposited has no raw table
+    read_sources = sources_to_read(family_sources, valid_sources)
 
     scraped: dict[str, dict[str, dict]] = {}
-    for source in family_sources:
+    for source in read_sources:
         cfg, cols = SOURCES[source], targets["sources"][source]
         select = ", ".join(f"CAST(`{c}` AS STRING) AS `{c}`" for c in cols)
         data = bq.rows(client, f"""
