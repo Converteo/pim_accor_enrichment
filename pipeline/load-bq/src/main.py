@@ -5,7 +5,7 @@ Eventarc posts here when a file lands in the OTA files bucket at <source>/<file>
   2. file loaded into a temporary table, every column as STRING
   3. rows appended to raw.<source> with the deposit id and the load timestamp; new columns are added on the fly,
      so a deposit with other or reordered columns still lands by column name
-  4. workflow wf-enrichment started with {"source", "depot_id"}
+  4. workflow wf-enrichment started with {"source", "depot_id", "deposited_at"}
 Each deposit is kept (no truncation), so two scrapings of the same source can be compared. The file stays in the
 bucket (versioned). Other objects of the bucket (outside a <source>/ folder, or not CSV) are ignored.
 """
@@ -107,7 +107,8 @@ def load_deposit(project_id: str, dataset_id: str, bucket_name: str, blob_name: 
     finally:
         bq.delete_table(temp, not_found_ok=True)
     print(f"Deposit {depot_id}: {rows} rows appended to {target} ({len(new)} new columns)")
-    return {"source": source, "depot_id": depot_id, "rows": rows, "file": blob_name}
+    return {"source": source, "depot_id": depot_id, "rows": rows, "file": blob_name,
+            "deposited_at": datetime.now(timezone.utc).isoformat()}
 
 
 def start_workflow(workflow: str, argument: dict) -> str:
@@ -129,7 +130,9 @@ def gcs_to_bq():
         return {"ignored": blob_name}
     result = load_deposit(os.environ["BQ_PROJECT_ID"], os.environ["BQ_DATASET_ID"], data["bucket"], blob_name, source)
     if os.environ.get("WORKFLOW_NAME"):
-        result["execution"] = start_workflow(os.environ["WORKFLOW_NAME"], {"source": source, "depot_id": result["depot_id"]})
+        # deposited_at: the workflow refreshes the PIM unless an extraction finished after this deposit
+        result["execution"] = start_workflow(os.environ["WORKFLOW_NAME"], {
+            "source": source, "depot_id": result["depot_id"], "deposited_at": result["deposited_at"]})
     print(json.dumps(result, ensure_ascii=False))
     return result
 

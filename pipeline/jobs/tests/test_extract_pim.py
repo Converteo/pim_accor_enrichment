@@ -114,3 +114,25 @@ def test_waits_for_the_running_extraction_then_reuses_it():
     state, waits = State(), []
     data = ex.acquire_or_wait(state, "run-2", 3600, sleep=waits.append, clock=lambda: 0)
     assert data == {"last_success_at": "just now"} and waits == [ex.WAIT_POLL] * 2
+
+
+def test_extraction_only_when_no_extraction_finished_after_the_deposit():
+    from datetime import datetime, timedelta, timezone
+
+    deposit = datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc)
+    assert ex.needs_extraction(None, deposit)  # first extraction
+    assert ex.needs_extraction(deposit - timedelta(days=1), deposit)  # new scrapings: refreshed
+    assert not ex.needs_extraction(deposit + timedelta(minutes=5), deposit)  # same sharing / deposited during it
+    assert ex.needs_extraction(deposit + timedelta(minutes=5), None)  # run by hand
+    assert ex.needs_extraction(deposit + timedelta(minutes=5), deposit, force=True)
+
+
+def test_deposit_time_is_read_as_utc(monkeypatch):
+    from datetime import timezone
+
+    import config
+
+    monkeypatch.setenv("DEPOSITED_AT", "2026-10-20T09:00:00Z")
+    assert config._optional_datetime("DEPOSITED_AT").tzinfo == timezone.utc
+    monkeypatch.setenv("DEPOSITED_AT", "")
+    assert config._optional_datetime("DEPOSITED_AT") is None

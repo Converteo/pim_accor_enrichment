@@ -16,9 +16,10 @@ Light on the API (same method as the audit: ~390 data calls plus one per value l
   - at most MAX_WORKERS calls at a time, halved while the API is saturated (429, 5xx), Retry-After honoured
   - a refused key (401, 403) or an API still failing after the retries stops the extraction at once: the batches
     not sent yet are cancelled; only a timed-out batch is split in two (hotels with many linked entities)
-Run once per sharing of new scrapings: skipped when the last extraction is younger than PIM_MAX_AGE_HOURS,
-unless FORCE=true. When another execution is extracting (several deposits at once), this one waits for it to finish
-and reuses its result, so that the enrichment never runs on a PIM being loaded.
+Refreshed when new scrapings arrive: the workflow runs this job only for a deposit, with its time (DEPOSITED_AT).
+The PIM is extracted unless an extraction finished after that deposit (several files of one sharing, a file deposited
+during an extraction): then it is reused. Without DEPOSITED_AT (run by hand), it is extracted. When another execution
+is extracting, this one waits for it to finish, so that the enrichment never runs on a PIM being loaded.
 """
 
 import logging
@@ -26,7 +27,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import requests
 from google.cloud import bigquery, secretmanager
@@ -223,12 +224,19 @@ def acquire_or_wait(state, run_id: str, lease_seconds: int, sleep=time.sleep, cl
         sleep(WAIT_POLL)
 
 
+def needs_extraction(last_success_at: datetime | None, deposited_at: datetime | None, force: bool = False) -> bool:
+    """Extract unless the last extraction finished after the deposit that started this run."""
+    if force or deposited_at is None or last_success_at is None:
+        return True
+    return last_success_at < deposited_at
+
+
 def run(settings: Settings) -> int:
     state = open_state(settings, "extract_pim")
     data = acquire_or_wait(state, settings.run_id, settings.lease_seconds)
     last = data.get("last_success_at")
-    if not settings.force and last and last > datetime.now(timezone.utc) - timedelta(hours=settings.pim_max_age_hours):
-        logger.info("PIM extracted at %s, younger than %dh: skipped", last, settings.pim_max_age_hours)
+    if not needs_extraction(last, settings.deposited_at, settings.force):
+        logger.info("PIM extracted at %s, after the deposit of %s: reused", last, settings.deposited_at)
         state.release(settings.run_id, success=False)
         return 0
     try:

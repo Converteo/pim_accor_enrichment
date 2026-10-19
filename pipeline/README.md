@@ -31,10 +31,10 @@ gcrj-…-export           fichier plat du PIM enrichi, quand plus rien n'est en 
 
 Seul le job `extract-pim` appelle l'API ; toutes les autres étapes travaillent sur la copie du PIM dans BigQuery.
 
-- **Une extraction par partage de scrapings.** Le workflow n'extrait que s'il est lancé par un dépôt (ou avec
-  `{"extract": true}`). Plusieurs fichiers déposés ensemble = une seule extraction : la première exécution extrait, les
-  autres attendent qu'elle finisse puis réutilisent son résultat (pas de nouvel appel pendant 12 h, `PIM_MAX_AGE_HOURS`).
-  L'enrichissement ne démarre qu'une fois le PIM chargé.
+- **Le PIM est actualisé quand de nouveaux scrapings arrivent.** Le workflow n'extrait que s'il est lancé par un
+  dépôt (ou avec `{"extract": true}`), et le job réutilise une extraction terminée après ce dépôt : plusieurs fichiers
+  déposés ensemble, ou un fichier déposé pendant une extraction, ne donnent qu'une extraction. Les exécutions suivantes
+  attendent la fin de l'extraction en cours ; l'enrichissement ne démarre qu'une fois le PIM chargé.
 - **Le planificateur et les lancements manuels n'appellent jamais l'API.**
 - **Extraction légère** (méthode de l'audit) : seulement les champs utiles et les 8 types d'entités liées, lots de
   20 hôtels ; ~390 appels de données plus un par liste de valeurs, ~5 minutes pour ~7 800 hôtels (mesuré à l’audit).
@@ -116,7 +116,7 @@ python tools/check_prompts.py prompts
 - **Déposer un scraping** : `gcloud storage cp resultats_equipements.csv gs://bkt-cvto-accor-pim-enrichment-dev-euw1-ota-files/booking_equipements/`
 - **Lancer le workflow à la main** :
   `gcloud workflows run wf-cvto-accor-pim-enrichment-dev-euw1-enrichment --location=europe-west1 --data='{"priorites": "P1"}'`
-- **Forcer une nouvelle extraction du PIM** (rarement) : `gcloud run jobs execute gcrj-cvto-accor-pim-enrichment-dev-euw1-extract-pim --region=europe-west1 --update-env-vars=FORCE=true`.
+- **Extraire le PIM à la main** (première fois, ou sans nouveau scraping) : `gcloud run jobs execute gcrj-cvto-accor-pim-enrichment-dev-euw1-extract-pim --region=europe-west1`.
 - **Calibrer l'agent juge** : ajuster `judge_threshold_high` et `judge_threshold_low` après une revue des 774 cas à
   valider et des 34 rejets, puis `terraform apply`.
 - **Planificateur** : le reprendre (`environments.dev.pipeline = { scheduler_paused = false }`) quand la chaîne a tourné de bout en bout.

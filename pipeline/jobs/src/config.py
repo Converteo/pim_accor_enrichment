@@ -2,6 +2,7 @@ import os
 import re
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_]+$")
 
@@ -16,6 +17,15 @@ def _required(name: str) -> str:
 def _optional_int(name: str) -> int | None:
     value = os.environ.get(name, "").strip()
     return int(value) if value else None
+
+
+def _optional_datetime(name: str) -> datetime | None:
+    """ISO 8601 date-time (UTC when no offset is given), None when empty."""
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return None
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 def identifier(value: str, name: str) -> str:
@@ -52,12 +62,12 @@ class Settings:
     llm_concurrency: int
     max_output_tokens: int
     lease_seconds: int
-    pim_max_age_hours: int
     nb_hotels: int
 
     # Set per execution by the workflow
     famille: str | None
     priorites: tuple[str, ...]
+    deposited_at: datetime | None  # deposit that started the run: the PIM is extracted unless it was after it
     force: bool
 
     run_id: str
@@ -91,10 +101,10 @@ class Settings:
             llm_concurrency=int(os.environ.get("LLM_CONCURRENCY", "4")),
             max_output_tokens=int(os.environ.get("MAX_OUTPUT_TOKENS", "32768")),
             lease_seconds=int(os.environ.get("LEASE_SECONDS", "3600")),
-            pim_max_age_hours=int(os.environ.get("PIM_MAX_AGE_HOURS", "12")),
             nb_hotels=int(os.environ.get("NB_HOTELS", "1000")),
             famille=identifier(famille, "FAMILLE") if famille else None,
             priorites=tuple(p.strip() for p in os.environ.get("PRIORITES", "P1,P2,P3").split(",") if p.strip()),
+            deposited_at=_optional_datetime("DEPOSITED_AT"),
             force=os.environ.get("FORCE", "").lower() in ("1", "true", "yes"),
             run_id=os.environ.get("CLOUD_RUN_EXECUTION") or uuid.uuid4().hex,
         )
