@@ -1,0 +1,179 @@
+[
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "rid",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "depot_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "load_dts",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pim_entity_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "nom_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "nom_commercial_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "marque_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ancienne_marque_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "date_rebranding_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ville_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pays_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "adresse_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "statut_pim",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "nom_scraping",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ville_scraping",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "marque_scraping",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pays_scraping",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "url",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "page_scrapee",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pays_page",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "debut_description",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "score_nom",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ecarts",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "rebranding",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "partagee_avec",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "verdict_identite",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "motif_identite",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "verdict_page",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "motif_page",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pre_verdict",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Rapprochement OK | À valider | Rejeté"
+  },
+  {
+    "name": "pre_motif",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_hash",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Empreinte des colonnes d'identité : un rapprochement déjà jugé avec la même empreinte n'est pas rejugé"
+  },
+  {
+    "name": "computed_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

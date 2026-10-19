@@ -11,6 +11,7 @@
 #   _FRONT_SERVICE  gcr-cvto-accor-pim-enrichment-<env>-euw1-front
 #   _BACK_SERVICE   gcr-cvto-accor-pim-enrichment-<env>-euw1-back
 #   _TAG            7 premiers caractères du commit (tag de l'image)
+#   _BASE           cvto-accor-pim-enrichment-<env>-euw1 (noms des ressources du pipeline)
 
 steps:
   # ---------- Frontend ----------
@@ -64,6 +65,57 @@ steps:
         else
           echo "Pas de backend/Dockerfile : déploiement backend ignoré."
         fi
+
+  # ---------- Pipeline d'enrichissement (pipeline/, ressources : terraform/core/pipeline.tf) ----------
+  - id: pipeline-tests
+    name: python:3.11-slim
+    waitFor: ["-"] # démarre en parallèle du frontend
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        pip install --quiet --root-user-action=ignore \
+          -r pipeline/jobs/src/requirements.txt -r pipeline/load-bq/src/requirements.txt pytest
+        python -m pytest -q pipeline/jobs/tests pipeline/load-bq/tests
+        python pipeline/tools/check_prompts.py pipeline/prompts
+
+  - id: pipeline-build-push
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["pipeline-tests"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        # Une image pour les 5 jobs (pipeline/jobs), une pour le service de chargement (pipeline/load-bq)
+        docker build --tag=${_AR_PATH}/pipeline:${_TAG} --tag=${_AR_PATH}/pipeline:${_ENV} pipeline/jobs/src
+        docker build --tag=${_AR_PATH}/load-bq:${_TAG} --tag=${_AR_PATH}/load-bq:${_ENV} pipeline/load-bq/src
+        docker push --all-tags ${_AR_PATH}/pipeline
+        docker push --all-tags ${_AR_PATH}/load-bq
+
+  - id: pipeline-deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: ["pipeline-build-push"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        # Jobs et service : seule l'image change, leur configuration reste dans Terraform
+        for job in extract-pim matching judge enrich export; do
+          gcloud run jobs update gcrj-${_BASE}-$$job --image=${_AR_PATH}/pipeline:${_TAG} --region=${_REGION} --quiet
+        done
+        gcloud run deploy gcr-${_BASE}-load-bq --image=${_AR_PATH}/load-bq:${_TAG} --region=${_REGION} --quiet
+
+        gcloud workflows deploy wf-${_BASE}-enrichment \
+          --source=pipeline/workflow/workflow.yaml --location=${_REGION} \
+          --service-account=sa-${_ENV}-workflows@${PROJECT_ID}.iam.gserviceaccount.com \
+          --set-env-vars=EXTRACT_JOB=gcrj-${_BASE}-extract-pim,MATCHING_JOB=gcrj-${_BASE}-matching,JUDGE_JOB=gcrj-${_BASE}-judge,ENRICH_JOB=gcrj-${_BASE}-enrich,PROMPTS_BUCKET=bkt-${_BASE}-prompts \
+          --quiet
+
+        # Prompts : copie exacte de pipeline/prompts (un fichier retiré du repo est retiré du bucket)
+        gcloud storage rsync pipeline/prompts gs://bkt-${_BASE}-prompts --recursive --delete-unmatched-destination-objects
 
 options:
   # Obligatoire avec un service account dédié : les logs vont dans Cloud Logging

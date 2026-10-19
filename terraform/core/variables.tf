@@ -106,3 +106,21 @@ variable "files_noncurrent_retention_days" {
   type        = number
   default     = 30
 }
+
+# ---------- pipeline d'enrichissement (pipeline/) ----------
+variable "pipeline" {
+  description = "Réglages du pipeline, posés en variables d'environnement des jobs."
+  type = object({
+    gemini_model         = optional(string, "gemini-3.8-flash")
+    thinking_level       = optional(string, "LOW")
+    vertex_location      = optional(string, "eu")
+    llm_concurrency      = optional(number, 6)
+    judge_threshold_high = optional(number, 80) # score de l'agent juge à partir duquel un rapprochement est validé automatiquement
+    judge_threshold_low  = optional(number, 30) # en dessous : rejeté ; entre les deux : à valider dans l'interface
+    # null = pas de validation automatique des enrichissements : tout passe par l'interface
+    enrich_auto_validate_score = optional(number)
+    scope_status               = optional(string, "Open,Pre-opening") # statuts d'hôtel du PIM traités
+    scheduler_paused           = optional(bool, true)
+  })
+  default = {}
+}

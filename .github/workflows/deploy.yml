@@ -10,13 +10,16 @@ name: Deploy (Cloud Build)
 on:
   push:
     branches: [dev, stg]
-    # Un push qui ne touche que l'infra ou la doc ne redéploie pas l'application
-    paths-ignore:
-      - "terraform/**"
-      - "**/*.md"
-      - "**/docs/**"
-      - "renovate.json"
-      - "docker-compose.yml"
+    # Un push qui ne touche que l'infra ou la doc ne redéploie pas l'application.
+    # Les prompts du pipeline sont des .md mais se déploient (dernière règle qui correspond l'emporte).
+    paths:
+      - "**"
+      - "!terraform/**"
+      - "!**/*.md"
+      - "pipeline/prompts/**"
+      - "!**/docs/**"
+      - "!renovate.json"
+      - "!docker-compose.yml"
 
 # Un seul déploiement à la fois par environnement ; les suivants attendent leur tour
 concurrency:
@@ -65,4 +68,4 @@ jobs:
             --config=cloudbuild.yaml \
             --service-account="projects/${PROJECT_ID}/serviceAccounts/sa-${ENV}-cloudbuild@${PROJECT_ID}.iam.gserviceaccount.com" \
             --gcs-source-staging-dir="gs://bkt-${BASE}-build-sources/source" \
-            --substitutions="_ENV=${ENV},_TAG=${TAG},_REGION=${REGION},_AR_PATH=${REGION}-docker.pkg.dev/${PROJECT_ID}/ar-${BASE}-docker,_FRONT_SERVICE=gcr-${BASE}-front,_BACK_SERVICE=gcr-${BASE}-back"
+            --substitutions="_ENV=${ENV},_TAG=${TAG},_REGION=${REGION},_AR_PATH=${REGION}-docker.pkg.dev/${PROJECT_ID}/ar-${BASE}-docker,_FRONT_SERVICE=gcr-${BASE}-front,_BACK_SERVICE=gcr-${BASE}-back,_BASE=${BASE}"

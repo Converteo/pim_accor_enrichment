@@ -24,6 +24,16 @@ apis = [
   "artifactregistry.googleapis.com",
   "cloudbuild.googleapis.com",
   "sts.googleapis.com", # échange de jetons GitHub → GCP (Workload Identity Federation)
+  # pipeline d'enrichissement (terraform/core/pipeline.tf)
+  "bigquery.googleapis.com",
+  "firestore.googleapis.com",
+  "secretmanager.googleapis.com",
+  "aiplatform.googleapis.com", # Gemini (agents juge et d'enrichissement)
+  "workflows.googleapis.com",
+  "workflowexecutions.googleapis.com",
+  "eventarc.googleapis.com",
+  "pubsub.googleapis.com", # transport des événements Cloud Storage → Eventarc
+  "cloudscheduler.googleapis.com",
 ]
 
 # Dépôt GitHub autorisé à déployer (GitHub Actions + Workload Identity Federation)

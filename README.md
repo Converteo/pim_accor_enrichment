@@ -1,12 +1,15 @@
 # pim_accor_enrichment
 
-Interface de validation des enrichissements de fiches établissement (PIM Accor).
+Interface de validation des enrichissements de fiches établissement (PIM Accor), et pipeline qui produit ces
+enrichissements à partir des scrapings Booking et Expedia (`pipeline/`).
 
 ## Structure
 
 ```
 frontend/            Next.js 16 (App Router, next-intl FR/EN), design ALL Accor
   Dockerfile         image de production multi-étapes (build standalone, utilisateur non-root)
+pipeline/            pipeline d'enrichissement : chargement des scrapings, extraction PIM, rapprochement,
+                     agents IA juge et enrichissement, export — voir pipeline/README.md
 terraform/           infrastructure GCP dev + stg (Cloud Run front/back, buckets, Artifact Registry) — voir terraform/README.md
 .github/workflows/   deploy.yml : sur push dev / stg, authentification WIF puis Cloud Build
 cloudbuild.yaml      recette de build : image Docker + push Artifact Registry + déploiement Cloud Run

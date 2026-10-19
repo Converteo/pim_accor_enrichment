@@ -1,0 +1,17 @@
+[
+  {
+    "name": "cvl_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "cle",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "libelle",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  }
+]

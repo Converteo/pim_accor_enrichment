@@ -10,6 +10,12 @@ out/
 *.tsbuildinfo
 npm-debug.log*
 
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+
 # Env files
 .env
 .env.*

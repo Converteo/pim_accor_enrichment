@@ -7,6 +7,8 @@ terraform_sa_extra_roles = [
   "roles/run.admin",                     # IAM des services Cloud Run (invoker, developer)
   "roles/artifactregistry.admin",        # IAM des dépôts Docker (writer pour la CI)
   "roles/iam.workloadIdentityPoolAdmin", # pool d'identités GitHub Actions (WIF)
+  "roles/bigquery.admin",                # IAM des datasets du pipeline
+  "roles/secretmanager.admin",           # IAM du secret de la clé API du PIM
 ]
 
 # Chaque push sur cette branche déploie l'environnement (Cloud Build)
