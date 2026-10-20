@@ -8,6 +8,11 @@ Eventarc posts here when a file lands in the OTA files bucket at <source>/<file>
   4. workflow wf-enrichment started with {"source", "depot_id", "deposited_at"}
 Each deposit is kept (no truncation), so two scrapings of the same source can be compared. The file stays in the
 bucket (versioned). Other objects of the bucket (outside a <source>/ folder, or not CSV) are ignored.
+
+A deposit is one version of an object: depot_id = <source>-<generation>, and the load job is named after it. Eventarc
+delivers at least once (the event comes again when the answer takes more than the 10 s ack deadline, e.g. on a cold
+start): a second delivery of the same version finds its job already there and is skipped, with no rows and no workflow.
+Overwriting the file, even with the same content, makes a new generation, so a new deposit.
 """
 
 import csv
@@ -20,6 +25,7 @@ import uuid
 from datetime import datetime, timezone
 
 from cloudevents.http import from_http
+from google.api_core.exceptions import Conflict
 from flask import Flask, request
 from google.cloud import bigquery, storage
 from google.cloud.workflows import executions_v1
@@ -73,11 +79,22 @@ def read_header(blob: storage.Blob) -> list[str]:
         return next(csv.reader(io.StringIO(f.readline()), delimiter=";"))
 
 
-def load_deposit(project_id: str, dataset_id: str, bucket_name: str, blob_name: str, source: str) -> dict:
+def deposit_id(source: str, generation) -> str:
+    """One deposit = one version of the object."""
+    return f"{source}-{generation}"
+
+
+def load_job_id(depot_id: str) -> str:
+    """BigQuery job ids are unique in the project: the second delivery of a deposit cannot load it again."""
+    return "deposit_" + re.sub(r"[^A-Za-z0-9_-]", "_", depot_id)
+
+
+def load_deposit(project_id: str, dataset_id: str, bucket_name: str, blob_name: str, source: str, generation) -> dict | None:
+    """Rows appended to raw.<source>; None when this version of the file was already delivered."""
     bq = client("bigquery")
-    blob = client("storage").bucket(bucket_name).blob(blob_name)
+    blob = client("storage").bucket(bucket_name).blob(blob_name, generation=int(generation))
+    depot_id = deposit_id(source, generation)
     columns = normalize_headers(read_header(blob))
-    depot_id = f"{source}-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:6]}"
     target = f"{project_id}.{dataset_id}.{source}"
     temp = f"{project_id}.{dataset_id}._tmp_{source}_{uuid.uuid4().hex[:8]}"
 
@@ -86,7 +103,12 @@ def load_deposit(project_id: str, dataset_id: str, bucket_name: str, blob_name: 
         allow_jagged_rows=True, encoding="UTF-8", schema=[bigquery.SchemaField(c, "STRING") for c in columns],
         write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
     )
-    bq.load_table_from_uri(f"gs://{bucket_name}/{blob_name}", temp, job_config=job_config).result()
+    try:
+        job = bq.load_table_from_uri(f"gs://{bucket_name}/{blob_name}", temp, job_config=job_config,
+                                     job_id=load_job_id(depot_id))
+    except Conflict:
+        return None
+    job.result()
     try:
         table = bigquery.Table(target, schema=[bigquery.SchemaField(c, "STRING") for c in columns] + [
             bigquery.SchemaField("depot_id", "STRING"), bigquery.SchemaField("load_dts", "TIMESTAMP")])
@@ -120,7 +142,7 @@ def start_workflow(workflow: str, argument: dict) -> str:
 
 @app.post("/")
 def gcs_to_bq():
-    """Eventarc delivers each event once (retry_policy max_attempts = 1): an error is logged and returned as a 500."""
+    """An error is logged and returned as a 500; Eventarc does not retry it (retry_policy max_attempts = 1)."""
     event = from_http(request.headers, request.get_data())
     data = event.data if isinstance(event.data, dict) else json.loads(event.data)
     blob_name = data["name"]
@@ -128,7 +150,11 @@ def gcs_to_bq():
     if source is None:
         print(f"Ignored: {blob_name}")
         return {"ignored": blob_name}
-    result = load_deposit(os.environ["BQ_PROJECT_ID"], os.environ["BQ_DATASET_ID"], data["bucket"], blob_name, source)
+    result = load_deposit(os.environ["BQ_PROJECT_ID"], os.environ["BQ_DATASET_ID"], data["bucket"], blob_name, source,
+                          data["generation"])
+    if result is None:
+        print(f"Already loaded: {blob_name}#{data['generation']}, event delivered again")
+        return {"duplicate": deposit_id(source, data["generation"])}
     if os.environ.get("WORKFLOW_NAME"):
         # deposited_at: the workflow refreshes the PIM unless an extraction finished after this deposit
         result["execution"] = start_workflow(os.environ["WORKFLOW_NAME"], {
