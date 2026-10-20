@@ -5,7 +5,7 @@
     "mode": "REQUIRED"
   },
   {
-    "name": "lot_id",
+    "name": "batch_id",
     "type": "STRING",
     "mode": "NULLABLE"
   },
@@ -30,7 +30,7 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "pre_motif",
+    "name": "pre_reason",
     "type": "STRING",
     "mode": "NULLABLE"
   },
@@ -46,13 +46,13 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "niveau",
+    "name": "confidence",
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "haut | moyen | bas"
   },
   {
-    "name": "motif",
+    "name": "reason",
     "type": "STRING",
     "mode": "NULLABLE"
   },
@@ -62,18 +62,18 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "statut",
+    "name": "status",
     "type": "STRING",
     "mode": "REQUIRED",
     "description": "valide_auto | a_valider | rejete_auto"
   },
   {
-    "name": "seuil_haut",
+    "name": "threshold_high",
     "type": "INTEGER",
     "mode": "NULLABLE"
   },
   {
-    "name": "seuil_bas",
+    "name": "threshold_low",
     "type": "INTEGER",
     "mode": "NULLABLE"
   },

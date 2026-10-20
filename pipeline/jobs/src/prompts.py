@@ -3,7 +3,7 @@
 Bucket layout:
   judge/prompt.md, judge/meta.json                                   judge agent
   enrichment/00-bloc-commun.md                                       common block of the enrichment agent
-  enrichment/<famille>/prompt.md, enrichment/<famille>/targets.json  one folder per family of fields
+  enrichment/<family>/prompt.md, enrichment/<family>/targets.json  one folder per family of fields
 """
 
 import json
@@ -37,8 +37,8 @@ def load_judge(client: storage.Client, bucket_name: str) -> PromptBundle:
     return PromptBundle(system_prompt=assemble(read("judge/prompt.md")), version=meta.get("version", "unknown"))
 
 
-def load_enrichment(client: storage.Client, bucket_name: str, famille: str) -> tuple[str, str, dict]:
+def load_enrichment(client: storage.Client, bucket_name: str, family: str) -> tuple[str, str, dict]:
     """(common block, family block, targets) of a family; the targets block is rendered by enrich.py."""
     read = _reader(client, bucket_name)
-    targets = json.loads(read(f"enrichment/{famille}/targets.json"))
-    return read(f"enrichment/{COMMON_BLOCK}"), read(f"enrichment/{famille}/prompt.md"), targets
+    targets = json.loads(read(f"enrichment/{family}/targets.json"))
+    return read(f"enrichment/{COMMON_BLOCK}"), read(f"enrichment/{family}/prompt.md"), targets

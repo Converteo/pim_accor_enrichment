@@ -1,0 +1,121 @@
+{
+  "family": "accessibility_safety",
+  "prompt_version": "enrich-v2",
+  "sources": {
+    "booking_equipements": [
+      "accessibility",
+      "general",
+      "safety_security"
+    ],
+    "expedia": [
+      "important_info",
+      "property_about"
+    ]
+  },
+  "fields": [
+    {
+      "pim_field": "ProductFeaturesAccessible",
+      "entity": "Product",
+      "label": "Accessibility hotel features",
+      "pim_type": "CVL",
+      "cvl_id": "AccessibleHotelFeatures",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Accessibility"
+    },
+    {
+      "pim_field": "ProductHotelZoneAccessible",
+      "entity": "Product",
+      "label": "Hotel zone accessible",
+      "pim_type": "CVL",
+      "cvl_id": "HotelAccessibility",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Vocabulaires différents (ex. « Toilet with grab rails »)",
+      "audit_source": "Booking Accessibility"
+    },
+    {
+      "pim_field": "ProductReducedMobilityFacilities",
+      "entity": "Product",
+      "label": "Reduced mobility facilities",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking « Facilities for disabled guests »"
+    },
+    {
+      "pim_field": "ProductWheelchairAccessible",
+      "entity": "Product",
+      "label": "Wheelchair accessible hotel",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Accessibility « Wheelchair accessible »"
+    },
+    {
+      "pim_field": "ProductAccessControlInfo",
+      "entity": "Product",
+      "label": "Access control information",
+      "pim_type": "CVL",
+      "cvl_id": "AccessControlInfo",
+      "multivalue": true,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Accès par carte",
+      "audit_source": "Booking Safety & security"
+    },
+    {
+      "pim_field": "ProductAlarmInfo",
+      "entity": "Product",
+      "label": "Alarm information",
+      "pim_type": "CVL",
+      "cvl_id": "AlarmInfo",
+      "multivalue": true,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Détecteurs de fumée, alarme",
+      "audit_source": "Booking Safety & security"
+    },
+    {
+      "pim_field": "ProductFireEmergencyInfo",
+      "entity": "Product",
+      "label": "Fire & emergency information",
+      "pim_type": "CVL",
+      "cvl_id": "FireEmergencyInfo",
+      "multivalue": true,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Extincteurs",
+      "audit_source": "Booking Safety & security"
+    },
+    {
+      "pim_field": "ProductStaffMonitoringInfo",
+      "entity": "Product",
+      "label": "Staff & monitoring information",
+      "pim_type": "CVL",
+      "cvl_id": "StaffMonitoringInfo",
+      "multivalue": true,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Sécurité 24 h/24",
+      "audit_source": "Booking Safety & security"
+    }
+  ]
+}

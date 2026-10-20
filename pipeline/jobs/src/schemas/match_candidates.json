@@ -30,67 +30,67 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "nom_pim",
+    "name": "pim_name",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "nom_commercial_pim",
+    "name": "pim_commercial_name",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "marque_pim",
+    "name": "pim_brand",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "ancienne_marque_pim",
+    "name": "pim_former_brand",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "date_rebranding_pim",
+    "name": "pim_rebranding_date",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "ville_pim",
+    "name": "pim_city",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "pays_pim",
+    "name": "pim_country",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "adresse_pim",
+    "name": "pim_address",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "statut_pim",
+    "name": "pim_status",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "nom_scraping",
+    "name": "scraped_name",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "ville_scraping",
+    "name": "scraped_city",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "marque_scraping",
+    "name": "scraped_brand",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "pays_scraping",
+    "name": "scraped_country",
     "type": "STRING",
     "mode": "NULLABLE"
   },
@@ -100,27 +100,27 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "page_scrapee",
+    "name": "page_name",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "pays_page",
+    "name": "page_country",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "debut_description",
+    "name": "description_head",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "score_nom",
+    "name": "name_score",
     "type": "FLOAT",
     "mode": "NULLABLE"
   },
   {
-    "name": "ecarts",
+    "name": "gaps",
     "type": "STRING",
     "mode": "NULLABLE"
   },
@@ -130,27 +130,27 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "partagee_avec",
+    "name": "shared_with",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "verdict_identite",
+    "name": "identity_verdict",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "motif_identite",
+    "name": "identity_reason",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "verdict_page",
+    "name": "page_verdict",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "motif_page",
+    "name": "page_reason",
     "type": "STRING",
     "mode": "NULLABLE"
   },
@@ -161,7 +161,7 @@
     "description": "Rapprochement OK | À valider | Rejeté"
   },
   {
-    "name": "pre_motif",
+    "name": "pre_reason",
     "type": "STRING",
     "mode": "NULLABLE"
   },

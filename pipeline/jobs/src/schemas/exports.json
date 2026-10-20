@@ -5,27 +5,27 @@
     "mode": "REQUIRED"
   },
   {
-    "name": "chemin",
+    "name": "path",
     "type": "STRING",
     "mode": "REQUIRED"
   },
   {
-    "name": "lignes",
+    "name": "row_count",
     "type": "INTEGER",
     "mode": "NULLABLE"
   },
   {
-    "name": "hotels",
+    "name": "hotel_count",
     "type": "INTEGER",
     "mode": "NULLABLE"
   },
   {
-    "name": "fichiers",
+    "name": "files",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "lance_par",
+    "name": "triggered_by",
     "type": "STRING",
     "mode": "NULLABLE"
   },

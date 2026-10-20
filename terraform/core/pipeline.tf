@@ -22,23 +22,23 @@ locals {
 
   # Tables écrites par les jobs et le backend ; schémas partagés avec le code (pipeline/jobs/src/schemas)
   tables = {
-    pim_model                = { dataset = "raw", partition = null, cluster = ["entity_type"] }
-    pim_cvl_values           = { dataset = "raw", partition = null, cluster = ["cvl_id"] }
-    candidats                = { dataset = "matching", partition = null, cluster = ["source", "pre_verdict"] }
-    rid_absents              = { dataset = "matching", partition = null, cluster = ["source"] }
-    jugements                = { dataset = "matching", partition = "judged_at", cluster = ["rid", "statut"] }
-    decisions_rapprochement  = { dataset = "validation", partition = "decided_at", cluster = ["rid", "source"] }
-    enrichissements          = { dataset = "enhanced", partition = "enriched_at", cluster = ["famille", "rid", "statut"] }
-    decisions_enrichissement = { dataset = "validation", partition = "decided_at", cluster = ["rid", "champ_pim"] }
-    exports                  = { dataset = "enhanced", partition = "exported_at", cluster = [] }
+    pim_model            = { dataset = "raw", partition = null, cluster = ["entity_type"] }
+    pim_cvl_values       = { dataset = "raw", partition = null, cluster = ["cvl_id"] }
+    match_candidates     = { dataset = "matching", partition = null, cluster = ["source", "pre_verdict"] }
+    unknown_rids         = { dataset = "matching", partition = null, cluster = ["source"] }
+    match_judgments      = { dataset = "matching", partition = "judged_at", cluster = ["rid", "status"] }
+    match_decisions      = { dataset = "validation", partition = "decided_at", cluster = ["rid", "source"] }
+    enrichments          = { dataset = "enhanced", partition = "enriched_at", cluster = ["family", "rid", "status"] }
+    enrichment_decisions = { dataset = "validation", partition = "decided_at", cluster = ["rid", "pim_field"] }
+    exports              = { dataset = "enhanced", partition = "exported_at", cluster = [] }
   }
 
   # Vues, dans l'ordre de leurs dépendances
   views = {
-    v_rapprochements          = "matching"
-    v_rapprochements_valides  = "matching"
-    v_enrichissements         = "enhanced"
-    v_enrichissements_valides = "enhanced"
+    v_matches              = "matching"
+    v_approved_matches     = "matching"
+    v_enrichments          = "enhanced"
+    v_approved_enrichments = "enhanced"
   }
 
   # Une étape = un job Cloud Run, même image (pipeline/jobs)
@@ -226,60 +226,60 @@ resource "google_bigquery_table" "pipeline" {
   }
 }
 
-resource "google_bigquery_table" "view_rapprochements" {
+resource "google_bigquery_table" "view_matches" {
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.pipeline["matching"].dataset_id
-  table_id            = "v_rapprochements"
+  table_id            = "v_matches"
   deletion_protection = false
 
   view {
-    query          = templatefile("${local.pipeline_src}/views/v_rapprochements.sql", local.dataset_refs)
+    query          = templatefile("${local.pipeline_src}/views/v_matches.sql", local.dataset_refs)
     use_legacy_sql = false
   }
 
   depends_on = [google_bigquery_table.pipeline]
 }
 
-resource "google_bigquery_table" "view_rapprochements_valides" {
+resource "google_bigquery_table" "view_approved_matches" {
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.pipeline["matching"].dataset_id
-  table_id            = "v_rapprochements_valides"
+  table_id            = "v_approved_matches"
   deletion_protection = false
 
   view {
-    query          = templatefile("${local.pipeline_src}/views/v_rapprochements_valides.sql", local.dataset_refs)
+    query          = templatefile("${local.pipeline_src}/views/v_approved_matches.sql", local.dataset_refs)
     use_legacy_sql = false
   }
 
-  depends_on = [google_bigquery_table.view_rapprochements]
+  depends_on = [google_bigquery_table.view_matches]
 }
 
-resource "google_bigquery_table" "view_enrichissements" {
+resource "google_bigquery_table" "view_enrichments" {
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.pipeline["enhanced"].dataset_id
-  table_id            = "v_enrichissements"
+  table_id            = "v_enrichments"
   deletion_protection = false
 
   view {
-    query          = templatefile("${local.pipeline_src}/views/v_enrichissements.sql", local.dataset_refs)
+    query          = templatefile("${local.pipeline_src}/views/v_enrichments.sql", local.dataset_refs)
     use_legacy_sql = false
   }
 
   depends_on = [google_bigquery_table.pipeline]
 }
 
-resource "google_bigquery_table" "view_enrichissements_valides" {
+resource "google_bigquery_table" "view_approved_enrichments" {
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.pipeline["enhanced"].dataset_id
-  table_id            = "v_enrichissements_valides"
+  table_id            = "v_approved_enrichments"
   deletion_protection = false
 
   view {
-    query          = templatefile("${local.pipeline_src}/views/v_enrichissements_valides.sql", local.dataset_refs)
+    query          = templatefile("${local.pipeline_src}/views/v_approved_enrichments.sql", local.dataset_refs)
     use_legacy_sql = false
   }
 
-  depends_on = [google_bigquery_table.view_enrichissements, google_bigquery_table.view_rapprochements_valides]
+  depends_on = [google_bigquery_table.view_enrichments, google_bigquery_table.view_approved_matches]
 }
 
 # Moindre privilège : chaque étape lit ce dont elle a besoin et n'écrit que dans son dataset.

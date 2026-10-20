@@ -21,12 +21,12 @@
     "description": "valide_humain | rejete_humain"
   },
   {
-    "name": "commentaire",
+    "name": "comment",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "auteur",
+    "name": "author",
     "type": "STRING",
     "mode": "REQUIRED"
   },

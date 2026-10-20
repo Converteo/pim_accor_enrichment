@@ -1,0 +1,121 @@
+{
+  "family": "wellness_fitness",
+  "prompt_version": "enrich-v2",
+  "sources": {
+    "booking_equipements": [
+      "wellness",
+      "activities"
+    ],
+    "expedia": [
+      "points_forts_sejour",
+      "property_about",
+      "important_info"
+    ]
+  },
+  "fields": [
+    {
+      "pim_field": "ProductAvailableWellnessCenter",
+      "entity": "Product",
+      "label": "Wellness center in the facility",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P1",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Wellness « Spa and wellness centre »"
+    },
+    {
+      "pim_field": "WellnessCenterType",
+      "entity": "WellnessCenter",
+      "label": "Property type",
+      "pim_type": "CVL",
+      "cvl_id": "ThalassaType",
+      "multivalue": false,
+      "priority": "P1",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Wellness « Spa facilities »"
+    },
+    {
+      "pim_field": "FitnessCenterChargedPersoLessonsSpecialCare",
+      "entity": "FitnessCenter",
+      "label": "Charged personal lessons and special care",
+      "pim_type": "CVL",
+      "cvl_id": "WellnessPersoLessonsAndCare",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Wellness (massage…)"
+    },
+    {
+      "pim_field": "FitnessCenterFreeWellServicesEquipments",
+      "entity": "FitnessCenter",
+      "label": "Free wellness services & equipment",
+      "pim_type": "CVL",
+      "cvl_id": "WellnessSerEquip",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Wellness (hammam…)"
+    },
+    {
+      "pim_field": "SportType",
+      "entity": "Sport",
+      "label": "Type",
+      "pim_type": "CVL",
+      "cvl_id": "SportActivities",
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Activities (tennis, golf…)"
+    },
+    {
+      "pim_field": "WellnessCenterChargedWellnessCenterServices",
+      "entity": "WellnessCenter",
+      "label": "Charged Wellness center services",
+      "pim_type": "CVL",
+      "cvl_id": "SpaServices",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Uniquement les services que la source dit payants.",
+      "audit_source": "Booking Wellness"
+    },
+    {
+      "pim_field": "WellnessCenterFreeWellnessCenterServices",
+      "entity": "WellnessCenter",
+      "label": "Free Wellness center services",
+      "pim_type": "CVL",
+      "cvl_id": "SpaServices",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Wellness (sauna, solarium…)"
+    },
+    {
+      "pim_field": "ProductFitnessCenter",
+      "entity": "Product",
+      "label": "Fitness center in the facility",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Wellness « Fitness centre »"
+    }
+  ]
+}

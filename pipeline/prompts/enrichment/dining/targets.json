@@ -1,0 +1,109 @@
+{
+  "family": "dining",
+  "prompt_version": "enrich-v2",
+  "sources": {
+    "booking_equipements": [
+      "food_drink",
+      "general",
+      "services"
+    ],
+    "expedia": [
+      "important_info",
+      "points_forts_sejour",
+      "property_about"
+    ]
+  },
+  "fields": [
+    {
+      "pim_field": "ProductServicesAvailableKidsMenu",
+      "entity": "Product",
+      "label": "Kids' menu available",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking « Kids' meals »"
+    },
+    {
+      "pim_field": "BarType",
+      "entity": "Bar",
+      "label": "Type",
+      "pim_type": "CVL",
+      "cvl_id": "BarType",
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Food & Drink (bar, snack bar, pool bar)"
+    },
+    {
+      "pim_field": "BreakfastCategory",
+      "entity": "Breakfast",
+      "label": "Breakfast category",
+      "pim_type": "CVL",
+      "cvl_id": "BreakfastCategory",
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Expedia IMPORTANT_INFO (buffet…)"
+    },
+    {
+      "pim_field": "BreakfastCharged",
+      "entity": "Breakfast",
+      "label": "Paying breakfast",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": true,
+      "instruction": "False si le petit-déjeuner est inclus ou gratuit, True s'il est payant (« Fee for breakfast »).",
+      "audit_source": "Expedia IMPORTANT_INFO « Fee for buffet breakfast »"
+    },
+    {
+      "pim_field": "RestaurantTypeFood",
+      "entity": "Restaurant",
+      "label": "Types of Food",
+      "pim_type": "CVL",
+      "cvl_id": "AccomodateMeal",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking « Special diet menus », « Kids' meals »"
+    },
+    {
+      "pim_field": "ProductFnBAvailableBar",
+      "entity": "Product",
+      "label": "Bar in the facility",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking Food & Drink « Bar »"
+    },
+    {
+      "pim_field": "ProductServiceFullMenuInRoom",
+      "entity": "Product",
+      "label": "Room service full menu",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking « Room service »"
+    }
+  ]
+}

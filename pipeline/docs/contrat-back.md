@@ -7,9 +7,9 @@ Datasets (un jeu par environnement, `<base>` = `cvto_accor_pim_enrichment_<env>_
 
 | Dataset | Accès du SA backend | Contenu |
 | --- | --- | --- |
-| `<base>_matching` | lecture | rapprochements RID × source, jugements de l'agent juge, vue `v_rapprochements` |
-| `<base>_enhanced` | lecture | valeurs proposées par l'agent, vue `v_enrichissements`, historique `exports` |
-| `<base>_validation` | lecture et écriture | décisions humaines (`decisions_rapprochement`, `decisions_enrichissement`) |
+| `<base>_matching` | lecture | rapprochements RID × source, jugements de l'agent juge, vue `v_matches` |
+| `<base>_enhanced` | lecture | valeurs proposées par l'agent, vue `v_enrichments`, historique `exports` |
+| `<base>_validation` | lecture et écriture | décisions humaines (`match_decisions`, `enrichment_decisions`) |
 
 Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.invoker` sur le job d'export et la lecture du bucket des exports.
 Les schémas des tables sont dans `pipeline/jobs/src/schemas/`, les vues dans `pipeline/jobs/src/views/`.
@@ -17,70 +17,70 @@ Les schémas des tables sont dans `pipeline/jobs/src/schemas/`, les vues dans `p
 ## 1. Rapprochements (bloquant)
 
 Un hôtel n'est enrichi avec une source que si son rapprochement est validé. Il faut donc un écran pour les rapprochements
-`a_valider` : sans décision, ces hôtels restent en attente.
+`needs_review` : sans décision, ces hôtels restent en attente.
 
-**Lire** : `<base>_matching.v_rapprochements`, une ligne par RID × source × page (`rid`, `source`, `source_hash`).
+**Lire** : `<base>_matching.v_matches`, une ligne par RID × source × page (`rid`, `source`, `source_hash`).
 
 | Colonne | Sens |
 | --- | --- |
-| `nom_pim`, `ville_pim`, `pays_pim`, `marque_pim`, `adresse_pim` | identité de l'hôtel dans le PIM |
-| `nom_scraping`, `page_scrapee`, `url`, `pays_page` | ce que la source a scrapé |
-| `pre_verdict`, `pre_motif` | contrôle déterministe (brique 1) |
-| `score` (0-100), `niveau`, `motif_agent`, `justification` | avis de l'agent juge (brique 2) |
-| `statut_final` | `valide_auto`, `a_valider`, `rejete_auto`, `valide_humain`, `rejete_humain`, `a_juger` |
-| `decision`, `auteur`, `decided_at`, `commentaire` | dernière décision humaine |
+| `pim_name`, `pim_city`, `pim_country`, `pim_brand`, `pim_address` | identité de l'hôtel dans le PIM |
+| `scraped_name`, `page_name`, `url`, `page_country` | ce que la source a scrapé |
+| `pre_verdict`, `pre_reason` | contrôle déterministe (brique 1) |
+| `score` (0-100), `confidence`, `judge_reason`, `justification` | avis de l'agent juge (brique 2) |
+| `final_status` | `auto_approved`, `needs_review`, `auto_rejected`, `human_approved`, `human_rejected`, `pending_judgment` |
+| `decision`, `author`, `decided_at`, `comment` | dernière décision humaine |
 
-**Écrire** : une ligne par décision dans `<base>_validation.decisions_rapprochement`, en ajout seul (jamais d'`UPDATE`) :
-`rid`, `source`, `source_hash`, `decision` (`valide_humain` | `rejete_humain`), `commentaire`, `auteur` (e-mail), `decided_at`.
+**Écrire** : une ligne par décision dans `<base>_validation.match_decisions`, en ajout seul (jamais d'`UPDATE`) :
+`rid`, `source`, `source_hash`, `decision` (`human_approved` | `human_rejected`), `comment`, `author` (e-mail), `decided_at`.
 La dernière décision l'emporte, y compris sur l'agent juge.
 
 ## 2. Enrichissements
 
-**Lire** : `<base>_enhanced.v_enrichissements`, une ligne par hôtel × champ PIM × entité (`enrichment_id`).
+**Lire** : `<base>_enhanced.v_enrichments`, une ligne par hôtel × champ PIM × entité (`enrichment_id`).
 À filtrer sur les rapprochements validés :
 
 ```sql
 SELECT e.*
-FROM `<base>_enhanced.v_enrichissements` e
-WHERE EXISTS (SELECT 1 FROM `<base>_matching.v_rapprochements_valides` r WHERE r.rid = e.rid AND r.source = e.source)
-  AND e.statut_final = 'proposee'
+FROM `<base>_enhanced.v_enrichments` e
+WHERE EXISTS (SELECT 1 FROM `<base>_matching.v_approved_matches` r WHERE r.rid = e.rid AND r.source = e.source)
+  AND e.final_status = 'proposed'
 ORDER BY e.priorite, e.score DESC
 ```
 
 | Colonne | Sens |
 | --- | --- |
-| `rid`, `famille`, `priorite` (P1 site, P2 API Content, P3 non exposé) | hôtel, famille de champs, exposition |
-| `entite`, `id_entite`, `champ_pim`, `libelle` | où la valeur ira dans le PIM ; plusieurs parkings ou piscines = une ligne par entité |
-| `valeur_pim` | valeur actuelle du PIM (vide en général) |
-| `valeur`, `libelle_valeur` | valeur proposée (code PIM et libellé pour les listes) |
-| `source`, `champ_source`, `extrait_source` | justification : la phrase du scraping |
-| `score` (0-100), `niveau`, `alerte` | confiance de l'agent ; score plafonné à 50 si l'extrait est introuvable |
-| `statut_final` | `proposee`, `validee_auto`, `ecart`, `deja_renseignee`, `non_traitee`, `rejetee`, puis `validee`, `invalidee`, `corrigee` après décision |
-| `valeur_finale` | valeur retenue (la valeur corrigée le cas échéant) |
+| `rid`, `family`, `priority` (P1 site, P2 API Content, P3 non exposé) | hôtel, famille de champs, exposition |
+| `entity`, `entity_id`, `pim_field`, `label` | où la valeur ira dans le PIM ; plusieurs parkings ou piscines = une ligne par entité |
+| `pim_value` | valeur actuelle du PIM (vide en général) |
+| `value`, `value_label` | valeur proposée (code PIM et libellé pour les listes) |
+| `source`, `source_field`, `source_excerpt` | justification : la phrase du scraping |
+| `score` (0-100), `confidence`, `warning` | confiance de l'agent ; score plafonné à 50 si l'extrait est introuvable |
+| `final_status` | `proposed`, `auto_approved`, `conflict`, `matches_pim`, `not_found`, `discarded`, puis `approved`, `rejected`, `corrected` après décision |
+| `final_value` | valeur retenue (la valeur corrigée le cas échéant) |
 
-`ecart` : l'agent a trouvé une valeur différente de celle du PIM. Elle n'écrase jamais le PIM et n'est pas exportée ;
+`conflict` : l'agent a trouvé une valeur différente de celle du PIM. Elle n'écrase jamais le PIM et n'est pas exportée ;
 à afficher pour information.
 
-**Écrire** : `<base>_validation.decisions_enrichissement`, en ajout seul :
-`enrichment_id`, `rid`, `champ_pim`, `id_entite`, `decision` (`validee` | `invalidee` | `corrigee`),
-`valeur_corrigee` (obligatoire si `corrigee`), `commentaire`, `auteur`, `decided_at`.
+**Écrire** : `<base>_validation.enrichment_decisions`, en ajout seul :
+`enrichment_id`, `rid`, `pim_field`, `entity_id`, `decision` (`approved` | `rejected` | `corrected`),
+`corrected_value` (obligatoire si `corrected`), `comment`, `author`, `decided_at`.
 
 Correspondance possible avec l'écran actuel du front (`frontend/src/domain/types.ts`) : une fiche = un RID, un attribut =
-une ligne de `v_enrichissements`, `score` / 100 pour l'échelle 0-1. À caler avec la personne en charge du front.
+une ligne de `v_enrichments`, `score` / 100 pour l'échelle 0-1. À caler avec la personne en charge du front.
 
 ## 3. Export
 
 Le fichier plat sort quand plus rien n'est en attente. Le backend lance le job `gcrj-<base>-export` (API Cloud Run
-`jobs.run`). Le job vérifie lui-même qu'aucun rapprochement `a_valider` ni aucune valeur `proposee` ne reste et refuse
+`jobs.run`). Le job vérifie lui-même qu'aucun rapprochement `needs_review` ni aucune valeur `proposed` ne reste et refuse
 sinon. Il écrit dans `bkt-<base>-exports/export/<date>/` et ajoute une ligne dans `<base>_enhanced.exports`.
 
 Nombre de décisions en attente (pour griser le bouton) :
 
 ```sql
 SELECT
-  (SELECT COUNT(*) FROM `<base>_matching.v_rapprochements` WHERE statut_final IN ('a_valider', 'a_juger'))
-  + (SELECT COUNT(*) FROM `<base>_enhanced.v_enrichissements` e WHERE statut_final = 'proposee'
-     AND EXISTS (SELECT 1 FROM `<base>_matching.v_rapprochements_valides` r WHERE r.rid = e.rid AND r.source = e.source)) AS en_attente
+  (SELECT COUNT(*) FROM `<base>_matching.v_matches` WHERE final_status IN ('needs_review', 'pending_judgment'))
+  + (SELECT COUNT(*) FROM `<base>_enhanced.v_enrichments` e WHERE final_status = 'proposed'
+     AND EXISTS (SELECT 1 FROM `<base>_matching.v_approved_matches` r WHERE r.rid = e.rid AND r.source = e.source)) AS en_attente
 ```
 
 ## 4. Rythme

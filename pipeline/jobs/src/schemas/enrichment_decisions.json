@@ -10,12 +10,12 @@
     "mode": "REQUIRED"
   },
   {
-    "name": "champ_pim",
+    "name": "pim_field",
     "type": "STRING",
     "mode": "REQUIRED"
   },
   {
-    "name": "id_entite",
+    "name": "entity_id",
     "type": "STRING",
     "mode": "NULLABLE"
   },
@@ -26,17 +26,17 @@
     "description": "validee | invalidee | corrigee"
   },
   {
-    "name": "valeur_corrigee",
+    "name": "corrected_value",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "commentaire",
+    "name": "comment",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "auteur",
+    "name": "author",
     "type": "STRING",
     "mode": "REQUIRED"
   },

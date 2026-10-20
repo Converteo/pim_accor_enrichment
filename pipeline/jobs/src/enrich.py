@@ -1,11 +1,11 @@
-"""Step 4 - enrichment agent (brick 3), for one family of fields (FAMILLE), launched by the workflow.
+"""Step 4 - enrichment agent (brick 3), for one family of fields (FAMILY), launched by the workflow.
 
 1. take the family's lease (Firestore)
-2. hotels whose match is validated (valide_auto or valide_humain) for at least one source of the family
-3. per hotel: target fields (empty in the PIM, filtered by PRIORITES), content of the validated sources only,
+2. hotels whose match is validated (auto_approved or human_approved) for at least one source of the family
+3. per hotel: target fields (empty in the PIM, filtered by PRIORITIES), content of the validated sources only,
    fingerprint; a hotel already enriched with the same fingerprint is skipped
 4. batches of ENRICH_BATCH_SIZE hotels to Gemini, answers checked by the code (enrichment_core)
-5. rows appended to enhanced.enrichissements; a failed batch writes nothing and is taken again next run
+5. rows appended to enhanced.enrichments; a failed batch writes nothing and is taken again next run
 """
 
 import logging
@@ -18,6 +18,7 @@ from google.cloud import bigquery, storage
 import bq
 import enrichment_core as core
 from config import Settings
+from decisions import CONFLICT, DISCARDED, MATCHES_PIM, NOT_FOUND, PROPOSED, VALUE_AUTO_APPROVED
 from llm import GeminiAgent
 from matching_rules import normalize_rid
 from prompts import assemble, load_enrichment
@@ -32,22 +33,22 @@ logger = logging.getLogger(__name__)
 MAX_ALLOWED_VALUES = 300
 
 
-def render_targets(champs: list[dict], allowed: dict[str, list[tuple[str, str]]]) -> str:
+def render_targets(fields: list[dict], allowed: dict[str, list[tuple[str, str]]]) -> str:
     """Targets block of the system prompt: one entry per field, with the allowed PIM values (code = label)."""
     lines = ["# Champs cibles de la famille", ""]
-    for c in champs:
-        lines.append(f"## {c['champ_pim']} ({c['entite']}, {c['priorite']})")
-        lines.append(f"- Libellé : {c['libelle']}")
+    for c in fields:
+        lines.append(f"## {c['pim_field']} ({c['entity']}, {c['priority']})")
+        lines.append(f"- Libellé : {c['label']}")
         kind = {"Boolean": "booléen : True ou False", "Integer": "nombre entier", "Double": "nombre",
                 "CVL": "liste de valeurs PIM" + (" (plusieurs valeurs possibles, séparées par |)" if c.get("multivalue") else " (une seule valeur)"),
-                "String": "texte", "LocaleString": "texte"}.get(c["type_pim"], c["type_pim"])
+                "String": "texte", "LocaleString": "texte"}.get(c["pim_type"], c["pim_type"])
         if c.get("format") == "hh:mm":
             kind = "heure au format HH:MM (24 h)"
         lines.append(f"- Type : {kind}")
-        if c.get("false_est_une_reponse"):
+        if c.get("false_is_an_answer"):
             lines.append("- False est une vraie réponse (gratuit) : ne réponds False que si la source le dit.")
-        if c.get("consigne"):
-            lines.append(f"- Consigne : {c['consigne']}")
+        if c.get("instruction"):
+            lines.append(f"- Consigne : {c['instruction']}")
         values = allowed.get(c.get("cvl_id") or "", [])
         if values:
             lines.append("- Valeurs autorisées (code = libellé) : " + " ; ".join(f"{k} = {v}" for k, v in values[:MAX_ALLOWED_VALUES]))
@@ -56,12 +57,12 @@ def render_targets(champs: list[dict], allowed: dict[str, list[tuple[str, str]]]
 
 
 def run(settings: Settings) -> int:
-    if not settings.famille:
-        raise ValueError("FAMILLE is required")
-    state = open_state(settings, f"enrich__{settings.famille}")
+    if not settings.family:
+        raise ValueError("FAMILY is required")
+    state = open_state(settings, f"enrich__{settings.family}")
     acquired, _ = state.acquire(settings.run_id, settings.lease_seconds)
     if not acquired:
-        logger.info("Family %s already being enriched, nothing to do", settings.famille)
+        logger.info("Family %s already being enriched, nothing to do", settings.family)
         return 0
     try:
         failed = enrich(settings, state)
@@ -77,11 +78,11 @@ def sources_to_read(family_sources: list[str], valid_sources: dict[str, list[str
     return [s for s in family_sources if s in used]
 
 
-def load_context(client: bigquery.Client, settings: Settings, targets: dict, champs: list[dict]):
+def load_context(client: bigquery.Client, settings: Settings, targets: dict, fields: list[dict]):
     family_sources = [s for s in targets["sources"] if s in SOURCES]
     valid = bq.rows(client, f"""
         SELECT rid, ARRAY_AGG(DISTINCT source) AS sources
-        FROM `{settings.table('matching', 'v_rapprochements_valides')}`
+        FROM `{settings.table('matching', 'v_approved_matches')}`
         WHERE source IN UNNEST(@sources)
         GROUP BY rid
     """, {"sources": family_sources})
@@ -103,14 +104,14 @@ def load_context(client: bigquery.Client, settings: Settings, targets: dict, cha
         for r in data:
             scraped.setdefault(r.pop("rid"), {})[source] = r
 
-    product_fields = [c["champ_pim"] for c in champs if c["entite"] == "Product"]
+    product_fields = [f["pim_field"] for f in fields if f["entity"] == "Product"]
     cols = ", ".join(f"`{c}`" for c in ["entity_id", "ProductRid", *product_fields])
     products = {normalize_rid(r["ProductRid"]): r for r in bq.rows(client, f"SELECT {cols} FROM `{settings.table('raw', 'pim_product')}`")}
 
     entities: dict[str, dict[str, list[dict]]] = {}
-    for et in sorted({c["entite"] for c in champs} - {"Product"}):
-        fields = [c["champ_pim"] for c in champs if c["entite"] == et]
-        cols = ", ".join(f"`{c}`" for c in ["entity_id", "rid", *fields])
+    for et in sorted({f["entity"] for f in fields} - {"Product"}):
+        entity_fields = [f["pim_field"] for f in fields if f["entity"] == et]
+        cols = ", ".join(f"`{c}`" for c in ["entity_id", "rid", *entity_fields])
         for r in bq.rows(client, f"SELECT {cols} FROM `{settings.table('raw', 'pim_' + et.lower())}`"):
             entities.setdefault(normalize_rid(r.pop("rid")), {}).setdefault(et, []).append(r)
     return valid_sources, scraped, products, entities
@@ -119,25 +120,25 @@ def load_context(client: bigquery.Client, settings: Settings, targets: dict, cha
 def enrich(settings: Settings, state) -> int:
     started = datetime.now(timezone.utc)
     client = bigquery.Client(project=settings.project_id)
-    common, family_block, targets = load_enrichment(storage.Client(project=settings.project_id), settings.prompts_bucket, settings.famille)
-    champs = [c for c in targets["champs"] if c["priorite"] in settings.priorites]
-    by_field = {c["champ_pim"]: c for c in champs}
-    version = targets.get("version_prompts", "unknown")
+    common, family_block, targets = load_enrichment(storage.Client(project=settings.project_id), settings.prompts_bucket, settings.family)
+    fields = [f for f in targets["fields"] if f["priority"] in settings.priorities]
+    by_field = {f["pim_field"]: f for f in fields}
+    version = targets.get("prompt_version", "unknown")
 
-    cvl_ids = sorted({c["cvl_id"] for c in champs if c.get("cvl_id")})
-    cvl_rows = bq.rows(client, f"SELECT cvl_id, cle, libelle FROM `{settings.table('raw', 'pim_cvl_values')}` WHERE cvl_id IN UNNEST(@ids) ORDER BY cvl_id, cle",
+    cvl_ids = sorted({f["cvl_id"] for f in fields if f.get("cvl_id")})
+    cvl_rows = bq.rows(client, f"SELECT cvl_id, key, label FROM `{settings.table('raw', 'pim_cvl_values')}` WHERE cvl_id IN UNNEST(@ids) ORDER BY cvl_id, key",
                        {"ids": cvl_ids})
     allowed_list: dict[str, list[tuple[str, str]]] = {}
     for r in cvl_rows:
-        allowed_list.setdefault(r["cvl_id"], []).append((r["cle"], r["libelle"]))
+        allowed_list.setdefault(r["cvl_id"], []).append((r["key"], r["label"]))
     allowed = {k: {c for c, _ in v} for k, v in allowed_list.items()}
-    labels = {(r["cvl_id"], r["cle"]): r["libelle"] for r in cvl_rows}
-    system_prompt = assemble(common, family_block, render_targets(champs, allowed_list))
+    labels = {(r["cvl_id"], r["key"]): r["label"] for r in cvl_rows}
+    system_prompt = assemble(common, family_block, render_targets(fields, allowed_list))
 
-    valid_sources, scraped, products, entities = load_context(client, settings, targets, champs)
+    valid_sources, scraped, products, entities = load_context(client, settings, targets, fields)
     done = {(r["rid"], r["source_hash"]) for r in bq.rows(client, f"""
-        SELECT DISTINCT rid, source_hash FROM `{settings.table('enhanced', 'enrichissements')}` WHERE famille = @famille
-    """, {"famille": settings.famille})}
+        SELECT DISTINCT rid, source_hash FROM `{settings.table('enhanced', 'enrichments')}` WHERE family = @family
+    """, {"family": settings.family})}
 
     hotels = []
     for rid, sources in valid_sources.items():
@@ -145,59 +146,59 @@ def enrich(settings: Settings, state) -> int:
         content = {s: c for s, c in scraped.get(rid, {}).items() if s in sources and any(v for v in c.values())}
         if product is None or not content:
             continue
-        hotel_targets = core.targets_for_hotel(champs, product, entities.get(rid, {}))
+        hotel_targets = core.targets_for_hotel(fields, product, entities.get(rid, {}))
         if not hotel_targets:
             continue
-        filled = {c["champ_pim"]: product.get(c["champ_pim"]) for c in champs
-                  if c["entite"] == "Product" and not core.is_empty(c, product.get(c["champ_pim"]))}
-        h = core.fingerprint(version, settings.priorites, content, hotel_targets, filled)
+        filled = {f["pim_field"]: product.get(f["pim_field"]) for f in fields
+                  if f["entity"] == "Product" and not core.is_empty(f, product.get(f["pim_field"]))}
+        h = core.fingerprint(version, settings.priorities, content, hotel_targets, filled)
         if (rid, h) in done:
             continue
-        hotels.append({"rid": rid, "pim_entity_id": product["entity_id"], "sources": content, "sources_validees": ",".join(sorted(content)),
+        hotels.append({"rid": rid, "pim_entity_id": product["entity_id"], "sources": content, "validated_sources": ",".join(sorted(content)),
                        "targets": hotel_targets, "filled": filled, "source_hash": h})
 
     pending = len(hotels)
     hotels = hotels[:settings.nb_hotels]
-    logger.info("Family %s: %d hotels with validated sources, %d to enrich, %d selected", settings.famille, len(valid_sources), pending, len(hotels))
+    logger.info("Family %s: %d hotels with validated sources, %d to enrich, %d selected", settings.family, len(valid_sources), pending, len(hotels))
     if not hotels:
-        state.release(settings.run_id, success=True, stats={"hotels_a_enrichir": 0})
+        state.release(settings.run_id, success=True, stats={"hotels_to_enrich": 0})
         return 0
 
     agent = GeminiAgent(settings.project_id, settings.vertex_location, settings.gemini_model, system_prompt, EnrichResponse,
                         settings.max_output_tokens, settings.thinking_level, settings.lease_seconds, AdaptiveLimit(settings.llm_concurrency))
     size = settings.enrich_batch_size
-    lots = [hotels[i:i + size] for i in range(0, len(hotels), size)]
+    batches = [hotels[i:i + size] for i in range(0, len(hotels), size)]
     rows, failed = [], 0
     try:
         with ThreadPoolExecutor(max_workers=settings.llm_concurrency) as pool:
             futures = {}
-            for n, lot in enumerate(lots, 1):
-                lot_id = f"ENR-{settings.famille}-{started:%Y%m%d-%H%M%S}-{n:04d}"
-                payload = {"lot": lot_id, "hotels": [core.hotel_payload(h["rid"], h["targets"], h["filled"], h["sources"]) for h in lot]}
-                futures[pool.submit(agent.ask, payload)] = (lot_id, lot)
+            for n, batch in enumerate(batches, 1):
+                batch_id = f"ENR-{settings.family}-{started:%Y%m%d-%H%M%S}-{n:04d}"
+                payload = {"lot": batch_id, "hotels": [core.hotel_payload(h["rid"], h["targets"], h["filled"], h["sources"]) for h in batch]}
+                futures[pool.submit(agent.ask, payload)] = (batch_id, batch)
             for future in as_completed(futures):
-                lot_id, lot = futures[future]
+                batch_id, batch = futures[future]
                 try:
                     answer = future.result()
                 except Exception:
-                    logger.exception("Batch %s failed, its %d hotels stay to enrich", lot_id, len(lot))
+                    logger.exception("Batch %s failed, its %d hotels stay to enrich", batch_id, len(batch))
                     failed += 1
                     continue
                 answers = {a.rid: a for a in answer.hotels}
-                for h in lot:
+                for h in batch:
                     skipped = [s for s in answer.non_traitees if s.rid == h["rid"]]
-                    context = {"run_id": settings.run_id, "lot_id": lot_id, "famille": settings.famille, "source_hash": h["source_hash"],
+                    context = {"run_id": settings.run_id, "batch_id": batch_id, "family": settings.family, "source_hash": h["source_hash"],
                                "llm_model": settings.gemini_model, "prompt_version": version, "enriched_at": started}
                     rows += core.rows_for_hotel(h, h["targets"], answers.get(h["rid"]), skipped, by_field, allowed, labels, context,
                                                 settings.enrich_auto_validate_score)
     finally:
         agent.close()
 
-    written = bq.load(client, settings.table("enhanced", "enrichissements"), rows, bq.schema("enrichissements"))
-    stats = {"hotels_a_enrichir": pending, "hotels_traites": len(hotels), "lots_en_echec": failed, "lignes": written,
-             **{s: sum(r["statut"] == s for r in rows) for s in ("proposee", "validee_auto", "rejetee", "non_traitee", "ecart", "deja_renseignee")}}
+    written = bq.load(client, settings.table("enhanced", "enrichments"), rows, bq.schema("enrichments"))
+    stats = {"hotels_to_enrich": pending, "hotels_processed": len(hotels), "failed_batches": failed, "rows": written,
+             **{s: sum(r["status"] == s for r in rows) for s in (PROPOSED, VALUE_AUTO_APPROVED, DISCARDED, NOT_FOUND, CONFLICT, MATCHES_PIM)}}
     state.release(settings.run_id, success=not failed, stats=stats)
-    logger.info("Family %s finished: %s", settings.famille, stats)
+    logger.info("Family %s finished: %s", settings.family, stats)
     return failed
 
 

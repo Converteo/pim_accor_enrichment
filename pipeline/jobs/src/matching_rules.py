@@ -9,14 +9,15 @@ import difflib
 import re
 import unicodedata
 
-OK, TO_CHECK, REJECTED = "Rapprochement OK", "À valider", "Rejeté"
+OK, TO_CHECK, REJECTED = "ok", "to_check", "rejected"
 RANK = {REJECTED: 0, TO_CHECK: 1, OK: 2}
 
-MOTIF_LABEL_GAP = "Écart de libellé"
-MOTIF_OTHER_COUNTRY = "Homonyme dans un autre pays"
-MOTIF_OTHER_HOTEL = "Page attribuée à un autre hôtel"
-MOTIF_SHARED = "Page partagée avec un autre RID, attribution ambiguë"
-MOTIF_UNREADABLE = "Fiche sans nom lisible : page non vérifiable"
+# Reasons are read by the Accor reviewers in the app: they stay in French
+REASON_LABEL_GAP = "Écart de libellé"
+REASON_OTHER_COUNTRY = "Homonyme dans un autre pays"
+REASON_OTHER_HOTEL = "Page attribuée à un autre hôtel"
+REASON_SHARED = "Page partagée avec un autre RID, attribution ambiguë"
+REASON_UNREADABLE = "Fiche sans nom lisible : page non vérifiable"
 
 # Words that say nothing about a hotel's identity (generic words or brand names)
 STOPWORDS = {
@@ -135,13 +136,13 @@ def identity_check(pim: dict, scraped: dict) -> dict:
     name_ok = ns is not None and ns >= 0.5
     explained = [k for k in fails if not (k == "marque" and rebranded) and not (k == "ville" and ns is not None and ns >= 0.8)]
     if name_ok and not explained:
-        verdict, motif = OK, None
+        verdict, reason = OK, None
     else:
         verdict = TO_CHECK
         gaps = fails if name_ok else ["nom", *fails]
-        motif = f"{MOTIF_LABEL_GAP} : {', '.join(gaps)}"
-    return {"verdict": verdict, "motif": motif, "score_nom": None if ns is None else round(ns, 2),
-            "ecarts": ", ".join(fails), "rebranding": rebranded}
+        reason = f"{REASON_LABEL_GAP} : {', '.join(gaps)}"
+    return {"verdict": verdict, "reason": reason, "name_score": None if ns is None else round(ns, 2),
+            "gaps": ", ".join(fails), "rebranding": rebranded}
 
 
 def booking_page(url) -> tuple[str | None, str | None, str | None]:
@@ -160,7 +161,7 @@ def expedia_page(about) -> str | None:
 def page_check(pim: dict, found: str | None, page_cc: str | None) -> dict:
     """Level 2: is the scraped page the hotel's own page? pim needs country_code (PIM key, ISO 2)."""
     if not found:
-        return {"verdict": TO_CHECK, "motif": MOTIF_UNREADABLE, "rank": 0.0}
+        return {"verdict": TO_CHECK, "reason": REASON_UNREADABLE, "rank": 0.0}
     compact = re.sub(r"[^a-z0-9]", "", ascii_lower(found))
     words = {t for t in ascii_lower(f"{pim.get('name')} {pim.get('commercial_name')}").split() if len(t) > 2 and t not in STOPWORDS}
     score = sum(t in compact for t in words) / len(words) if words else 0
@@ -174,18 +175,18 @@ def page_check(pim: dict, found: str | None, page_cc: str | None) -> dict:
     cover = sum(fuzzy_in(t, name_toks) for t in slug_toks) / len(slug_toks) if slug_toks else 0
     rank = max(score, ns) + cover
     if page_cc and pim_cc and page_cc != pim_cc and {page_cc, pim_cc} != {"GB", "UK"}:
-        return {"verdict": REJECTED, "motif": MOTIF_OTHER_COUNTRY, "rank": rank}
+        return {"verdict": REJECTED, "reason": REASON_OTHER_COUNTRY, "rank": rank}
     if score >= 0.5 or ns >= 0.5:
-        return {"verdict": OK, "motif": None, "rank": rank}
+        return {"verdict": OK, "reason": None, "rank": rank}
     if (brand and brand in compact) or (city and city in compact):
-        return {"verdict": OK, "motif": None, "rank": rank}
-    return {"verdict": TO_CHECK, "motif": doubt_cause(found), "rank": rank}
+        return {"verdict": OK, "reason": None, "rank": rank}
+    return {"verdict": TO_CHECK, "reason": doubt_cause(found), "rank": rank}
 
 
 def resolve_shared_pages(rows: list[dict]) -> None:
     """One Booking page given to several RIDs: only the RID that matches the URL best keeps it.
 
-    rows carry page_key, page_verdict, page_motif, page_rank, rid; updated in place (+ partagee_avec).
+    rows carry page_key, page_verdict, page_reason, page_rank, rid; updated in place (+ shared_with).
     """
     by_page: dict[str, list[dict]] = {}
     for r in rows:
@@ -195,21 +196,21 @@ def resolve_shared_pages(rows: list[dict]) -> None:
         if len(group) < 2:
             continue
         for r in group:
-            r["partagee_avec"] = ", ".join(sorted(o["rid"] for o in group if o is not r))
-        contenders = [r for r in group if r["page_motif"] != MOTIF_OTHER_COUNTRY]
+            r["shared_with"] = ", ".join(sorted(o["rid"] for o in group if o is not r))
+        contenders = [r for r in group if r["page_reason"] != REASON_OTHER_COUNTRY]
         if len(contenders) < 2:
             continue
         best = max(r["page_rank"] for r in contenders)
         winners = [r for r in contenders if r["page_rank"] == best]
         for r in contenders:
             if len(winners) > 1 or best < 1:
-                r["page_verdict"], r["page_motif"] = TO_CHECK, MOTIF_SHARED
+                r["page_verdict"], r["page_reason"] = TO_CHECK, REASON_SHARED
             elif r not in winners:
-                r["page_verdict"], r["page_motif"] = REJECTED, MOTIF_OTHER_HOTEL
+                r["page_verdict"], r["page_reason"] = REJECTED, REASON_OTHER_HOTEL
 
 
-def combine(identity_verdict: str, identity_motif: str | None, page_verdict: str | None, page_motif: str | None) -> tuple[str, str | None]:
+def combine(identity_verdict: str, identity_reason: str | None, page_verdict: str | None, page_reason: str | None) -> tuple[str, str | None]:
     """Pre-verdict = the least favourable of the identity check and the page check."""
     if page_verdict is None or RANK[identity_verdict] <= RANK[page_verdict]:
-        return identity_verdict, identity_motif
-    return page_verdict, page_motif
+        return identity_verdict, identity_reason
+    return page_verdict, page_reason

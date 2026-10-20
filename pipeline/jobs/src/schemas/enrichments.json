@@ -10,12 +10,12 @@
     "mode": "REQUIRED"
   },
   {
-    "name": "lot_id",
+    "name": "batch_id",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "famille",
+    "name": "family",
     "type": "STRING",
     "mode": "REQUIRED"
   },
@@ -30,50 +30,50 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "entite",
+    "name": "entity",
     "type": "STRING",
     "mode": "REQUIRED",
     "description": "Product, Parking, Pool..."
   },
   {
-    "name": "id_entite",
+    "name": "entity_id",
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "Identifiant PIM de l'entité liée, ou nouvelle_<n> si elle est à créer"
   },
   {
-    "name": "champ_pim",
+    "name": "pim_field",
     "type": "STRING",
     "mode": "REQUIRED"
   },
   {
-    "name": "libelle",
+    "name": "label",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "priorite",
+    "name": "priority",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "valeur_pim",
+    "name": "pim_value",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "valeur",
+    "name": "value",
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "Code PIM proposé"
   },
   {
-    "name": "libelle_valeur",
+    "name": "value_label",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "methode",
+    "name": "method",
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "extrait | converti | deduit"
@@ -84,17 +84,17 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "champ_source",
+    "name": "source_field",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "extrait_source",
+    "name": "source_excerpt",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "extrait_trouve",
+    "name": "excerpt_found",
     "type": "BOOLEAN",
     "mode": "NULLABLE"
   },
@@ -104,28 +104,28 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "niveau",
+    "name": "confidence",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "alerte",
+    "name": "warning",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "motif",
+    "name": "reason",
     "type": "STRING",
     "mode": "NULLABLE"
   },
   {
-    "name": "statut",
+    "name": "status",
     "type": "STRING",
     "mode": "REQUIRED",
     "description": "proposee | validee_auto | rejetee | non_traitee | ecart | deja_renseignee"
   },
   {
-    "name": "sources_validees",
+    "name": "validated_sources",
     "type": "STRING",
     "mode": "NULLABLE"
   },
