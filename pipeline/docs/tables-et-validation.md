@@ -65,8 +65,8 @@ Ce sont les **seules tables écrites par le backend.**
 
 | Table / vue | Écrite par | Utilité |
 | --- | --- | --- |
-| `enrichment_candidates` | agent d'enrichissement | **Équivalent de `match_candidates` pour les valeurs.** Une ligne par hôtel × champ × entité à enrichir, pour chaque hôtel dont un rapprochement est validé : `family`, `rid`, `entity`, `entity_id`, `pim_field`, `label`, `priority`, `pim_value`, `source_hash` (empreinte du contenu de l'hôtel). Réécrite pour la famille quand ses cibles changent ; les vues lisent le dernier ensemble. |
-| `enrichment_proposals` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `source`, `source_excerpt`, `score`, `warning`, `status`, `reason`, `reason_detail`, `prompt_version`. |
+| `enrichment_candidates` | job d'enrichissement (code, sans IA) | **Équivalent de `match_candidates` pour les valeurs.** Une ligne par hôtel × champ × entité à enrichir, pour chaque hôtel dont un rapprochement est validé : `family`, `rid`, `entity`, `entity_id`, `pim_field`, `label`, `priority`, `pim_value`, `source_hash` (empreinte du contenu de l'hôtel). Réécrite pour la famille quand ses cibles changent ; les vues lisent le dernier ensemble. |
+| `enrichment_proposals` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `method`, `source`, `source_field`, `source_excerpt`, `score`, `confidence`, `warning`, `status`, `reason`, `reason_detail`, `source_hash`, `prompt_version`. |
 | `v_enrichments` (vue) | — | **Vue de l'écran des fiches.** Dernière ligne par hôtel × champ × entité, plus la dernière décision humaine sur cette ligne, et une ligne `pending_enrichment` par cible pas encore enrichie : `final_status`, `final_value` (la valeur corrigée le cas échéant), `author`, `decided_at`. |
 | `v_approved_enrichments` (vue) | — | Ce qui part à l'export : `final_status` = `human_approved`, `human_corrected` (ou `auto_approved`, désactivé), et dont le rapprochement est toujours validé. |
 | `exports` | job export | Historique des exports : `path` (dossier du bucket), `row_count`, `hotel_count`, `files`, `triggered_by`, `exported_at`. |
@@ -117,7 +117,11 @@ Le filtre `EXISTS` est **obligatoire** : si un relecteur rejette un rapprochemen
 restent dans la table mais ne doivent plus être proposées (et ne partent pas à l'export).
 
 Détail d'une fiche : les mêmes lignes sans `GROUP BY`, avec `family`, `label`, `entity`, `entity_id`, `pim_value`, `value`,
-`value_label`, `source`, `source_excerpt`, `score`, `warning`. L'extrait est la justification à montrer au relecteur.
+`value_label`, `source`, `source_field`, `source_excerpt`, `score`, `confidence`, `warning`, `reason_detail`. L'extrait est la
+justification à montrer au relecteur.
+
+À afficher à part, pour information : les champs encore `pending_enrichment` de l'hôtel (« en cours d'enrichissement ») et ses
+valeurs `auto_rejected` de motif `pim_conflict` (la source contredit le PIM, `reason_detail` donne la valeur du PIM).
 
 ### Exemple de bout en bout : l'hôtel B6F6
 
@@ -181,7 +185,7 @@ d'attribut `needs_review` : elle sort de la liste.
 
 **Étape 5 (facultative) : le relecteur change d'avis.** Il rejette finalement la salle de sport. Le backend **ajoute** une
 troisième ligne (`a41f…`, `human_rejected`, 2026-10-21 14:30) ; la ligne `human_approved` de 10:03 reste dans la table comme historique.
-La vue ne retient que la plus récente : `final_status = rejected`, la valeur ne part plus à l'export.
+La vue ne retient que la plus récente : `final_status = human_rejected`, la valeur ne part plus à l'export.
 
 **Ce que montre l'exemple :**
 - Les tables des jobs (`match_judgments`, `enrichment_proposals`) ne sont **jamais modifiées** par le backend ; un nouveau passage du
