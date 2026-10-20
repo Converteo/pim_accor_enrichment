@@ -18,7 +18,7 @@ wf-<base>-enrichment
    1. gcrj-…-extract-pim   PIM par API, lecture seule, sans contacts — seulement après un dépôt (voir ci-dessous)   → raw.pim_*
    2. gcrj-…-matching      brique 1, sans IA : RID, identité, page OTA, pré-verdict                          → matching.match_candidates
    3. gcrj-…-judge         brique 2, agent juge : score 0-100 et statut                                       → matching.match_judgments
-   4. gcrj-…-enrich        brique 3, agent d'enrichissement, une exécution par famille                        → enhanced.enrichments
+   4. gcrj-…-enrich        brique 3, agent d'enrichissement, une exécution par famille                        → enhanced.enrichment_proposals
                            (uniquement les rapprochements validés)
    │
 backend + front         validation humaine des rapprochements puis des enrichissements                       → validation.*_decisions
@@ -55,7 +55,7 @@ rapprochement vient d'être validé dans l'interface.
 | `human_approved` / `human_rejected` | décision dans l'interface ; l'emporte toujours sur l'agent | oui / non |
 
 Un hôtel est enrichi avec ses seules sources validées. Les valeurs suivent la même convention que les rapprochements :
-`pending_enrichment` (cible pas encore enrichie, table `enrichment_targets`), `needs_review` (proposée par l'agent), `auto_rejected` avec un motif (`reason`), puis `human_approved`, `human_rejected`
+`pending_enrichment` (cible pas encore enrichie, table `enrichment_candidates`), `needs_review` (proposée par l'agent), `auto_rejected` avec un motif (`reason`), puis `human_approved`, `human_rejected`
 ou `human_corrected` dans l'interface ; la validation automatique (`pipeline.enrich_auto_validate_score`) est
 désactivée par défaut. L'agent n'écrase jamais une valeur du PIM : un désaccord devient `auto_rejected`, motif `pim_conflict`.
 

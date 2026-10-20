@@ -66,15 +66,15 @@ def targets_for_hotel(fields: list[dict], product: dict, entities: dict[str, lis
     return targets
 
 
-def target_rows(hotel: dict, targets: list[dict], fields: dict[str, dict], context: dict) -> list[dict]:
-    """Rows of enhanced.enrichment_targets for one hotel (hotel: rid, pim_entity_id, validated_sources, source_hash)."""
+def candidate_rows(hotel: dict, targets: list[dict], fields: dict[str, dict], context: dict) -> list[dict]:
+    """Rows of enhanced.enrichment_candidates for one hotel (hotel: rid, pim_entity_id, validated_sources, source_hash)."""
     return [{**context, "rid": hotel["rid"], "pim_entity_id": hotel["pim_entity_id"], "entity": t["entity"],
              "entity_id": t["entity_id"], "pim_field": t["pim_field"], "label": fields[t["pim_field"]].get("label"),
              "priority": fields[t["pim_field"]].get("priority"), "pim_value": t["pim_value"],
              "validated_sources": hotel["validated_sources"], "source_hash": hotel["source_hash"]} for t in targets]
 
 
-def target_set(rows: list[dict], context: dict) -> tuple[list[dict], str]:
+def candidate_set(rows: list[dict], context: dict) -> tuple[list[dict], str]:
     """(rows to write, fingerprint of the set). An empty set is one marker row (rid empty), so the views drop the old set."""
     key = fingerprint(sorted((r["rid"], r["pim_field"], r["entity_id"] or "", r["source_hash"]) for r in rows))
     return (rows or [dict(context)]), key

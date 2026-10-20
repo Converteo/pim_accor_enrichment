@@ -217,17 +217,17 @@ def test_rejected_value_and_skipped_reason():
     assert (rows["ProductCheckIn"]["reason"], rows["ProductCheckIn"]["reason_detail"]) == ("not_in_sources", "absent des sources")
 
 
-def test_targets_are_written_with_the_hotel_content_fingerprint():
+def test_candidates_carry_the_hotel_content_fingerprint():
     hotel = {"rid": "0952", "pim_entity_id": "101", "validated_sources": "booking_equipements", "source_hash": "h1"}
     targets = [{"pim_field": "PoolType", "entity": "Pool", "entity_id": core.NEW_ENTITY, "pim_value": None}]
     context = {"run_id": "r", "family": "pool", "computed_at": None}
-    rows = core.target_rows(hotel, targets, FIELDS, context)
+    rows = core.candidate_rows(hotel, targets, FIELDS, context)
     assert rows == [{**context, "rid": "0952", "pim_entity_id": "101", "entity": "Pool", "entity_id": "new", "pim_field": "PoolType",
                      "label": "Type", "priority": "P2", "pim_value": None, "validated_sources": "booking_equipements", "source_hash": "h1"}]
-    written, key = core.target_set(rows, context)
-    assert written == rows and key == core.target_set(list(reversed(rows)), context)[1]
+    written, key = core.candidate_set(rows, context)
+    assert written == rows and key == core.candidate_set(list(reversed(rows)), context)[1]
     # An empty set is one marker row, so the views drop the previous set
-    assert core.target_set([], context)[0] == [context]
+    assert core.candidate_set([], context)[0] == [context]
 
 
 def test_payload_speaks_the_agent_language():

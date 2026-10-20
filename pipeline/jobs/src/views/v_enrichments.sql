@@ -2,12 +2,12 @@
 -- final_status: pending_enrichment | needs_review | auto_approved | auto_rejected (see reason)
 --               | human_approved | human_rejected | human_corrected
 WITH enrichment AS (
-  SELECT * FROM `${enhanced}.enrichments`
+  SELECT * FROM `${enhanced}.enrichment_proposals`
   QUALIFY ROW_NUMBER() OVER (PARTITION BY rid, pim_field, IFNULL(entity_id, '') ORDER BY enriched_at DESC) = 1
 ),
 -- Latest target set of each family (written by the enrichment job when it changes; rid is empty in the marker of an empty set)
 target AS (
-  SELECT * FROM `${enhanced}.enrichment_targets`
+  SELECT * FROM `${enhanced}.enrichment_candidates`
   QUALIFY computed_at = MAX(computed_at) OVER (PARTITION BY family)
 ),
 -- A target with no value for the same content (source_hash): not enriched yet, or its content changed since.

@@ -15,7 +15,7 @@ raw ──(job matching)──► matching.match_candidates ──(agent juge)�
                                                        │
             (agent d'enrichissement : cibles, puis valeurs)
                                                        ▼
-                       enhanced.enrichment_targets ──(agent)──► enhanced.enrichments
+                       enhanced.enrichment_candidates ──(agent)──► enhanced.enrichment_proposals
                                    │                                          │
                                    └──────────────► v_enrichments ◄───────────┘ ◄── validation.enrichment_decisions   ② relecteur
                                                        │
@@ -65,8 +65,8 @@ Ce sont les **seules tables écrites par le backend.**
 
 | Table / vue | Écrite par | Utilité |
 | --- | --- | --- |
-| `enrichment_targets` | agent d'enrichissement | **Équivalent de `match_candidates` pour les valeurs.** Une ligne par hôtel × champ × entité à enrichir, pour chaque hôtel dont un rapprochement est validé : `family`, `rid`, `entity`, `entity_id`, `pim_field`, `label`, `priority`, `pim_value`, `source_hash` (empreinte du contenu de l'hôtel). Réécrite pour la famille quand ses cibles changent ; les vues lisent le dernier ensemble. |
-| `enrichments` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `source`, `source_excerpt`, `score`, `warning`, `status`, `reason`, `reason_detail`, `prompt_version`. |
+| `enrichment_candidates` | agent d'enrichissement | **Équivalent de `match_candidates` pour les valeurs.** Une ligne par hôtel × champ × entité à enrichir, pour chaque hôtel dont un rapprochement est validé : `family`, `rid`, `entity`, `entity_id`, `pim_field`, `label`, `priority`, `pim_value`, `source_hash` (empreinte du contenu de l'hôtel). Réécrite pour la famille quand ses cibles changent ; les vues lisent le dernier ensemble. |
+| `enrichment_proposals` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `source`, `source_excerpt`, `score`, `warning`, `status`, `reason`, `reason_detail`, `prompt_version`. |
 | `v_enrichments` (vue) | — | **Vue de l'écran des fiches.** Dernière ligne par hôtel × champ × entité, plus la dernière décision humaine sur cette ligne, et une ligne `pending_enrichment` par cible pas encore enrichie : `final_status`, `final_value` (la valeur corrigée le cas échéant), `author`, `decided_at`. |
 | `v_approved_enrichments` (vue) | — | Ce qui part à l'export : `final_status` = `human_approved`, `human_corrected` (ou `auto_approved`, désactivé), et dont le rapprochement est toujours validé. |
 | `exports` | job export | Historique des exports : `path` (dossier du bucket), `row_count`, `hotel_count`, `files`, `triggered_by`, `exported_at`. |
@@ -149,7 +149,7 @@ Les codes (`status`, `reason`…) sont en anglais ; les textes lus par les relec
 `match_judgments` n'est pas modifiée. `v_matches` combine les deux : `final_status = human_approved` (l'humain l'emporte sur
 la note de 62). L'hôtel entre dans `v_approved_matches`.
 
-**Étape 3 : le pipeline enrichit l'hôtel** au passage suivant. L'agent d'enrichissement écrit dans `enhanced.enrichments` :
+**Étape 3 : le pipeline enrichit l'hôtel** au passage suivant. L'agent d'enrichissement écrit dans `enhanced.enrichment_proposals` :
 
 | enrichment_id | rid | pim_field | pim_value | value | source_excerpt | score | status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -169,7 +169,7 @@ l'extrait dit que le hammam est payant. Le backend ajoute deux lignes :
 | `a41f…` | B6F6 | ProductFitnessCenter | `human_approved` | | j.martin@accor.com | 2026-10-21 10:03 |
 | `b7d0…` | B6F6 | WellnessCenterFreeWellnessCenterServices | `human_corrected` | Sauna | j.martin@accor.com | 2026-10-21 10:04 |
 
-`enrichments` n'est pas modifiée. `v_enrichments` en déduit :
+`enrichment_proposals` n'est pas modifiée. `v_enrichments` en déduit :
 
 | pim_field | value | final_status | final_value |
 | --- | --- | --- | --- |
@@ -184,7 +184,7 @@ troisième ligne (`a41f…`, `human_rejected`, 2026-10-21 14:30) ; la ligne `hum
 La vue ne retient que la plus récente : `final_status = rejected`, la valeur ne part plus à l'export.
 
 **Ce que montre l'exemple :**
-- Les tables des jobs (`match_judgments`, `enrichments`) ne sont **jamais modifiées** par le backend ; un nouveau passage du
+- Les tables des jobs (`match_judgments`, `enrichment_proposals`) ne sont **jamais modifiées** par le backend ; un nouveau passage du
   pipeline peut les réécrire sans effacer une décision humaine.
 - Les tables `*_decisions` ne font que **grossir** : tout l'historique (qui, quoi, quand) est conservé.
 - L'état réel se lit **uniquement dans les vues** `v_*`, qui superposent la dernière décision aux propositions des agents.
