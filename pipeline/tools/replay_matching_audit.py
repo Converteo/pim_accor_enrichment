@@ -55,17 +55,17 @@ def main(work: Path) -> int:
                            "brand": r.get("Brand"), "old_brand": r.get("OldBrand") or None, "rebranding_date": r.get("RebrandingDate"),
                            "city": r.get("AddressCity"), "country": r.get("AddressCountry"), "address": r.get("AddressLine1"),
                            "status": r.get("SalesStatus"), "country_code": codes.get(rid)}
-    candidats = []
+    candidates = []
     for source, cfg in SOURCES.items():
         rows = []
         for r in read(work / FILES[source]):
             rows.append({k: (r.get(cfg[k]) if cfg.get(k) else None) for k in ("rid", "name", "city", "brand", "country", "url", "about")})
         c, a = match_source(source, cfg, rows, hotels, set(hotels), {"run_id": "replay", "computed_at": None})
         print(f"{source}: {len(c)} matched {dict(Counter(x['pre_verdict'] for x in c))}, {len(a)} RIDs not in the PIM")
-        candidats += c
+        candidates += c
 
     worst = {}
-    for c in candidats:
+    for c in candidates:
         v = c["pre_verdict"]
         if c["rid"] not in worst or mr.RANK[v] < mr.RANK[worst[c["rid"]]]:
             worst[c["rid"]] = v

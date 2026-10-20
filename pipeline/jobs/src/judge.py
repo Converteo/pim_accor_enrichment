@@ -2,9 +2,9 @@
 
 Every match is judged, OK ones included, so that each carries a score. A match already judged with the same
 fingerprint (source_hash) is not sent again. Then the passing rule (decisions.match_status):
-  valide_auto  score >= JUDGE_THRESHOLD_HIGH, verdict meme_hotel, no blocking indicator -> goes on to enrichment
-  rejete_auto  score <  JUDGE_THRESHOLD_LOW, or the page is in another country        -> never enriched
-  a_valider    in between                                                             -> waits for a decision in the app
+  auto_approved  score >= JUDGE_THRESHOLD_HIGH, verdict same_hotel, no blocking indicator -> goes on to enrichment
+  auto_rejected  score <  JUDGE_THRESHOLD_LOW, or the page is in another country         -> never enriched
+  needs_review   in between                                                              -> waits for a decision in the app
 A match left out of the agent's answer is not written: it is judged again at the next run.
 """
 
@@ -17,10 +17,10 @@ from google.cloud import bigquery, storage
 
 import bq
 from config import Settings
-from decisions import match_status, niveau
+from decisions import AUTO_APPROVED, AUTO_REJECTED, NEEDS_REVIEW, confidence, match_status
 from llm import GeminiAgent
 from prompts import load_judge
-from schemas_llm import JudgeResponse
+from schemas_llm import JUDGE_REASONS, VERDICTS, JudgeResponse
 from state import open_state
 from throttle import AdaptiveLimit
 
@@ -31,27 +31,27 @@ logger = logging.getLogger(__name__)
 def to_judge(client: bigquery.Client, settings: Settings) -> list[dict]:
     return bq.rows(client, f"""
         SELECT c.*
-        FROM `{settings.table('matching', 'candidats')}` c
-        LEFT JOIN `{settings.table('matching', 'jugements')}` j USING (rid, source, source_hash)
+        FROM `{settings.table('matching', 'match_candidates')}` c
+        LEFT JOIN `{settings.table('matching', 'match_judgments')}` j USING (rid, source, source_hash)
         WHERE j.rid IS NULL
         ORDER BY c.pre_verdict, c.rid
     """)
 
 
 def item(c: dict) -> dict:
-    """What the judge reads about one match; empty values are left out."""
+    """What the judge reads about one match (French keys, as in its prompt); empty values are left out."""
     def clean(d):
         return {k: v for k, v in d.items() if v not in (None, "", [])}
     return clean({
         "rid": c["rid"], "source": c["source"],
-        "hotel_pim": clean({"nom": c["nom_pim"], "nom_commercial": c["nom_commercial_pim"], "marque": c["marque_pim"],
-                            "ancienne_marque": c["ancienne_marque_pim"], "date_rebranding": c["date_rebranding_pim"],
-                            "adresse": c["adresse_pim"], "ville": c["ville_pim"], "pays": c["pays_pim"], "statut": c["statut_pim"]}),
-        "page_scrapee": clean({"nom_en_entree": c["nom_scraping"], "ville": c["ville_scraping"], "marque": c["marque_scraping"],
-                               "pays": c["pays_scraping"], "url": c["url"], "nom_lu_dans_la_page": c["page_scrapee"],
-                               "pays_de_la_page": c["pays_page"], "debut_description": c["debut_description"]}),
-        "indicateurs": clean({"score_nom": c["score_nom"], "ecarts": c["ecarts"], "rebranding_connu": c["rebranding"],
-                              "page_partagee_avec": c["partagee_avec"], "pre_verdict": c["pre_verdict"], "pre_motif": c["pre_motif"]}),
+        "hotel_pim": clean({"nom": c["pim_name"], "nom_commercial": c["pim_commercial_name"], "marque": c["pim_brand"],
+                            "ancienne_marque": c["pim_former_brand"], "date_rebranding": c["pim_rebranding_date"],
+                            "adresse": c["pim_address"], "ville": c["pim_city"], "pays": c["pim_country"], "statut": c["pim_status"]}),
+        "page_scrapee": clean({"nom_en_entree": c["scraped_name"], "ville": c["scraped_city"], "marque": c["scraped_brand"],
+                               "pays": c["scraped_country"], "url": c["url"], "nom_lu_dans_la_page": c["page_name"],
+                               "pays_de_la_page": c["page_country"], "debut_description": c["description_head"]}),
+        "indicateurs": clean({"score_nom": c["name_score"], "ecarts": c["gaps"], "rebranding_connu": c["rebranding"],
+                              "page_partagee_avec": c["shared_with"], "pre_verdict": c["pre_verdict"], "pre_motif": c["pre_reason"]}),
     })
 
 
@@ -75,13 +75,13 @@ def judge(settings: Settings, state) -> int:
     todo = to_judge(client, settings)
     logger.info("%d matches to judge", len(todo))
     if not todo:
-        state.release(settings.run_id, success=True, stats={"a_juger": 0})
+        state.release(settings.run_id, success=True, stats={"to_judge": 0})
         return 0
 
     bundle = load_judge(storage.Client(project=settings.project_id), settings.prompts_bucket)
     by_key = {(c["rid"], c["source"]): c for c in todo}
     size = settings.judge_batch_size
-    lots = [todo[i:i + size] for i in range(0, len(todo), size)]
+    batches = [todo[i:i + size] for i in range(0, len(todo), size)]
     agent = GeminiAgent(settings.project_id, settings.vertex_location, settings.gemini_model, bundle.system_prompt,
                         JudgeResponse, settings.max_output_tokens, settings.thinking_level, settings.lease_seconds,
                         AdaptiveLimit(settings.llm_concurrency))
@@ -89,29 +89,30 @@ def judge(settings: Settings, state) -> int:
     try:
         with ThreadPoolExecutor(max_workers=settings.llm_concurrency) as pool:
             futures = {}
-            for n, lot in enumerate(lots, 1):
-                lot_id = f"JUGE-{started:%Y%m%d-%H%M%S}-{n:04d}"
-                futures[pool.submit(agent.ask, {"lot": lot_id, "rapprochements": [item(c) for c in lot]})] = lot_id
+            for n, batch in enumerate(batches, 1):
+                batch_id = f"JUDGE-{started:%Y%m%d-%H%M%S}-{n:04d}"
+                futures[pool.submit(agent.ask, {"lot": batch_id, "rapprochements": [item(c) for c in batch]})] = batch_id
             for future in as_completed(futures):
-                lot_id = futures[future]
+                batch_id = futures[future]
                 try:
                     answer = future.result()
                 except Exception:
-                    logger.exception("Batch %s failed, its matches will be judged again", lot_id)
+                    logger.exception("Batch %s failed, its matches will be judged again", batch_id)
                     failed += 1
                     continue
                 for j in answer.jugements:
                     c = by_key.get((j.rid, j.source))
                     if c is None:
                         continue
+                    verdict = VERDICTS[j.verdict]
                     rows.append({
-                        "run_id": settings.run_id, "lot_id": lot_id, "rid": c["rid"], "source": c["source"],
-                        "source_hash": c["source_hash"], "pre_verdict": c["pre_verdict"], "pre_motif": c["pre_motif"],
-                        "verdict": j.verdict, "score": j.score, "niveau": niveau(j.score), "motif": j.motif,
+                        "run_id": settings.run_id, "batch_id": batch_id, "rid": c["rid"], "source": c["source"],
+                        "source_hash": c["source_hash"], "pre_verdict": c["pre_verdict"], "pre_reason": c["pre_reason"],
+                        "verdict": verdict, "score": j.score, "confidence": confidence(j.score), "reason": JUDGE_REASONS[j.motif],
                         "justification": j.justification,
-                        "statut": match_status(c["pre_verdict"], c["pre_motif"], j.verdict, j.score,
+                        "status": match_status(c["pre_verdict"], c["pre_reason"], verdict, j.score,
                                                settings.judge_threshold_high, settings.judge_threshold_low),
-                        "seuil_haut": settings.judge_threshold_high, "seuil_bas": settings.judge_threshold_low,
+                        "threshold_high": settings.judge_threshold_high, "threshold_low": settings.judge_threshold_low,
                         "llm_model": settings.gemini_model, "prompt_version": bundle.version, "judged_at": started,
                     })
     finally:
@@ -119,9 +120,9 @@ def judge(settings: Settings, state) -> int:
 
     # One row per match even if the model repeated it
     unique = {(r["rid"], r["source"]): r for r in rows}
-    written = bq.load(client, settings.table("matching", "jugements"), list(unique.values()), bq.schema("jugements"))
-    stats = {"a_juger": len(todo), "juges": written, "lots_en_echec": failed,
-             **{s: sum(r["statut"] == s for r in unique.values()) for s in ("valide_auto", "a_valider", "rejete_auto")}}
+    written = bq.load(client, settings.table("matching", "match_judgments"), list(unique.values()), bq.schema("match_judgments"))
+    stats = {"to_judge": len(todo), "judged": written, "failed_batches": failed,
+             **{s: sum(r["status"] == s for r in unique.values()) for s in (AUTO_APPROVED, NEEDS_REVIEW, AUTO_REJECTED)}}
     state.release(settings.run_id, success=not failed, stats=stats)
     logger.info("Judge finished: %s", stats)
     return failed

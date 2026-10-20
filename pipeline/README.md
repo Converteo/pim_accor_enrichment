@@ -16,12 +16,12 @@ gcr-<base>-load-bq      chargement dans raw.<source> (chaque dépôt conservé :
    │
 wf-<base>-enrichment
    1. gcrj-…-extract-pim   PIM par API, lecture seule, sans contacts — seulement après un dépôt (voir ci-dessous)   → raw.pim_*
-   2. gcrj-…-matching      brique 1, sans IA : RID, identité, page OTA, pré-verdict                          → matching.candidats
-   3. gcrj-…-judge         brique 2, agent juge : score 0-100 et statut                                       → matching.jugements
-   4. gcrj-…-enrich        brique 3, agent d'enrichissement, une exécution par famille                        → enhanced.enrichissements
+   2. gcrj-…-matching      brique 1, sans IA : RID, identité, page OTA, pré-verdict                          → matching.match_candidates
+   3. gcrj-…-judge         brique 2, agent juge : score 0-100 et statut                                       → matching.match_judgments
+   4. gcrj-…-enrich        brique 3, agent d'enrichissement, une exécution par famille                        → enhanced.enrichments
                            (uniquement les rapprochements validés)
    │
-backend + front         validation humaine des rapprochements puis des enrichissements                       → validation.decisions_*
+backend + front         validation humaine des rapprochements puis des enrichissements                       → validation.*_decisions
    │                    (contrat : docs/contrat-back.md)
 gcrj-…-export           fichier plat du PIM enrichi, quand plus rien n'est en attente                         → bkt-<base>-exports/export/<date>/
 ```
@@ -49,14 +49,14 @@ rapprochement vient d'être validé dans l'interface.
 
 | Rapprochement (RID × source) | Origine | Passe à l'enrichissement |
 | --- | --- | --- |
-| `valide_auto` | agent juge : score ≥ seuil haut (80), verdict `meme_hotel`, pas d'indicateur bloquant | oui |
-| `a_valider` | agent juge : entre les deux seuils | non, attend une décision dans l'interface |
-| `rejete_auto` | agent juge : score < seuil bas (30), ou page dans un autre pays | non |
-| `valide_humain` / `rejete_humain` | décision dans l'interface ; l'emporte toujours sur l'agent | oui / non |
+| `auto_approved` | agent juge : score ≥ seuil haut (80), verdict `same_hotel`, pas d'indicateur bloquant | oui |
+| `needs_review` | agent juge : entre les deux seuils | non, attend une décision dans l'interface |
+| `auto_rejected` | agent juge : score < seuil bas (30), ou page dans un autre pays | non |
+| `human_approved` / `human_rejected` | décision dans l'interface ; l'emporte toujours sur l'agent | oui / non |
 
-Un hôtel est enrichi avec ses seules sources validées. Les enrichissements sont `proposee` par l'agent, puis `validee`,
-`invalidee` ou `corrigee` dans l'interface ; la validation automatique (`pipeline.enrich_auto_validate_score`) est
-désactivée par défaut. L'agent n'écrase jamais une valeur du PIM : un désaccord devient un `ecart`.
+Un hôtel est enrichi avec ses seules sources validées. Les enrichissements sont `proposed` par l'agent, puis `approved`,
+`rejected` ou `corrected` dans l'interface ; la validation automatique (`pipeline.enrich_auto_validate_score`) est
+désactivée par défaut. L'agent n'écrase jamais une valeur du PIM : un désaccord devient un `conflict`.
 
 ## Organisation
 
@@ -115,7 +115,7 @@ python tools/check_prompts.py prompts
 
 - **Déposer un scraping** : `gcloud storage cp resultats_equipements.csv gs://bkt-cvto-accor-pim-enrichment-dev-euw1-ota-files/booking_equipements/`
 - **Lancer le workflow à la main** :
-  `gcloud workflows run wf-cvto-accor-pim-enrichment-dev-euw1-enrichment --location=europe-west1 --data='{"priorites": "P1"}'`
+  `gcloud workflows run wf-cvto-accor-pim-enrichment-dev-euw1-enrichment --location=europe-west1 --data='{"priorities": "P1"}'`
 - **Extraire le PIM à la main** (première fois, ou sans nouveau scraping) : `gcloud run jobs execute gcrj-cvto-accor-pim-enrichment-dev-euw1-extract-pim --region=europe-west1`.
 - **Calibrer l'agent juge** : ajuster `judge_threshold_high` et `judge_threshold_low` après une revue des 774 cas à
   valider et des 34 rejets, puis `terraform apply`.

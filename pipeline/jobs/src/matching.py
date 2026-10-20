@@ -6,8 +6,8 @@ For every source, the latest scraped row of each RID is matched to its PIM hotel
   pre-verdict = the least favourable of the two, with its reason
 
 Writes the current snapshot (replaced at each run):
-  matching.candidats     one row per RID x source, with the indicators read by the judge agent
-  matching.rid_absents   RIDs of the scrapings not found in the PIM
+  matching.match_candidates   one row per RID x source, with the indicators read by the judge agent
+  matching.unknown_rids       RIDs of the scrapings not found in the PIM
 """
 
 import hashlib
@@ -48,21 +48,21 @@ def latest_rows(client: bigquery.Client, settings: Settings, source: str, cfg: d
 
 
 def source_hash(row: dict) -> str:
-    keys = ("nom_pim", "nom_commercial_pim", "marque_pim", "ancienne_marque_pim", "ville_pim", "pays_pim",
-            "nom_scraping", "ville_scraping", "marque_scraping", "pays_scraping", "url", "page_scrapee", "debut_description",
-            "partagee_avec")
+    keys = ("pim_name", "pim_commercial_name", "pim_brand", "pim_former_brand", "pim_city", "pim_country",
+            "scraped_name", "scraped_city", "scraped_brand", "scraped_country", "url", "page_name", "description_head",
+            "shared_with")
     return hashlib.sha256(json.dumps([row.get(k) for k in keys], ensure_ascii=False).encode()).hexdigest()
 
 
 def match_source(source: str, cfg: dict, scraped: list[dict], hotels: dict, all_rids: set, context: dict) -> tuple[list, list]:
-    candidats, absents, seen = [], [], set()
+    candidates, unknown, seen = [], [], set()
     for s in scraped:
         rid = mr.normalize_rid(s["rid"])
         if not rid or rid in seen:
             continue
         seen.add(rid)
         if rid not in all_rids:
-            absents.append({**context, "rid": rid, "source": source, "depot_id": s.get("depot_id"), "nom_scraping": s.get("name")})
+            unknown.append({**context, "rid": rid, "source": source, "depot_id": s.get("depot_id"), "scraped_name": s.get("name")})
             continue
         hotel = hotels.get(rid)
         if hotel is None:  # in the PIM, but not Open or Pre-opening
@@ -74,26 +74,25 @@ def match_source(source: str, cfg: dict, scraped: list[dict], hotels: dict, all_
         elif cfg.get("page") == "expedia_about":
             found = mr.expedia_page(s.get("about"))
         page = mr.page_check(hotel, found, page_cc) if cfg.get("page") else None
-        candidats.append({
+        candidates.append({
             **context, "rid": rid, "source": source, "depot_id": s.get("depot_id"), "load_dts": s.get("load_dts"),
-            "pim_entity_id": hotel["entity_id"], "nom_pim": hotel["name"], "nom_commercial_pim": hotel["commercial_name"],
-            "marque_pim": hotel["brand"], "ancienne_marque_pim": hotel["old_brand"], "date_rebranding_pim": hotel["rebranding_date"],
-            "ville_pim": hotel["city"], "pays_pim": hotel["country"], "adresse_pim": hotel["address"], "statut_pim": hotel["status"],
-            "nom_scraping": s.get("name"), "ville_scraping": s.get("city"), "marque_scraping": s.get("brand"),
-            "pays_scraping": s.get("country"), "url": s.get("url"), "page_scrapee": found, "pays_page": page_cc,
-            "debut_description": (s.get("about") or "")[:ABOUT_HEAD] or None,
-            "score_nom": identity["score_nom"], "ecarts": identity["ecarts"], "rebranding": identity["rebranding"],
-            "partagee_avec": None, "verdict_identite": identity["verdict"], "motif_identite": identity["motif"],
+            "pim_entity_id": hotel["entity_id"], "pim_name": hotel["name"], "pim_commercial_name": hotel["commercial_name"],
+            "pim_brand": hotel["brand"], "pim_former_brand": hotel["old_brand"], "pim_rebranding_date": hotel["rebranding_date"],
+            "pim_city": hotel["city"], "pim_country": hotel["country"], "pim_address": hotel["address"], "pim_status": hotel["status"],
+            "scraped_name": s.get("name"), "scraped_city": s.get("city"), "scraped_brand": s.get("brand"),
+            "scraped_country": s.get("country"), "url": s.get("url"), "page_name": found, "page_country": page_cc,
+            "description_head": (s.get("about") or "")[:ABOUT_HEAD] or None,
+            "name_score": identity["name_score"], "gaps": identity["gaps"], "rebranding": identity["rebranding"],
+            "shared_with": None, "identity_verdict": identity["verdict"], "identity_reason": identity["reason"],
             "page_key": page_key, "page_verdict": page["verdict"] if page else None,
-            "page_motif": page["motif"] if page else None, "page_rank": page["rank"] if page else 0,
+            "page_reason": page["reason"] if page else None, "page_rank": page["rank"] if page else 0,
         })
-    mr.resolve_shared_pages(candidats)
-    for c in candidats:
-        c["verdict_page"], c["motif_page"] = c.pop("page_verdict"), c.pop("page_motif")
+    mr.resolve_shared_pages(candidates)
+    for c in candidates:
         c.pop("page_key"), c.pop("page_rank")
-        c["pre_verdict"], c["pre_motif"] = mr.combine(c["verdict_identite"], c["motif_identite"], c["verdict_page"], c["motif_page"])
+        c["pre_verdict"], c["pre_reason"] = mr.combine(c["identity_verdict"], c["identity_reason"], c["page_verdict"], c["page_reason"])
         c["source_hash"] = source_hash(c)
-    return candidats, absents
+    return candidates, unknown
 
 
 def run(settings: Settings) -> int:
@@ -104,16 +103,16 @@ def run(settings: Settings) -> int:
     context = {"run_id": settings.run_id, "computed_at": datetime.now(timezone.utc)}
     logger.info("%d PIM hotels in scope %s", len(hotels), settings.scope_status)
 
-    candidats, absents = [], []
+    candidates, unknown = [], []
     for source, cfg in SOURCES.items():
-        c, a = match_source(source, cfg, latest_rows(client, settings, source, cfg), hotels, all_rids, context)
+        c, u = match_source(source, cfg, latest_rows(client, settings, source, cfg), hotels, all_rids, context)
         stats = {v: sum(x["pre_verdict"] == v for x in c) for v in (mr.OK, mr.TO_CHECK, mr.REJECTED)}
-        logger.info("%s: %d matched %s, %d RIDs not in the PIM", source, len(c), stats, len(a))
-        candidats += c
-        absents += a
+        logger.info("%s: %d matched %s, %d RIDs not in the PIM", source, len(c), stats, len(u))
+        candidates += c
+        unknown += u
 
-    bq.load(client, settings.table("matching", "candidats"), candidats, bq.schema("candidats"), truncate=True)
-    bq.load(client, settings.table("matching", "rid_absents"), absents, bq.schema("rid_absents"), truncate=True)
+    bq.load(client, settings.table("matching", "match_candidates"), candidates, bq.schema("match_candidates"), truncate=True)
+    bq.load(client, settings.table("matching", "unknown_rids"), unknown, bq.schema("unknown_rids"), truncate=True)
     return 0
 
 

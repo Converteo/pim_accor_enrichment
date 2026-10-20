@@ -1,4 +1,8 @@
-"""Answer contracts imposed on the two agents (Gemini response schemas: fields required, no defaults)."""
+"""Answer contracts imposed on the two agents (Gemini response schemas: fields required, no defaults).
+
+The agents' prompts are written in French, so what they read and answer keeps French keys and codes. The code
+translates the codes below when it writes the BigQuery tables, which are in English.
+"""
 
 from typing import Literal
 
@@ -8,6 +12,17 @@ MOTIFS_JUGE = Literal[
     "concordance", "rebranding", "nom_interne", "ancienne_enseigne", "homonyme_autre_pays",
     "hotel_voisin", "page_partagee", "page_illisible", "autre",
 ]
+
+# Agent code -> table code
+VERDICTS = {"meme_hotel": "same_hotel", "autre_hotel": "different_hotel", "indetermine": "undetermined"}
+JUDGE_REASONS = {
+    "concordance": "consistent", "rebranding": "rebranding", "nom_interne": "internal_name",
+    "ancienne_enseigne": "former_brand", "homonyme_autre_pays": "namesake_other_country",
+    "hotel_voisin": "neighbouring_hotel", "page_partagee": "shared_page", "page_illisible": "unreadable_page",
+    "autre": "other",
+}
+METHODS = {"extrait": "extracted", "converti": "converted", "deduit": "inferred"}
+AGENT_NEW_ENTITY = "nouvelle"  # id the agent reads and gives for an entity to create (nouvelle, nouvelle_1, nouvelle_2...)
 
 
 class Jugement(BaseModel):

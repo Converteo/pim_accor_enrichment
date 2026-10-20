@@ -20,7 +20,7 @@
     "mode": "NULLABLE"
   },
   {
-    "name": "nom_scraping",
+    "name": "scraped_name",
     "type": "STRING",
     "mode": "NULLABLE"
   },

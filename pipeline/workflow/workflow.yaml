@@ -5,10 +5,10 @@
 #   2. deterministic matching (brick 1)
 #   3. judge agent (brick 2): only matches not judged yet
 #   4. enrichment agent (brick 3): one execution per family folder of the prompts bucket, for the validated matches only
-# Matches waiting for a human decision (a_valider) are not enriched: the scheduler run picks them up once decided.
+# Matches waiting for a human decision (needs_review) are not enriched: the scheduler run picks them up once decided.
 #
 # Arguments (all optional): {"source": "...", "depot_id": "...", "deposited_at": "<ISO 8601>", "extract": true,
-#                             "skip_extract": true, "priorites": "P1,P2,P3"}
+#                             "skip_extract": true, "priorities": "P1,P2,P3"}
 # The scheduler and manual runs work on the PIM already in BigQuery: the PIM API is only called for new scrapings.
 # Env (set by cloudbuild.yaml): EXTRACT_JOB, MATCHING_JOB, JUDGE_JOB, ENRICH_JOB, PROMPTS_BUCKET
 main:
@@ -21,7 +21,7 @@ main:
           - project: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
           - jobs_root: ${"projects/" + project + "/locations/" + sys.get_env("GOOGLE_CLOUD_LOCATION") + "/jobs/"}
           - bucket: ${sys.get_env("PROMPTS_BUCKET")}
-          - familles: []
+          - families: []
           - failures: []
 
     - read_args:
@@ -34,7 +34,7 @@ main:
         assign:
           - extract: ${default(map.get(input, "extract"), map.get(input, "source") != null) and not default(map.get(input, "skip_extract"), false)}
           - deposited_at: ${default(map.get(input, "deposited_at"), "")}
-          - priorites: ${default(map.get(input, "priorites"), "P1,P2,P3")}
+          - priorities: ${default(map.get(input, "priorities"), "P1,P2,P3")}
 
     - log_start:
         call: sys.log
@@ -75,7 +75,7 @@ main:
           connector_params:
             timeout: 3600
 
-    - list_familles:
+    - list_families:
         call: googleapis.storage.v1.objects.list
         args:
           bucket: ${bucket}
@@ -83,15 +83,15 @@ main:
           delimiter: "/"
         result: listing
 
-    - collect_familles:
+    - collect_families:
         for:
           value: prefix
           in: ${default(map.get(listing, "prefixes"), [])}
           steps:
-            - add_famille:
+            - add_family:
                 assign:
                   - parts: ${text.split(prefix, "/")}
-                  - familles: ${list.concat(familles, parts[1])}
+                  - families: ${list.concat(families, parts[1])}
 
     - enrich:
         parallel:
@@ -99,8 +99,8 @@ main:
           # Families enriched at the same time (each is one Cloud Run job execution)
           concurrency_limit: 3
           for:
-            value: famille
-            in: ${familles}
+            value: family
+            in: ${families}
             steps:
               - run_enrich:
                   try:
@@ -111,10 +111,10 @@ main:
                         overrides:
                           containerOverrides:
                             - env:
-                                - name: FAMILLE
-                                  value: ${famille}
-                                - name: PRIORITES
-                                  value: ${priorites}
+                                - name: FAMILY
+                                  value: ${family}
+                                - name: PRIORITIES
+                                  value: ${priorities}
                       connector_params:
                         timeout: 3600
                   except:
@@ -123,7 +123,7 @@ main:
                       - record_failure:
                           assign:
                             - failure:
-                                famille: ${famille}
+                                family: ${family}
                                 error: ${e}
                             - failures: ${list.concat(failures, failure)}
 
@@ -136,4 +136,4 @@ main:
 
     - done:
         return:
-          familles: ${familles}
+          families: ${families}

@@ -65,8 +65,8 @@ class Settings:
     nb_hotels: int
 
     # Set per execution by the workflow
-    famille: str | None
-    priorites: tuple[str, ...]
+    family: str | None
+    priorities: tuple[str, ...]
     deposited_at: datetime | None  # deposit that started the run: the PIM is extracted unless it was after it
     force: bool
 
@@ -77,7 +77,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        famille = os.environ.get("FAMILLE", "").strip() or None
+        family = os.environ.get("FAMILY", "").strip() or None
         return cls(
             project_id=_required("PROJECT_ID"),
             raw_dataset=_required("BQ_RAW_DATASET"),
@@ -102,8 +102,8 @@ class Settings:
             max_output_tokens=int(os.environ.get("MAX_OUTPUT_TOKENS", "32768")),
             lease_seconds=int(os.environ.get("LEASE_SECONDS", "3600")),
             nb_hotels=int(os.environ.get("NB_HOTELS", "1000")),
-            famille=identifier(famille, "FAMILLE") if famille else None,
-            priorites=tuple(p.strip() for p in os.environ.get("PRIORITES", "P1,P2,P3").split(",") if p.strip()),
+            family=identifier(family, "FAMILY") if family else None,
+            priorities=tuple(p.strip() for p in os.environ.get("PRIORITIES", "P1,P2,P3").split(",") if p.strip()),
             deposited_at=_optional_datetime("DEPOSITED_AT"),
             force=os.environ.get("FORCE", "").lower() in ("1", "true", "yes"),
             run_id=os.environ.get("CLOUD_RUN_EXECUTION") or uuid.uuid4().hex,

@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-REQUIRED_FIELD_KEYS = {"champ_pim", "entite", "libelle", "type_pim", "cvl_id", "multivalue", "priorite"}
+REQUIRED_FIELD_KEYS = {"pim_field", "entity", "label", "pim_type", "cvl_id", "multivalue", "priority"}
 
 
 def check(root: Path) -> list[str]:
@@ -26,13 +26,15 @@ def check(root: Path) -> list[str]:
         except (OSError, ValueError) as e:
             errors.append(f"{d.name}/targets.json unreadable: {e}")
             continue
-        if not targets.get("version_prompts") or not targets.get("sources") or not targets.get("champs"):
-            errors.append(f"{d.name}/targets.json needs version_prompts, sources and champs")
-        for c in targets.get("champs", []):
+        if not targets.get("prompt_version") or not targets.get("sources") or not targets.get("fields"):
+            errors.append(f"{d.name}/targets.json needs prompt_version, sources and fields")
+        if targets.get("family") != d.name:
+            errors.append(f"{d.name}/targets.json: family {targets.get('family')!r} differs from its folder")
+        for c in targets.get("fields", []):
             if REQUIRED_FIELD_KEYS - c.keys():
-                errors.append(f"{d.name}: {c.get('champ_pim')} misses {sorted(REQUIRED_FIELD_KEYS - c.keys())}")
-            if c.get("priorite") not in ("P1", "P2", "P3"):
-                errors.append(f"{d.name}: {c.get('champ_pim')} has priority {c.get('priorite')!r}")
+                errors.append(f"{d.name}: {c.get('pim_field')} misses {sorted(REQUIRED_FIELD_KEYS - c.keys())}")
+            if c.get("priority") not in ("P1", "P2", "P3"):
+                errors.append(f"{d.name}: {c.get('pim_field')} has priority {c.get('priority')!r}")
     return errors
 
 

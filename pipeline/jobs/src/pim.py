@@ -15,8 +15,8 @@ def norm_status(s) -> str:
 
 def cvl_labels(client: bigquery.Client, settings) -> dict[tuple[str, str], str]:
     """(cvl_id, key) -> English label."""
-    data = bq.rows(client, f"SELECT cvl_id, cle, libelle FROM `{settings.table('raw', 'pim_cvl_values')}`")
-    return {(r["cvl_id"], r["cle"]): r["libelle"] for r in data}
+    data = bq.rows(client, f"SELECT cvl_id, key, label FROM `{settings.table('raw', 'pim_cvl_values')}`")
+    return {(r["cvl_id"], r["key"]): r["label"] for r in data}
 
 
 def field_model(client: bigquery.Client, settings) -> dict[str, dict]:

@@ -266,7 +266,7 @@ def extract(settings: Settings) -> dict:
     for cvl_id in cvl_ids:
         for v in pim.get(f"/v1.0.0/model/cvls/{cvl_id}/values"):
             value = v.get("value")
-            cvl_rows.append({"cvl_id": cvl_id, "cle": v["key"], "libelle": raw_value(value) or v["key"]})
+            cvl_rows.append({"cvl_id": cvl_id, "key": v["key"], "label": raw_value(value) or v["key"]})
 
     ids = pim.read_post("/v1.0.0/query", {"systemCriteria": [{"type": "EntityTypeId", "value": "Product", "operator": "Equal"}]})["entityIds"]
     logger.info("%d hotels to extract", len(ids))
@@ -307,7 +307,7 @@ def extract(settings: Settings) -> dict:
     bq.load(client, settings.table("raw", "pim_model"), model_rows, bq.schema("pim_model"), truncate=True)
     bq.load(client, settings.table("raw", "pim_cvl_values"), cvl_rows, bq.schema("pim_cvl_values"), truncate=True)
 
-    stats = {"hotels": len(products), **{f"entites_{et}": len(v) for et, v in linked.items()}, "cvl_values": len(cvl_rows),
+    stats = {"hotels": len(products), **{f"entities_{et}": len(v) for et, v in linked.items()}, "cvl_values": len(cvl_rows),
              "api_calls": pim.calls, "minutes": round((time.monotonic() - started) / 60, 1)}
     logger.info("Extraction finished: %s", stats)
     return stats

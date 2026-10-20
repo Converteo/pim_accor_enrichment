@@ -1,0 +1,139 @@
+{
+  "family": "pool",
+  "prompt_version": "enrich-v2",
+  "sources": {
+    "booking_equipements": [
+      "nb_piscines",
+      "piscine_1",
+      "piscine_2",
+      "piscine_3",
+      "piscine_4",
+      "piscine_5",
+      "piscine_6",
+      "piscine_7",
+      "piscine_8",
+      "piscine_9",
+      "piscine_10",
+      "piscine_11",
+      "piscine_12",
+      "piscine_13",
+      "piscine_14",
+      "piscine_15",
+      "wellness"
+    ],
+    "booking_piscines": [
+      "nb_pool"
+    ],
+    "expedia": [
+      "points_forts_sejour",
+      "property_about",
+      "important_info"
+    ]
+  },
+  "fields": [
+    {
+      "pim_field": "PoolFeatures",
+      "entity": "Pool",
+      "label": "Pool features",
+      "pim_type": "CVL",
+      "cvl_id": "PoolFeatures",
+      "multivalue": true,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking PISCINE_n (water slide, kids…)"
+    },
+    {
+      "pim_field": "PoolHeated",
+      "entity": "Pool",
+      "label": "Heated pool",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking PISCINE_n « Heated pool »"
+    },
+    {
+      "pim_field": "PoolOverflowing",
+      "entity": "Pool",
+      "label": "Infinity pool",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking PISCINE_n « Infinity pool »"
+    },
+    {
+      "pim_field": "PoolPaying",
+      "entity": "Pool",
+      "label": "Paying",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": true,
+      "instruction": null,
+      "audit_source": "Booking PISCINE_n « Additional charge »"
+    },
+    {
+      "pim_field": "PoolType",
+      "entity": "Pool",
+      "label": "Type of pool",
+      "pim_type": "CVL",
+      "cvl_id": "PoolType",
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Intérieur ou extérieur, pour chaque piscine.",
+      "audit_source": "Booking PISCINE_n (indoor / outdoor)"
+    },
+    {
+      "pim_field": "PoolWater",
+      "entity": "Pool",
+      "label": "Water pool",
+      "pim_type": "CVL",
+      "cvl_id": "WaterPool",
+      "multivalue": false,
+      "priority": "P2",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking PISCINE_n « Salt-water pool »"
+    },
+    {
+      "pim_field": "ProductAvailablePool",
+      "entity": "Product",
+      "label": "Pool in the facility",
+      "pim_type": "Boolean",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": null,
+      "audit_source": "Booking / fichier piscines"
+    },
+    {
+      "pim_field": "ProductNbPools",
+      "entity": "Product",
+      "label": "Number of pools",
+      "pim_type": "Integer",
+      "cvl_id": null,
+      "multivalue": false,
+      "priority": "P3",
+      "format": null,
+      "false_is_an_answer": false,
+      "instruction": "Nombre de piscines de l'hôtel (Booking NB_PISCINES ou fichier piscines NB_POOL).",
+      "audit_source": "Booking NB_PISCINES ; fichier piscines NB_POOL"
+    }
+  ]
+}

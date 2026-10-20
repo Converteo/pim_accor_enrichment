@@ -1,4 +1,4 @@
-"""Generate prompts/enrichment/<famille>/targets.json from the audit workbook (livrable 1.1) and the PIM model.
+"""Generate prompts/enrichment/<family>/targets.json from the audit workbook (livrable 1.1) and the PIM model.
 
     python tools/build_targets.py "<...>/1.1 Rapprochement et enrichissements possibles - Audit Qualité PIM Hôtels.xlsx" \
         <...>/live_model.json --version enrich-v1
@@ -17,29 +17,29 @@ from openpyxl import load_workbook
 ROOT = Path(__file__).resolve().parents[1]
 SHEET = "2 - Champs enrichissables"
 
-FAMILLES = {
-    "hotel_general": [
+FAMILIES = {
+    "general": [
         "ProductCheckIn", "ProductCheckOut", "ProductStaffLanguages", "ProductNonSmokingProperty", "ProductAirConditionInAllArea",
         "ProductCheckInCheckOutFacilities", "ProductFreeAdditionalServices", "ProductPayingAdditionalServices",
         "ProductFreeGeneralAmenities", "ProductFreeServices", "ProductTourismServicesDesks", "ProductFreeDeskEquipmentAmenities",
         "ProductFamilyAndChildrenServices", "ProductEntertainmentServices",
     ],
-    "accessibilite_securite": [
+    "accessibility_safety": [
         "ProductReducedMobilityFacilities", "ProductWheelchairAccessible", "ProductHotelZoneAccessible", "ProductFeaturesAccessible",
         "ProductFireEmergencyInfo", "ProductStaffMonitoringInfo", "ProductAccessControlInfo", "ProductAlarmInfo",
     ],
-    "restauration": [
+    "dining": [
         "ProductFnBAvailableBar", "ProductServiceFullMenuInRoom", "ProductServicesAvailableKidsMenu",
         "BarType", "BreakfastCharged", "BreakfastCategory", "RestaurantTypeFood",
     ],
-    "piscine": [
+    "pool": [
         "ProductNbPools", "ProductAvailablePool", "PoolType", "PoolHeated", "PoolPaying", "PoolOverflowing", "PoolWater", "PoolFeatures",
     ],
     "parking": [
         "ParkingCharged", "ParkingTypeOfParking", "ParkingLocationOfParking", "ParkingCost", "ParkingPricingMode",
         "ParkingServices", "ParkingSecurityAccessibility", "ParkingAvailableChargingTerminal", "ParkingIndoorOutdoor",
     ],
-    "bien_etre_sport": [
+    "wellness_fitness": [
         "ProductFitnessCenter", "ProductAvailableWellnessCenter", "WellnessCenterType", "WellnessCenterFreeWellnessCenterServices",
         "WellnessCenterChargedWellnessCenterServices", "FitnessCenterFreeWellServicesEquipments",
         "FitnessCenterChargedPersoLessonsSpecialCare", "SportType",
@@ -52,23 +52,23 @@ BOOKING_ALL = ["check_in", "check_out", "general", "internet", "food_drink", "we
                "languages_spoken", "services", "services_extras", "pets", "parking", "nb_piscines"]
 POOLS = [f"piscine_{i}" for i in range(1, 16)]
 SOURCES = {
-    "hotel_general": {"booking_equipements": ["check_in", "check_out", "general", "internet", "reception_services", "cleaning_services",
+    "general": {"booking_equipements": ["check_in", "check_out", "general", "internet", "reception_services", "cleaning_services",
                                               "business_facilities", "entertainment_family_services", "activities", "languages_spoken",
                                               "services", "services_extras", "pets"],
                       "expedia": ["policies", "important_info", "points_forts_sejour", "property_about"]},
-    "accessibilite_securite": {"booking_equipements": ["accessibility", "general", "safety_security"],
+    "accessibility_safety": {"booking_equipements": ["accessibility", "general", "safety_security"],
                                "expedia": ["important_info", "property_about"]},
-    "restauration": {"booking_equipements": ["food_drink", "general", "services"],
+    "dining": {"booking_equipements": ["food_drink", "general", "services"],
                      "expedia": ["important_info", "points_forts_sejour", "property_about"]},
-    "piscine": {"booking_equipements": ["nb_piscines", *POOLS, "wellness"], "booking_piscines": ["nb_pool"],
+    "pool": {"booking_equipements": ["nb_piscines", *POOLS, "wellness"], "booking_piscines": ["nb_pool"],
                 "expedia": ["points_forts_sejour", "property_about", "important_info"]},
     "parking": {"booking_equipements": ["parking"], "expedia": ["policies", "important_info", "property_about"]},
-    "bien_etre_sport": {"booking_equipements": ["wellness", "activities"], "expedia": ["points_forts_sejour", "property_about", "important_info"]},
+    "wellness_fitness": {"booking_equipements": ["wellness", "activities"], "expedia": ["points_forts_sejour", "property_about", "important_info"]},
 }
 
 FALSE_IS_AN_ANSWER = {"ParkingCharged", "PoolPaying", "BreakfastCharged"}
 HHMM = {"ProductCheckIn", "ProductCheckOut"}
-CONSIGNES = {
+INSTRUCTIONS = {
     "ProductCheckIn": "Heure de début du check-in (Booking « From 15:00 », Expedia « Check-in start time: 3:00 PM »).",
     "ProductCheckOut": "Heure limite du check-out (Booking « Until 12:00 », Expedia « Check-out before noon »).",
     "ProductStaffLanguages": "Langues parlées par le personnel ; n'ajoute que des langues de la liste PIM.",
@@ -96,26 +96,26 @@ def main() -> None:
     inventory = {r[header.index("Champ PIM")]: dict(zip(header, r)) for r in rows[1:] if r[header.index("Champ PIM")]}
     model = {f["fieldTypeId"]: (e["id"], f) for e in json.loads(Path(args.model_json).read_text()) for f in e["fieldTypes"]}
 
-    missing = [f for fs in FAMILLES.values() for f in fs if f not in inventory or f not in model]
+    missing = [f for fs in FAMILIES.values() for f in fs if f not in inventory or f not in model]
     if missing:
         raise SystemExit(f"Fields missing from the workbook or the model: {missing}")
-    for famille, fields in FAMILLES.items():
-        champs = []
-        for field in fields:
-            entite, f = model[field]
+    for family, family_fields in FAMILIES.items():
+        fields = []
+        for field in family_fields:
+            entity, f = model[field]
             inv = inventory[field]
-            champs.append({
-                "champ_pim": field, "entite": entite, "libelle": f["fieldTypeDisplayName"], "type_pim": f["fieldDataType"],
-                "cvl_id": f.get("cvlId"), "multivalue": bool(f.get("isMultiValue")), "priorite": inv["Priorité"],
-                "format": "hh:mm" if field in HHMM else None, "false_est_une_reponse": field in FALSE_IS_AN_ANSWER,
-                "consigne": CONSIGNES.get(field) or inv.get("Remarque") or None, "source_audit": inv.get("Source(s)"),
+            fields.append({
+                "pim_field": field, "entity": entity, "label": f["fieldTypeDisplayName"], "pim_type": f["fieldDataType"],
+                "cvl_id": f.get("cvlId"), "multivalue": bool(f.get("isMultiValue")), "priority": inv["Priorité"],
+                "format": "hh:mm" if field in HHMM else None, "false_is_an_answer": field in FALSE_IS_AN_ANSWER,
+                "instruction": INSTRUCTIONS.get(field) or inv.get("Remarque") or None, "audit_source": inv.get("Source(s)"),
             })
-        champs.sort(key=lambda c: (c["priorite"], c["entite"] != "Product", c["champ_pim"]))
-        out = ROOT / "prompts" / "enrichment" / famille / "targets.json"
+        fields.sort(key=lambda c: (c["priority"], c["entity"] != "Product", c["pim_field"]))
+        out = ROOT / "prompts" / "enrichment" / family / "targets.json"
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps({"famille": famille, "version_prompts": args.version, "sources": SOURCES[famille], "champs": champs},
+        out.write_text(json.dumps({"family": family, "prompt_version": args.version, "sources": SOURCES[family], "fields": fields},
                                   ensure_ascii=False, indent=2) + "\n")
-        print(f"{out.relative_to(ROOT)}: {len(champs)} champs")
+        print(f"{out.relative_to(ROOT)}: {len(fields)} fields")
 
 
 if __name__ == "__main__":
