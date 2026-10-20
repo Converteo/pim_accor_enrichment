@@ -7,8 +7,8 @@ Datasets (un jeu par environnement, `<base>` = `cvto_accor_pim_enrichment_<env>_
 
 | Dataset | Accès du SA backend | Contenu |
 | --- | --- | --- |
-| `<base>_matching` | lecture | rapprochements RID × source, jugements de l'agent juge, vue `v_matches` |
-| `<base>_enhanced` | lecture | valeurs proposées par l'agent, vue `v_enrichments`, historique `exports` |
+| `<base>_matching` | lecture | rapprochements RID × source (`match_candidates`), notes de l'agent juge (`match_judgments`), vues `v_matches` et `v_approved_matches` |
+| `<base>_enhanced` | lecture | champs à enrichir (`enrichment_candidates`), réponses de l'agent (`enrichment_proposals`), vues `v_enrichments` et `v_approved_enrichments`, historique `exports` |
 | `<base>_validation` | lecture et écriture | décisions humaines (`match_decisions`, `enrichment_decisions`) |
 
 Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.invoker` sur le job d'export et la lecture du bucket des exports.
@@ -44,7 +44,7 @@ SELECT e.*
 FROM `<base>_enhanced.v_enrichments` e
 WHERE EXISTS (SELECT 1 FROM `<base>_matching.v_approved_matches` r WHERE r.rid = e.rid AND r.source = e.source)
   AND e.final_status = 'needs_review'
-ORDER BY e.priorite, e.score DESC
+ORDER BY e.priority, e.score DESC
 ```
 
 | Colonne | Sens |
@@ -55,6 +55,7 @@ ORDER BY e.priorite, e.score DESC
 | `value`, `value_label` | valeur proposée (code PIM et libellé pour les listes) |
 | `source`, `source_field`, `source_excerpt` | justification : la phrase du scraping |
 | `score` (0-100), `confidence`, `warning` | confiance de l'agent ; score plafonné à 50 si l'extrait est introuvable |
+| `method` | `extracted` (repris tel quel), `converted` (mis au format PIM), `inferred` (déduit) |
 | `final_status` | `pending_enrichment` (pas encore enrichi), `needs_review`, `auto_approved` (désactivé), `auto_rejected`, puis `human_approved`, `human_rejected`, `human_corrected` après décision |
 | `reason`, `reason_detail` | pour `auto_rejected` : code (`not_in_sources`, `model_omitted`, `already_in_pim`, `pim_conflict`, `no_excerpt`, `not_in_pim_list`, `invalid_format`) et texte en français |
 | `final_value` | valeur retenue (la valeur corrigée le cas échéant) |
@@ -72,19 +73,22 @@ une ligne de `v_enrichments`, `score` / 100 pour l'échelle 0-1. À caler avec l
 ## 3. Export
 
 Le fichier plat sort quand plus rien n'est en attente. Le backend lance le job `gcrj-<base>-export` (API Cloud Run
-`jobs.run`). Le job vérifie lui-même qu’aucun rapprochement ni aucune valeur `needs_review` ne reste et refuse
-sinon. Il écrit dans `bkt-<base>-exports/export/<date>/` et ajoute une ligne dans `<base>_enhanced.exports`.
+`jobs.run`). Le job vérifie lui-même que rien n'est en attente et refuse sinon : aucun rapprochement `pending_judgment` ou
+`needs_review`, aucune valeur `pending_enrichment`, ni `needs_review` sur un rapprochement validé. Il écrit dans `bkt-<base>-exports/export/<date>/` et ajoute une ligne dans `<base>_enhanced.exports`.
 
 Nombre de décisions en attente (pour griser le bouton) :
 
 ```sql
 SELECT
   (SELECT COUNT(*) FROM `<base>_matching.v_matches` WHERE final_status IN ('needs_review', 'pending_judgment'))
-  + (SELECT COUNT(*) FROM `<base>_enhanced.v_enrichments` e WHERE final_status = 'needs_review'
-     AND EXISTS (SELECT 1 FROM `<base>_matching.v_approved_matches` r WHERE r.rid = e.rid AND r.source = e.source)) AS en_attente
+  + (SELECT COUNT(*) FROM `<base>_enhanced.v_enrichments` e
+     WHERE final_status = 'pending_enrichment'
+        OR (final_status = 'needs_review'
+            AND EXISTS (SELECT 1 FROM `<base>_matching.v_approved_matches` r WHERE r.rid = e.rid AND r.source = e.source))) AS en_attente
 ```
 
 ## 4. Rythme
 
-Le workflow tourne à chaque dépôt de scraping et toutes les 15 minutes (planificateur). Un rapprochement validé dans
-l'interface est donc enrichi au passage suivant, sans action du backend.
+Le workflow tourne à chaque dépôt de scraping et toutes les 15 minutes (planificateur, en pause sur dev pour l'instant).
+Un rapprochement validé dans l'interface est donc enrichi au passage suivant, sans action du backend ; d'ici là, ses champs
+apparaissent en `pending_enrichment`.
