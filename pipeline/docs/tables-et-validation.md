@@ -86,7 +86,7 @@ Ce sont les **seules tables écrites par le backend.**
 | `reason` | Cas | Dans l'interface |
 | --- | --- | --- |
 | `not_in_sources` | l'agent n'a rien trouvé dans les sources | masqué |
-| `model_omitted` | la cible manque dans la réponse du modèle | masqué |
+| `model_omitted` | la cible manque dans la réponse du modèle ; redemandée au passage suivant, jusqu'à 3 fois pour un même contenu | masqué |
 | `already_in_pim` | la source confirme la valeur du PIM | masqué |
 | `pim_conflict` | la source contredit le PIM (`reason_detail` : « le PIM contient … ») ; le PIM n'est jamais écrasé | à afficher pour information |
 | `no_excerpt` | valeur sans extrait de la source | masqué |

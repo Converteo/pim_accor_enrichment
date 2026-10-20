@@ -230,6 +230,14 @@ def test_candidates_carry_the_hotel_content_fingerprint():
     assert core.candidate_set([], context)[0] == [context]
 
 
+def test_only_the_targets_left_out_by_the_model_are_asked_again():
+    targets = [{"pim_field": "ProductCheckIn", "entity": "Product", "entity_id": None, "pim_value": None},
+               {"pim_field": "ParkingCharged", "entity": "Parking", "entity_id": "p1", "pim_value": None},
+               {"pim_field": "ParkingCharged", "entity": "Parking", "entity_id": "p2", "pim_value": None}]
+    assert core.only_targets(targets, {("ParkingCharged", "p2")}) == [targets[2]]
+    assert core.only_targets(targets, set()) == []
+
+
 def test_payload_speaks_the_agent_language():
     targets = [{"pim_field": "PoolType", "entity": "Pool", "entity_id": core.NEW_ENTITY, "pim_value": None}]
     payload = core.hotel_payload("0952", targets, {}, {})

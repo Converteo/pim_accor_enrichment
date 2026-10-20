@@ -3,7 +3,8 @@
 1. take the family's lease (Firestore)
 2. hotels whose match is validated (auto_approved or human_approved) for at least one source of the family
 3. per hotel: target fields (empty in the PIM, filtered by PRIORITIES), content of the validated sources only,
-   fingerprint; a hotel already enriched with the same fingerprint is skipped
+   fingerprint; a hotel already enriched with the same fingerprint is skipped, except for the targets the model left
+   out of its answer (model_omitted), asked again up to MODEL_OMITTED_RETRIES times
    the targets of all these hotels are written to enhanced.enrichment_candidates when they changed (pending_enrichment
    in the views until a value is there)
 4. batches of ENRICH_BATCH_SIZE hotels to Gemini, answers checked by the code (enrichment_core)
@@ -119,6 +120,25 @@ def load_context(client: bigquery.Client, settings: Settings, targets: dict, fie
     return valid_sources, scraped, products, entities
 
 
+def omitted_targets(client: bigquery.Client, settings: Settings) -> dict[tuple[str, str], set[tuple[str, str | None]]]:
+    """(rid, source_hash) -> targets whose latest answer is model_omitted, left out at most MODEL_OMITTED_RETRIES times."""
+    data = bq.rows(client, f"""
+        SELECT rid, source_hash, pim_field, entity_id FROM (
+          SELECT rid, source_hash, pim_field, entity_id, reason,
+                 COUNTIF(reason = 'model_omitted') OVER target AS omitted,
+                 ROW_NUMBER() OVER (target ORDER BY enriched_at DESC) AS latest
+          FROM `{settings.table('enhanced', 'enrichment_proposals')}`
+          WHERE family = @family
+          WINDOW target AS (PARTITION BY rid, source_hash, pim_field, IFNULL(entity_id, ''))
+        )
+        WHERE latest = 1 AND reason = 'model_omitted' AND omitted <= @retries
+    """, {"family": settings.family, "retries": core.MODEL_OMITTED_RETRIES})
+    out: dict[tuple[str, str], set] = {}
+    for r in data:
+        out.setdefault((r["rid"], r["source_hash"]), set()).add((r["pim_field"], r["entity_id"]))
+    return out
+
+
 def enrich(settings: Settings, state, candidates_hash: str | None = None) -> int:
     started = datetime.now(timezone.utc)
     client = bigquery.Client(project=settings.project_id)
@@ -141,8 +161,9 @@ def enrich(settings: Settings, state, candidates_hash: str | None = None) -> int
     done = {(r["rid"], r["source_hash"]) for r in bq.rows(client, f"""
         SELECT DISTINCT rid, source_hash FROM `{settings.table('enhanced', 'enrichment_proposals')}` WHERE family = @family
     """, {"family": settings.family})}
+    omitted = omitted_targets(client, settings)
 
-    hotels, candidates = [], []
+    hotels, retries, candidates = [], [], []
     candidate_context = {"run_id": settings.run_id, "family": settings.family, "computed_at": started}
     for rid, sources in valid_sources.items():
         product = products.get(rid)
@@ -160,6 +181,8 @@ def enrich(settings: Settings, state, candidates_hash: str | None = None) -> int
         candidates += core.candidate_rows(hotel, hotel_targets, by_field, candidate_context)
         if (rid, h) not in done:
             hotels.append(hotel)
+        elif (rid, h) in omitted:
+            retries.append({**hotel, "targets": core.only_targets(hotel_targets, omitted[(rid, h)])})
 
     to_write, key = core.candidate_set(candidates, candidate_context)
     if key != candidates_hash:
@@ -167,9 +190,10 @@ def enrich(settings: Settings, state, candidates_hash: str | None = None) -> int
         state.remember(candidates_hash=key)
         logger.info("Family %s: %d candidates written", settings.family, len(candidates))
 
-    pending = len(hotels)
-    hotels = hotels[:settings.nb_hotels]
-    logger.info("Family %s: %d hotels with validated sources, %d to enrich, %d selected", settings.family, len(valid_sources), pending, len(hotels))
+    pending, retried = len(hotels), len([r for r in retries if r["targets"]])
+    hotels = (hotels + [r for r in retries if r["targets"]])[:settings.nb_hotels]
+    logger.info("Family %s: %d hotels with validated sources, %d to enrich, %d with targets left out by the model, %d selected",
+                settings.family, len(valid_sources), pending, retried, len(hotels))
     if not hotels:
         state.release(settings.run_id, success=True, stats={"hotels_to_enrich": 0})
         return 0
@@ -205,7 +229,7 @@ def enrich(settings: Settings, state, candidates_hash: str | None = None) -> int
         agent.close()
 
     written = bq.load(client, settings.table("enhanced", "enrichment_proposals"), rows, bq.schema("enrichment_proposals"))
-    stats = {"hotels_to_enrich": pending, "hotels_processed": len(hotels), "failed_batches": failed, "rows": written,
+    stats = {"hotels_to_enrich": pending, "hotels_retried": retried, "hotels_processed": len(hotels), "failed_batches": failed, "rows": written,
              **{s: sum(r["status"] == s for r in rows) for s in (NEEDS_REVIEW, AUTO_APPROVED, AUTO_REJECTED)},
              **{f"{AUTO_REJECTED}_{c}": sum(r["status"] == AUTO_REJECTED and r["reason"] == c for r in rows)
                 for c in sorted({r["reason"] for r in rows if r["status"] == AUTO_REJECTED})}}

@@ -17,6 +17,7 @@ from schemas_llm import AGENT_NEW_ENTITY, METHODS
 NEW_ENTITY = "new"
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 EXTRACT_CAP_SCORE = 50  # score kept when the cited excerpt is not found in the source
+MODEL_OMITTED_RETRIES = 3  # times a target left out of the model's answer is asked again (same content)
 MAX_EXTRACT_PART = 10  # parts of a cited excerpt checked in the source
 
 # reason is a code; reason_detail and warning are read by the Accor reviewers in the app: they stay in French
@@ -78,6 +79,11 @@ def candidate_set(rows: list[dict], context: dict) -> tuple[list[dict], str]:
     """(rows to write, fingerprint of the set). An empty set is one marker row (rid empty), so the views drop the old set."""
     key = fingerprint(sorted((r["rid"], r["pim_field"], r["entity_id"] or "", r["source_hash"]) for r in rows))
     return (rows or [dict(context)]), key
+
+
+def only_targets(targets: list[dict], keys: set[tuple[str, str | None]]) -> list[dict]:
+    """Targets of a hotel restricted to (pim_field, entity_id) keys, e.g. the ones the model left out."""
+    return [t for t in targets if (t["pim_field"], t["entity_id"]) in keys]
 
 
 def fingerprint(*parts) -> str:
