@@ -22,15 +22,16 @@ locals {
 
   # Tables écrites par les jobs et le backend ; schémas partagés avec le code (pipeline/jobs/src/schemas)
   tables = {
-    pim_model            = { dataset = "raw", partition = null, cluster = ["entity_type"] }
-    pim_cvl_values       = { dataset = "raw", partition = null, cluster = ["cvl_id"] }
-    match_candidates     = { dataset = "matching", partition = null, cluster = ["source", "pre_verdict"] }
-    unknown_rids         = { dataset = "matching", partition = null, cluster = ["source"] }
-    match_judgments      = { dataset = "matching", partition = "judged_at", cluster = ["rid", "status"] }
-    match_decisions      = { dataset = "validation", partition = "decided_at", cluster = ["rid", "source"] }
-    enrichments          = { dataset = "enhanced", partition = "enriched_at", cluster = ["family", "rid", "status"] }
-    enrichment_decisions = { dataset = "validation", partition = "decided_at", cluster = ["rid", "pim_field"] }
-    exports              = { dataset = "enhanced", partition = "exported_at", cluster = [] }
+    pim_model             = { dataset = "raw", partition = null, cluster = ["entity_type"] }
+    pim_cvl_values        = { dataset = "raw", partition = null, cluster = ["cvl_id"] }
+    match_candidates      = { dataset = "matching", partition = null, cluster = ["source", "pre_verdict"] }
+    unknown_rids          = { dataset = "matching", partition = null, cluster = ["source"] }
+    match_judgments       = { dataset = "matching", partition = "judged_at", cluster = ["rid", "status"] }
+    match_decisions       = { dataset = "validation", partition = "decided_at", cluster = ["rid", "source"] }
+    enrichment_proposals  = { dataset = "enhanced", partition = "enriched_at", cluster = ["family", "rid", "status"] }
+    enrichment_candidates = { dataset = "enhanced", partition = "computed_at", cluster = ["family", "rid"] }
+    enrichment_decisions  = { dataset = "validation", partition = "decided_at", cluster = ["rid", "pim_field"] }
+    exports               = { dataset = "enhanced", partition = "exported_at", cluster = [] }
   }
 
   # Vues, dans l'ordre de leurs dépendances

@@ -10,15 +10,17 @@ import re
 import unicodedata
 import uuid
 
-from decisions import CONFLICT, DISCARDED, MATCHES_PIM, NOT_FOUND, PROPOSED, confidence, enrichment_status
+from decisions import (ALREADY_IN_PIM, AUTO_REJECTED, INVALID_FORMAT, MODEL_OMITTED, NEEDS_REVIEW, NO_EXCERPT, NOT_IN_PIM_LIST,
+                       NOT_IN_SOURCES, PIM_CONFLICT, confidence, enrichment_status)
 from schemas_llm import AGENT_NEW_ENTITY, METHODS
 
 NEW_ENTITY = "new"
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 EXTRACT_CAP_SCORE = 50  # score kept when the cited excerpt is not found in the source
+MODEL_OMITTED_RETRIES = 3  # times a target left out of the model's answer is asked again (same content)
 MAX_EXTRACT_PART = 10  # parts of a cited excerpt checked in the source
 
-# Reasons and warnings are read by the Accor reviewers in the app: they stay in French
+# reason is a code; reason_detail and warning are read by the Accor reviewers in the app: they stay in French
 
 
 # ------------------------------------------------------------------ targets
@@ -65,6 +67,25 @@ def targets_for_hotel(fields: list[dict], product: dict, entities: dict[str, lis
     return targets
 
 
+def candidate_rows(hotel: dict, targets: list[dict], fields: dict[str, dict], context: dict) -> list[dict]:
+    """Rows of enhanced.enrichment_candidates for one hotel (hotel: rid, pim_entity_id, validated_sources, source_hash)."""
+    return [{**context, "rid": hotel["rid"], "pim_entity_id": hotel["pim_entity_id"], "entity": t["entity"],
+             "entity_id": t["entity_id"], "pim_field": t["pim_field"], "label": fields[t["pim_field"]].get("label"),
+             "priority": fields[t["pim_field"]].get("priority"), "pim_value": t["pim_value"],
+             "validated_sources": hotel["validated_sources"], "source_hash": hotel["source_hash"]} for t in targets]
+
+
+def candidate_set(rows: list[dict], context: dict) -> tuple[list[dict], str]:
+    """(rows to write, fingerprint of the set). An empty set is one marker row (rid empty), so the views drop the old set."""
+    key = fingerprint(sorted((r["rid"], r["pim_field"], r["entity_id"] or "", r["source_hash"]) for r in rows))
+    return (rows or [dict(context)]), key
+
+
+def only_targets(targets: list[dict], keys: set[tuple[str, str | None]]) -> list[dict]:
+    """Targets of a hotel restricted to (pim_field, entity_id) keys, e.g. the ones the model left out."""
+    return [t for t in targets if (t["pim_field"], t["entity_id"]) in keys]
+
+
 def fingerprint(*parts) -> str:
     return hashlib.sha256(json.dumps(parts, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
 
@@ -108,52 +129,52 @@ def extract_found(excerpt: str | None, source_text: str | None) -> bool:
     return bool(parts) and all(p in haystack for p in parts)
 
 
-def check_value(field: dict, value: str, allowed: set[str]) -> tuple[str | None, str | None]:
-    """(normalised value, None) or (None, reason of the rejection)."""
+def check_value(field: dict, value: str, allowed: set[str]) -> tuple[str | None, str | None, str | None]:
+    """(normalised value, None, None) or (None, reason code, detail of the rejection)."""
     v = str(value or "").strip()
     if not v:
-        return None, "valeur vide"
+        return None, INVALID_FORMAT, "valeur vide"
     t = field["pim_type"]
     if field.get("format") == "hh:mm":
         m = re.match(r"^(\d{1,2}):(\d{2})$", v)
         v = f"{int(m.group(1)):02d}:{m.group(2)}" if m else v
-        return (v, None) if HHMM.match(v) else (None, f"format HH:MM attendu : {value!r}")
+        return (v, None, None) if HHMM.match(v) else (None, INVALID_FORMAT, f"format HH:MM attendu : {value!r}")
     if t == "Boolean":
         if v.lower() in ("true", "false"):
-            return ("True" if v.lower() == "true" else "False"), None
-        return None, f"booléen attendu : {value!r}"
+            return ("True" if v.lower() == "true" else "False"), None, None
+        return None, INVALID_FORMAT, f"booléen attendu : {value!r}"
     if t in ("Integer", "Double"):
         try:
             number = float(v.replace(",", "."))
         except ValueError:
-            return None, f"nombre attendu : {value!r}"
+            return None, INVALID_FORMAT, f"nombre attendu : {value!r}"
         if number < 0:
-            return None, f"nombre négatif : {value!r}"
-        return (str(int(number)) if t == "Integer" else f"{number:g}"), None
+            return None, INVALID_FORMAT, f"nombre négatif : {value!r}"
+        return (str(int(number)) if t == "Integer" else f"{number:g}"), None, None
     if t == "CVL":
         keys = [k.strip() for k in re.split(r"[|;,]", v) if k.strip()]
         unknown = [k for k in keys if k not in allowed]
         if unknown:
-            return None, f"hors de la liste PIM : {', '.join(unknown)}"
+            return None, NOT_IN_PIM_LIST, f"hors de la liste PIM : {', '.join(unknown)}"
         if not field.get("multivalue") and len(keys) > 1:
-            return None, "une seule valeur attendue"
-        return "|".join(dict.fromkeys(keys)), None
-    return v, None
+            return None, INVALID_FORMAT, "une seule valeur attendue"
+        return "|".join(dict.fromkeys(keys)), None, None
+    return v, None, None
 
 
-def compare_with_pim(field: dict, value: str, pim_value) -> tuple[str, str | None, str | None]:
-    """(status, value to write, reason) once the value is valid: never overwrite the PIM."""
+def compare_with_pim(field: dict, value: str, pim_value) -> tuple[str, str | None, str | None, str | None]:
+    """(status, value to write, reason code, detail) once the value is valid: never overwrite the PIM."""
     if field.get("multivalue") and field["pim_type"] == "CVL":
         current = set(str(pim_value or "").split("|")) - {""}
         new = [k for k in value.split("|") if k not in current]
         if not new:
-            return MATCHES_PIM, None, "valeurs déjà dans le PIM"
-        return PROPOSED, "|".join(new), ("ajout à la liste du PIM" if current else None)
+            return AUTO_REJECTED, None, ALREADY_IN_PIM, "valeurs déjà dans le PIM"
+        return NEEDS_REVIEW, "|".join(new), None, ("ajout à la liste du PIM" if current else None)
     if is_empty(field, pim_value):
-        return PROPOSED, value, None
+        return NEEDS_REVIEW, value, None, None
     if str(pim_value) == value or (field["pim_type"] == "Boolean" and is_true(pim_value) == is_true(value)):
-        return MATCHES_PIM, None, None
-    return CONFLICT, value, f"le PIM contient {pim_value!r}"
+        return AUTO_REJECTED, None, ALREADY_IN_PIM, None
+    return AUTO_REJECTED, value, PIM_CONFLICT, f"le PIM contient {pim_value!r}"
 
 
 # ------------------------------------------------------------------ rows
@@ -199,30 +220,31 @@ def rows_for_hotel(hotel: dict, targets: list[dict], answer, skipped: list, fiel
                 "priority": field.get("priority"), "pim_value": t["pim_value"], "validated_sources": hotel["validated_sources"]}
         v = proposed.get(key)
         if v is None:
-            rows.append({**base, "status": NOT_FOUND, "reason": skipped_reasons.get(key) or skipped_reasons.get((key[0], None))
-                         or "absent de la réponse du modèle"})
+            detail = skipped_reasons.get(key) or skipped_reasons.get((key[0], None))
+            rows.append({**base, "status": AUTO_REJECTED, "reason": NOT_IN_SOURCES if detail else MODEL_OMITTED,
+                         "reason_detail": detail or "absent de la réponse du modèle"})
             continue
         method = METHODS[v.methode]
         if not (v.extrait_source or "").strip():
             # No excerpt, no value: missing information is never a False or a default
-            rows.append({**base, "status": DISCARDED, "value": v.valeur, "method": method, "source": v.source,
-                         "score": 0, "confidence": confidence(0), "reason": "pas d'extrait de la source"})
+            rows.append({**base, "status": AUTO_REJECTED, "value": v.valeur, "method": method, "source": v.source,
+                         "score": 0, "confidence": confidence(0), "reason": NO_EXCERPT, "reason_detail": "pas d'extrait de la source"})
             continue
         source_text = hotel["sources"].get(v.source, {}).get(v.champ_source or "", None)
         found = extract_found(v.extrait_source, source_text)
         score = v.score if found else min(v.score, EXTRACT_CAP_SCORE)
         warning = v.alerte if found else "; ".join(filter(None, [v.alerte, "extrait introuvable dans la source citée"]))
-        value, reason = check_value(field, v.valeur, allowed.get(field.get("cvl_id") or "", set()))
+        value, reason, detail = check_value(field, v.valeur, allowed.get(field.get("cvl_id") or "", set()))
         common = {**base, "method": method, "source": v.source, "source_field": v.champ_source,
                   "source_excerpt": v.extrait_source, "excerpt_found": found, "score": score, "confidence": confidence(score),
                   "warning": warning or None}
         if value is None:
-            rows.append({**common, "status": DISCARDED, "value": v.valeur, "reason": reason})
+            rows.append({**common, "status": AUTO_REJECTED, "value": v.valeur, "reason": reason, "reason_detail": detail})
             continue
-        status, to_write, reason = compare_with_pim(field, value, t["pim_value"])
+        status, to_write, reason, detail = compare_with_pim(field, value, t["pim_value"])
         value_label = None
         if to_write and field.get("cvl_id"):
             value_label = " | ".join(labels.get((field["cvl_id"], k), k) for k in to_write.split("|"))
         rows.append({**common, "status": enrichment_status(status, score, warning, auto_threshold), "value": to_write,
-                     "value_label": value_label, "reason": reason})
+                     "value_label": value_label, "reason": reason, "reason_detail": detail})
     return rows

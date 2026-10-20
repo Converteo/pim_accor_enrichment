@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import enrichment_core as core  # noqa: E402
 import matching_rules as mr  # noqa: E402
-from decisions import AUTO_APPROVED, AUTO_REJECTED, NEEDS_REVIEW, VALUE_AUTO_APPROVED, confidence, enrichment_status, match_status  # noqa: E402
+from decisions import AUTO_APPROVED, AUTO_REJECTED, NEEDS_REVIEW, confidence, enrichment_status, match_status  # noqa: E402
 from export import flat_files  # noqa: E402
 from prompts import assemble  # noqa: E402
 from schemas_llm import EnrichResponse, HotelEnrichi, NonTraitee, Valeur  # noqa: E402
@@ -95,9 +95,9 @@ def test_match_status(pre, reason, verdict, score, expected):
 
 def test_confidence_and_auto_approval_off_by_default():
     assert [confidence(s) for s in (95, 60, 10)] == ["high", "medium", "low"]
-    assert enrichment_status("proposed", 99, None, None) == "proposed"
-    assert enrichment_status("proposed", 95, None, 90) == VALUE_AUTO_APPROVED
-    assert enrichment_status("proposed", 95, "doute", 90) == "proposed"
+    assert enrichment_status(NEEDS_REVIEW, 99, None, None) == NEEDS_REVIEW
+    assert enrichment_status(NEEDS_REVIEW, 95, None, 90) == AUTO_APPROVED
+    assert enrichment_status(NEEDS_REVIEW, 95, "doute", 90) == NEEDS_REVIEW
 
 
 # ------------------------------------------------------------------ brick 3: enrichment
@@ -131,22 +131,23 @@ def test_targets_empty_fields_lists_and_entities():
 
 
 @pytest.mark.parametrize("field, value, expected", [
-    ("ProductCheckIn", "9:00", ("09:00", None)),
-    ("ProductCheckIn", "3 PM", (None, "format HH:MM attendu : '3 PM'")),
-    ("ProductFnBAvailableBar", "TRUE", ("True", None)),
-    ("ProductStaffLanguages", "FR | DE", ("FR|DE", None)),
-    ("ProductStaffLanguages", "FR|XX", (None, "hors de la liste PIM : XX")),
-    ("PoolType", "Indoor|Outdoor", (None, "une seule valeur attendue")),
+    ("ProductCheckIn", "9:00", ("09:00", None, None)),
+    ("ProductCheckIn", "3 PM", (None, "invalid_format", "format HH:MM attendu : '3 PM'")),
+    ("ProductFnBAvailableBar", "TRUE", ("True", None, None)),
+    ("ProductStaffLanguages", "FR | DE", ("FR|DE", None, None)),
+    ("ProductStaffLanguages", "FR|XX", (None, "not_in_pim_list", "hors de la liste PIM : XX")),
+    ("PoolType", "Indoor|Outdoor", (None, "invalid_format", "une seule valeur attendue")),
 ])
 def test_check_value(field, value, expected):
     assert core.check_value(FIELDS[field], value, ALLOWED.get(FIELDS[field].get("cvl_id") or "", set())) == expected
 
 
 def test_never_overwrite_the_pim():
-    assert core.compare_with_pim(FIELDS["ProductCheckIn"], "15:00", None)[0] == "proposed"
-    assert core.compare_with_pim(FIELDS["ProductCheckIn"], "15:00", "15:00")[0] == "matches_pim"
-    assert core.compare_with_pim(FIELDS["ProductCheckIn"], "15:00", "14:00")[0] == "conflict"
-    assert core.compare_with_pim(FIELDS["ProductStaffLanguages"], "EN|FR", "EN")[:2] == ("proposed", "FR")
+    assert core.compare_with_pim(FIELDS["ProductCheckIn"], "15:00", None)[0] == "needs_review"
+    assert core.compare_with_pim(FIELDS["ProductCheckIn"], "15:00", "15:00")[:3] == ("auto_rejected", None, "already_in_pim")
+    assert core.compare_with_pim(FIELDS["ProductCheckIn"], "15:00", "14:00") == (
+        "auto_rejected", "15:00", "pim_conflict", "le PIM contient '14:00'")
+    assert core.compare_with_pim(FIELDS["ProductStaffLanguages"], "EN|FR", "EN")[:2] == ("needs_review", "FR")
 
 
 def test_extract_found():
@@ -178,8 +179,10 @@ def test_rows_apply_value_to_all_entities_in_doubt_and_mark_missing():
     rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {}, CONTEXT, None)
     by_key = {(r["pim_field"], r["entity_id"]): r for r in rows}
     assert by_key[("ParkingCharged", "p2")]["value"] == "False" and "dans le doute" in by_key[("ParkingCharged", "p2")]["warning"]
-    assert by_key[("ProductCheckIn", None)]["status"] == "proposed" and by_key[("ProductCheckIn", None)]["excerpt_found"]
-    assert by_key[("ProductFnBAvailableBar", None)]["status"] == "not_found"
+    assert by_key[("ProductCheckIn", None)]["status"] == "needs_review" and by_key[("ProductCheckIn", None)]["excerpt_found"]
+    missing = by_key[("ProductFnBAvailableBar", None)]
+    assert (missing["status"], missing["reason"], missing["reason_detail"]) == (
+        "auto_rejected", "model_omitted", "absent de la réponse du modèle")
 
 
 def test_rows_cap_score_when_excerpt_not_found_and_number_new_entities():
@@ -200,7 +203,8 @@ def test_value_without_excerpt_is_rejected_not_proposed():
     targets = [{"pim_field": "PoolType", "entity": "Pool", "entity_id": core.NEW_ENTITY, "pim_value": None}]
     answer = HotelEnrichi(rid="0952", valeurs=[agent_value("PoolType", "nouvelle_1", "Outdoor", "", "piscine_1")])
     rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {}, CONTEXT, None)
-    assert [(r["status"], r["reason"]) for r in rows] == [(core.DISCARDED, "pas d'extrait de la source")]
+    assert [(r["status"], r["reason"], r["reason_detail"]) for r in rows] == [
+        ("auto_rejected", "no_excerpt", "pas d'extrait de la source")]
 
 
 def test_rejected_value_and_skipped_reason():
@@ -209,8 +213,29 @@ def test_rejected_value_and_skipped_reason():
     answer = HotelEnrichi(rid="0952", valeurs=[agent_value("ProductStaffLanguages", None, "XX", "German", "languages_spoken")])
     skipped = [NonTraitee(rid="0952", champ_pim="ProductCheckIn", id_entite=None, motif="absent des sources")]
     rows = {r["pim_field"]: r for r in core.rows_for_hotel(HOTEL, targets, answer, skipped, FIELDS, ALLOWED, {}, CONTEXT, None)}
-    assert rows["ProductStaffLanguages"]["status"] == "discarded"
-    assert rows["ProductCheckIn"]["reason"] == "absent des sources"
+    assert (rows["ProductStaffLanguages"]["status"], rows["ProductStaffLanguages"]["reason"]) == ("auto_rejected", "not_in_pim_list")
+    assert (rows["ProductCheckIn"]["reason"], rows["ProductCheckIn"]["reason_detail"]) == ("not_in_sources", "absent des sources")
+
+
+def test_candidates_carry_the_hotel_content_fingerprint():
+    hotel = {"rid": "0952", "pim_entity_id": "101", "validated_sources": "booking_equipements", "source_hash": "h1"}
+    targets = [{"pim_field": "PoolType", "entity": "Pool", "entity_id": core.NEW_ENTITY, "pim_value": None}]
+    context = {"run_id": "r", "family": "pool", "computed_at": None}
+    rows = core.candidate_rows(hotel, targets, FIELDS, context)
+    assert rows == [{**context, "rid": "0952", "pim_entity_id": "101", "entity": "Pool", "entity_id": "new", "pim_field": "PoolType",
+                     "label": "Type", "priority": "P2", "pim_value": None, "validated_sources": "booking_equipements", "source_hash": "h1"}]
+    written, key = core.candidate_set(rows, context)
+    assert written == rows and key == core.candidate_set(list(reversed(rows)), context)[1]
+    # An empty set is one marker row, so the views drop the previous set
+    assert core.candidate_set([], context)[0] == [context]
+
+
+def test_only_the_targets_left_out_by_the_model_are_asked_again():
+    targets = [{"pim_field": "ProductCheckIn", "entity": "Product", "entity_id": None, "pim_value": None},
+               {"pim_field": "ParkingCharged", "entity": "Parking", "entity_id": "p1", "pim_value": None},
+               {"pim_field": "ParkingCharged", "entity": "Parking", "entity_id": "p2", "pim_value": None}]
+    assert core.only_targets(targets, {("ParkingCharged", "p2")}) == [targets[2]]
+    assert core.only_targets(targets, set()) == []
 
 
 def test_payload_speaks_the_agent_language():

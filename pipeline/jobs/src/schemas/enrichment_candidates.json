@@ -1,0 +1,67 @@
+[
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "family",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "rid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pim_entity_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "entity",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "entity_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pim_field",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "label",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "priority",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "pim_value",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "validated_sources",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_hash",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "computed_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]
