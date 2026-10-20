@@ -119,6 +119,11 @@
     "mode": "NULLABLE"
   },
   {
+    "name": "reason_detail",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
     "name": "status",
     "type": "STRING",
     "mode": "REQUIRED",

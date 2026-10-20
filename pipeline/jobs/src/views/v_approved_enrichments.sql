@@ -2,7 +2,7 @@
 -- and whose source is still an approved match.
 SELECT e.*
 FROM `${enhanced}.v_enrichments` e
-WHERE e.final_status IN ('approved', 'auto_approved', 'corrected')
+WHERE e.final_status IN ('human_approved', 'auto_approved', 'human_corrected')
   AND EXISTS (
     SELECT 1 FROM `${matching}.v_approved_matches` r
     WHERE r.rid = e.rid AND r.source = e.source

@@ -56,7 +56,7 @@ Le backend n'a pas besoin de lire `raw`, sauf pour contrôler une valeur corrig�
 | Table | Utilité |
 | --- | --- |
 | `match_decisions` | Une ligne par décision sur un rapprochement : `rid`, `source`, `source_hash`, `decision` (`human_approved` ou `human_rejected`), `comment`, `author`, `decided_at`. |
-| `enrichment_decisions` | Une ligne par décision sur une valeur : `enrichment_id`, `rid`, `pim_field`, `entity_id`, `decision` (`approved`, `rejected` ou `corrected`), `corrected_value`, `comment`, `author`, `decided_at`. |
+| `enrichment_decisions` | Une ligne par décision sur une valeur : `enrichment_id`, `rid`, `pim_field`, `entity_id`, `decision` (`human_approved`, `human_rejected` ou `human_corrected`), `corrected_value`, `comment`, `author`, `decided_at`. |
 
 Ce sont les **seules tables écrites par le backend.**
 
@@ -64,26 +64,36 @@ Ce sont les **seules tables écrites par le backend.**
 
 | Table / vue | Écrite par | Utilité |
 | --- | --- | --- |
-| `enrichments` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `source`, `source_excerpt`, `score`, `warning`, `status`, `prompt_version`. |
+| `enrichments` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `source`, `source_excerpt`, `score`, `warning`, `status`, `reason`, `reason_detail`, `prompt_version`. |
 | `v_enrichments` (vue) | — | **Vue de l'écran des fiches.** Dernière ligne par hôtel × champ × entité, plus la dernière décision humaine sur cette ligne : `final_status`, `final_value` (la valeur corrigée le cas échéant), `author`, `decided_at`. |
-| `v_approved_enrichments` (vue) | — | Ce qui part à l'export : `final_status` = `approved`, `corrected` (ou `auto_approved`, désactivé), et dont le rapprochement est toujours validé. |
+| `v_approved_enrichments` (vue) | — | Ce qui part à l'export : `final_status` = `human_approved`, `human_corrected` (ou `auto_approved`, désactivé), et dont le rapprochement est toujours validé. |
 | `exports` | job export | Historique des exports : `path` (dossier du bucket), `row_count`, `hotel_count`, `files`, `triggered_by`, `exported_at`. |
 
 `final_status` d'une valeur :
 
 | Statut | Sens | Dans l'interface |
 | --- | --- | --- |
-| `proposed` | valeur proposée par l'agent, en attente | **à valider** |
-| `conflict` | l'agent a trouvé une valeur différente de celle du PIM ; le PIM n'est jamais écrasé | à afficher pour information |
-| `matches_pim` | la source confirme la valeur du PIM | masqué |
-| `not_found` | rien trouvé dans la source (`reason`) | masqué |
-| `discarded` | réponse de l'agent refusée par les contrôles (code hors liste, pas d'extrait…) | masqué |
-| `approved`, `corrected`, `rejected` | décision du relecteur | historique |
+| `needs_review` | valeur proposée par l'agent pour un champ vide, extrait à l'appui | **à relire** |
+| `auto_approved` | validation automatique au-dessus d'un seuil (désactivée) | — |
+| `auto_rejected` | rien à proposer, motif dans `reason` (ci-dessous) et texte dans `reason_detail` | masqué, sauf `pim_conflict` |
+| `human_approved`, `human_corrected`, `human_rejected` | décision du relecteur | historique |
+
+`reason` d'une valeur `auto_rejected` :
+
+| `reason` | Cas | Dans l'interface |
+| --- | --- | --- |
+| `not_in_sources` | l'agent n'a rien trouvé dans les sources | masqué |
+| `model_omitted` | la cible manque dans la réponse du modèle | masqué |
+| `already_in_pim` | la source confirme la valeur du PIM | masqué |
+| `pim_conflict` | la source contredit le PIM (`reason_detail` : « le PIM contient … ») ; le PIM n'est jamais écrasé | à afficher pour information |
+| `no_excerpt` | valeur sans extrait de la source | masqué |
+| `not_in_pim_list` | code absent de la liste du PIM | masqué |
+| `invalid_format` | heure, booléen ou nombre mal formé, valeur vide, plusieurs valeurs pour un champ simple | masqué |
 
 ## 2. Le parcours d'une fiche en relecture
 
 Une **fiche** dans l'interface = un **hôtel (RID)**. Ses **attributs** = ses lignes de `v_enrichments` au statut
-`proposed`, une par champ × entité. Une fiche passe par deux validations, dans cet ordre :
+`needs_review`, une par champ × entité. Une fiche passe par deux validations, dans cet ordre :
 
 1. **① Valider le rapprochement** (hôtel × source), seulement s'il est `needs_review`. Tant qu'il n'est pas validé, l'hôtel n'a
    aucun attribut proposé pour cette source : il n'y a rien à afficher dans la fiche.
@@ -95,7 +105,7 @@ Requête de la liste des fiches à relire :
 ```sql
 SELECT e.rid, COUNT(*) AS attributs, ROUND(AVG(e.score)) AS score_moyen
 FROM `…_enhanced.v_enrichments` e
-WHERE e.final_status = 'proposed'
+WHERE e.final_status = 'needs_review'
   AND EXISTS (SELECT 1 FROM `…_matching.v_approved_matches` r WHERE r.rid = e.rid AND r.source = e.source)
 GROUP BY e.rid
 ```
@@ -120,7 +130,8 @@ et ce que les vues en déduisent.
 | B6F6 | booking_equipements | `9c1e…` | 62 | `needs_review` | `other` | même ville, nom proche, adresse non confirmée |
 
 Les codes (`status`, `reason`…) sont en anglais ; les textes lus par les relecteurs (`justification`, `pre_reason`, `warning`,
-motifs de `not_found` et de `discarded`) restent en français.
+`reason_detail`) restent en français. Rapprochements et valeurs suivent la même convention : `needs_review` attend un relecteur,
+`auto_*` est décidé par la machine, `human_*` par un relecteur.
 
 `v_matches` → `final_status = needs_review`. L'hôtel n'est **pas** dans `v_approved_matches` : il n'est pas enrichi.
 
@@ -139,11 +150,11 @@ la note de 62). L'hôtel entre dans `v_approved_matches`.
 
 | enrichment_id | rid | pim_field | pim_value | value | source_excerpt | score | status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `a41f…` | B6F6 | ProductFitnessCenter | *(vide)* | True | « Salle de sport » | 92 | `proposed` |
-| `b7d0…` | B6F6 | WellnessCenterFreeWellnessCenterServices | *(vide)* | Hammam\|Sauna | « Sauna ; Hammam (payant) » | 70 | `proposed` |
-| `c2e9…` | B6F6 | ProductAvailableWellnessCenter | True | True | « Spa et centre de bien-être » | 95 | `matches_pim` |
+| `a41f…` | B6F6 | ProductFitnessCenter | *(vide)* | True | « Salle de sport » | 92 | `needs_review` |
+| `b7d0…` | B6F6 | WellnessCenterFreeWellnessCenterServices | *(vide)* | Hammam\|Sauna | « Sauna ; Hammam (payant) » | 70 | `needs_review` |
+| `c2e9…` | B6F6 | ProductAvailableWellnessCenter | True | True | « Spa et centre de bien-être » | 95 | `auto_rejected` (`already_in_pim`) |
 
-La fiche B6F6 apparaît dans la liste avec **2 attributs** à relire (les lignes `proposed`) ; la 3ᵉ confirme le PIM et est masquée.
+La fiche B6F6 apparaît dans la liste avec **2 attributs** à relire (les lignes `needs_review`) ; la 3ᵉ confirme le PIM et est masquée.
 
 **Étape 4 : le relecteur traite les attributs (②).** Il valide la salle de sport et corrige les services gratuits, car
 l'extrait dit que le hammam est payant. Le backend ajoute deux lignes :
@@ -152,21 +163,21 @@ l'extrait dit que le hammam est payant. Le backend ajoute deux lignes :
 
 | enrichment_id | rid | pim_field | decision | corrected_value | author | decided_at |
 | --- | --- | --- | --- | --- | --- | --- |
-| `a41f…` | B6F6 | ProductFitnessCenter | `approved` | | j.martin@accor.com | 2026-10-21 10:03 |
-| `b7d0…` | B6F6 | WellnessCenterFreeWellnessCenterServices | `corrected` | Sauna | j.martin@accor.com | 2026-10-21 10:04 |
+| `a41f…` | B6F6 | ProductFitnessCenter | `human_approved` | | j.martin@accor.com | 2026-10-21 10:03 |
+| `b7d0…` | B6F6 | WellnessCenterFreeWellnessCenterServices | `human_corrected` | Sauna | j.martin@accor.com | 2026-10-21 10:04 |
 
 `enrichments` n'est pas modifiée. `v_enrichments` en déduit :
 
 | pim_field | value | final_status | final_value |
 | --- | --- | --- | --- |
-| ProductFitnessCenter | True | `approved` | True |
-| WellnessCenterFreeWellnessCenterServices | Hammam\|Sauna | `corrected` | Sauna |
+| ProductFitnessCenter | True | `human_approved` | True |
+| WellnessCenterFreeWellnessCenterServices | Hammam\|Sauna | `human_corrected` | Sauna |
 
 Les deux lignes entrent dans `v_approved_enrichments` et partiront à l'export avec `final_value`. La fiche n'a plus
-d'attribut `proposed` : elle sort de la liste.
+d'attribut `needs_review` : elle sort de la liste.
 
 **Étape 5 (facultative) : le relecteur change d'avis.** Il rejette finalement la salle de sport. Le backend **ajoute** une
-troisième ligne (`a41f…`, `rejected`, 2026-10-21 14:30) ; la ligne `approved` de 10:03 reste dans la table comme historique.
+troisième ligne (`a41f…`, `human_rejected`, 2026-10-21 14:30) ; la ligne `human_approved` de 10:03 reste dans la table comme historique.
 La vue ne retient que la plus récente : `final_status = rejected`, la valeur ne part plus à l'export.
 
 **Ce que montre l'exemple :**
@@ -201,19 +212,19 @@ VALUES (@rid, @source, @source_hash, 'human_approved', @comment, @author, CURREN
 ```sql
 INSERT INTO `…_validation.enrichment_decisions`
   (enrichment_id, rid, pim_field, entity_id, decision, corrected_value, comment, author, decided_at)
-VALUES (@enrichment_id, @rid, @pim_field, @entity_id, 'approved', NULL, @comment, @author, CURRENT_TIMESTAMP())
--- rejet : 'rejected' ; correction : 'corrected' avec corrected_value
+VALUES (@enrichment_id, @rid, @pim_field, @entity_id, 'human_approved', NULL, @comment, @author, CURRENT_TIMESTAMP())
+-- rejet : 'human_rejected' ; correction : 'human_corrected' avec corrected_value
 ```
 
 - `enrichment_id`, `rid`, `pim_field`, `entity_id` sont repris de la ligne de `v_enrichments` affichée.
-- **Validé** (`approved`) : la valeur part à l'export.
-- **Rejeté** (`rejected`) : la valeur ne part pas à l'export ; le champ reste tel qu'il est dans le PIM.
-- **Valider ou rejeter toute la fiche** = une ligne par attribut `proposed` de l'hôtel, avec la même décision. La note de l'agent
+- **Validé** (`human_approved`) : la valeur part à l'export.
+- **Rejeté** (`human_rejected`) : la valeur ne part pas à l'export ; le champ reste tel qu'il est dans le PIM.
+- **Valider ou rejeter toute la fiche** = une ligne par attribut `needs_review` de l'hôtel, avec la même décision. La note de l'agent
   (`score`) ne change pas : contrairement à la maquette actuelle, valider une fiche ne la met pas à 1.
 
 ### 3.3 Attribut corrigé
 
-`decision = 'corrected'` et `corrected_value` au **format PIM** : code de la liste (`key` de `pim_cvl_values`, jamais le
+`decision = 'human_corrected'` et `corrected_value` au **format PIM** : code de la liste (`key` de `pim_cvl_values`, jamais le
 libellé), `True`/`False`, heure `HH:MM`, nombre ; plusieurs codes séparés par `|`. La vue renvoie alors `final_value` =
 `corrected_value`.
 
@@ -230,7 +241,7 @@ besoin existe, il faut l'ajouter aux valeurs autorisées et aux vues.
 
 - **Nouvel enrichissement d'un hôtel = nouvelles lignes, décisions à reprendre.** `enrichment_id` est tiré au hasard à chaque
   passage de l'agent. Un hôtel n'est ré-enrichi que si quelque chose change (nouveau scraping, nouvelle version des prompts,
-  nouveau rapprochement validé) ; dans ce cas, ses nouvelles valeurs repartent en `proposed`, et les décisions prises sur les
+  nouveau rapprochement validé) ; dans ce cas, ses nouvelles valeurs repartent en `needs_review`, et les décisions prises sur les
   anciennes lignes ne s'appliquent plus. Reporter une décision quand la nouvelle valeur est identique est une évolution
   possible du pipeline, pas encore faite.
 - **Délai entre ① et ②** : après la validation d'un rapprochement, les attributs apparaissent au passage suivant du pipeline.

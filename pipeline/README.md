@@ -54,9 +54,10 @@ rapprochement vient d'être validé dans l'interface.
 | `auto_rejected` | agent juge : score < seuil bas (30), ou page dans un autre pays | non |
 | `human_approved` / `human_rejected` | décision dans l'interface ; l'emporte toujours sur l'agent | oui / non |
 
-Un hôtel est enrichi avec ses seules sources validées. Les enrichissements sont `proposed` par l'agent, puis `approved`,
-`rejected` ou `corrected` dans l'interface ; la validation automatique (`pipeline.enrich_auto_validate_score`) est
-désactivée par défaut. L'agent n'écrase jamais une valeur du PIM : un désaccord devient un `conflict`.
+Un hôtel est enrichi avec ses seules sources validées. Les valeurs suivent la même convention que les rapprochements :
+`needs_review` (proposée par l'agent), `auto_rejected` avec un motif (`reason`), puis `human_approved`, `human_rejected`
+ou `human_corrected` dans l'interface ; la validation automatique (`pipeline.enrich_auto_validate_score`) est
+désactivée par défaut. L'agent n'écrase jamais une valeur du PIM : un désaccord devient `auto_rejected`, motif `pim_conflict`.
 
 ## Organisation
 

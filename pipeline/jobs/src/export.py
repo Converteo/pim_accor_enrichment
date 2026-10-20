@@ -3,7 +3,7 @@
 PROVISIONAL FORMAT: to be aligned with the inriver import specification Accor will provide
 (columns, identifiers, multi-values, creation of linked entities).
 
-Runs only when nothing is waiting for a decision (no match needs_review, no value proposed), unless FORCE=true.
+Runs only when nothing is waiting for a decision (no match or value needs_review), unless FORCE=true.
 Writes to gs://<output bucket>/export/<yyyymmdd-hhmmss>/ :
   pim_product.csv         one row per hotel: PIM entity id, RID, then one column per enriched field (PIM codes)
   pim_<entity>.csv        one row per linked entity: entity id (or NEW-<RID>-<n> to create), hotel entity id, RID, fields
@@ -28,8 +28,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 TRACE_COLUMNS = ["rid", "entity", "entity_id", "pim_field", "label", "priority", "pim_value", "final_value", "value_label",
-                 "method", "source", "source_field", "source_excerpt", "score", "warning", "final_status", "author", "decided_at",
-                 "comment", "llm_model", "prompt_version", "enriched_at"]
+                 "method", "source", "source_field", "source_excerpt", "score", "warning", "reason_detail", "final_status", "author",
+                 "decided_at", "comment", "llm_model", "prompt_version", "enriched_at"]
 
 
 def pending(client: bigquery.Client, settings: Settings) -> dict:
@@ -37,7 +37,7 @@ def pending(client: bigquery.Client, settings: Settings) -> dict:
         SELECT
           (SELECT COUNT(*) FROM `{settings.table('matching', 'v_matches')}` WHERE final_status IN ('needs_review', 'pending_judgment')) AS matches,
           (SELECT COUNT(*) FROM `{settings.table('enhanced', 'v_enrichments')}` e
-           WHERE final_status = 'proposed'
+           WHERE final_status = 'needs_review'
              AND EXISTS (SELECT 1 FROM `{settings.table('matching', 'v_approved_matches')}` r WHERE r.rid = e.rid AND r.source = e.source)
           ) AS enrichments
     """)[0]

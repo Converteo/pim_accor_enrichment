@@ -18,7 +18,7 @@ from google.cloud import bigquery, storage
 import bq
 import enrichment_core as core
 from config import Settings
-from decisions import CONFLICT, DISCARDED, MATCHES_PIM, NOT_FOUND, PROPOSED, VALUE_AUTO_APPROVED
+from decisions import AUTO_APPROVED, AUTO_REJECTED, NEEDS_REVIEW
 from llm import GeminiAgent
 from matching_rules import normalize_rid
 from prompts import assemble, load_enrichment
@@ -196,7 +196,9 @@ def enrich(settings: Settings, state) -> int:
 
     written = bq.load(client, settings.table("enhanced", "enrichments"), rows, bq.schema("enrichments"))
     stats = {"hotels_to_enrich": pending, "hotels_processed": len(hotels), "failed_batches": failed, "rows": written,
-             **{s: sum(r["status"] == s for r in rows) for s in (PROPOSED, VALUE_AUTO_APPROVED, DISCARDED, NOT_FOUND, CONFLICT, MATCHES_PIM)}}
+             **{s: sum(r["status"] == s for r in rows) for s in (NEEDS_REVIEW, AUTO_APPROVED, AUTO_REJECTED)},
+             **{f"{AUTO_REJECTED}_{c}": sum(r["status"] == AUTO_REJECTED and r["reason"] == c for r in rows)
+                for c in sorted({r["reason"] for r in rows if r["status"] == AUTO_REJECTED})}}
     state.release(settings.run_id, success=not failed, stats=stats)
     logger.info("Family %s finished: %s", settings.family, stats)
     return failed
