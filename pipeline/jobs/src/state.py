@@ -37,6 +37,11 @@ class RunState:
         self.ref.set(update, merge=True)
 
 
+    def remember(self, **fields) -> None:
+        """Values kept between runs (e.g. the fingerprint of what was last written)."""
+        self.ref.set(fields, merge=True)
+
+
 def open_state(settings, document_id: str) -> RunState:
     return RunState(firestore.Client(project=settings.project_id, database=settings.firestore_database),
                     settings.firestore_collection, document_id)

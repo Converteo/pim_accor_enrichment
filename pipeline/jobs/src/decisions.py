@@ -11,6 +11,7 @@ Match (RID x source), reason = the judge agent's code (former_brand, neighbourin
   pending_judgment not judged yet (views only)
 
 Enrichment (hotel x field x entity), reason_detail = the French text:
+  pending_enrichment  target of an approved match not enriched yet, or whose content changed (views only)
   needs_review     value proposed for an empty field, with its excerpt
   auto_approved    only if a threshold is set (off)
   auto_rejected    reason: not_in_sources, model_omitted, already_in_pim, pim_conflict (the PIM is never overwritten),
@@ -22,7 +23,7 @@ from matching_rules import REASON_OTHER_COUNTRY, REJECTED
 
 AUTO_APPROVED, NEEDS_REVIEW, AUTO_REJECTED = "auto_approved", "needs_review", "auto_rejected"
 HUMAN_APPROVED, HUMAN_REJECTED = "human_approved", "human_rejected"
-PENDING_JUDGMENT = "pending_judgment"
+PENDING_JUDGMENT, PENDING_ENRICHMENT = "pending_judgment", "pending_enrichment"
 MATCH_PASSES = {AUTO_APPROVED, HUMAN_APPROVED}
 
 HUMAN_CORRECTED = "human_corrected"

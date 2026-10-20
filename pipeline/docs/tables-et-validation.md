@@ -12,11 +12,12 @@ raw ──(job matching)──► matching.match_candidates ──(agent juge)�
                                    └──────────────► v_matches ◄───────────────┘ ◄── validation.match_decisions        ① relecteur
                                                        │
                                                v_approved_matches
-                                                       │ (agent d'enrichissement)
-                                                       ▼
-                                               enhanced.enrichments
                                                        │
-                                                 v_enrichments ◄────────────────── validation.enrichment_decisions   ② relecteur
+            (agent d'enrichissement : cibles, puis valeurs)
+                                                       ▼
+                       enhanced.enrichment_targets ──(agent)──► enhanced.enrichments
+                                   │                                          │
+                                   └──────────────► v_enrichments ◄───────────┘ ◄── validation.enrichment_decisions   ② relecteur
                                                        │
                                              v_approved_enrichments ──(job export)──► enhanced.exports + fichier plat
 ```
@@ -48,7 +49,7 @@ Le backend n'a pas besoin de lire `raw`, sauf pour contrôler une valeur corrig�
 | `v_matches` (vue) | — | **Vue de l'écran des rapprochements.** Candidat + dernier jugement + dernière décision humaine, avec `final_status`. |
 | `v_approved_matches` (vue) | — | Les rapprochements qui passent à l'enrichissement : `final_status` = `auto_approved` ou `human_approved`. |
 
-`final_status` d'un rapprochement : `pending_judgment` (pas encore noté), `auto_approved` (note ≥ 80), `needs_review` (note de 30 à 79),
+`final_status` d'un rapprochement : `pending_judgment` (pas encore noté ; l'équivalent pour une valeur est `pending_enrichment`), `auto_approved` (note ≥ 80), `needs_review` (note de 30 à 79),
 `auto_rejected` (note < 30 ou autre pays), `human_approved`, `human_rejected`.
 
 ### `validation` : décisions humaines (écrites par le backend)
@@ -64,8 +65,9 @@ Ce sont les **seules tables écrites par le backend.**
 
 | Table / vue | Écrite par | Utilité |
 | --- | --- | --- |
+| `enrichment_targets` | agent d'enrichissement | **Équivalent de `match_candidates` pour les valeurs.** Une ligne par hôtel × champ × entité à enrichir, pour chaque hôtel dont un rapprochement est validé : `family`, `rid`, `entity`, `entity_id`, `pim_field`, `label`, `priority`, `pim_value`, `source_hash` (empreinte du contenu de l'hôtel). Réécrite pour la famille quand ses cibles changent ; les vues lisent le dernier ensemble. |
 | `enrichments` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `source`, `source_excerpt`, `score`, `warning`, `status`, `reason`, `reason_detail`, `prompt_version`. |
-| `v_enrichments` (vue) | — | **Vue de l'écran des fiches.** Dernière ligne par hôtel × champ × entité, plus la dernière décision humaine sur cette ligne : `final_status`, `final_value` (la valeur corrigée le cas échéant), `author`, `decided_at`. |
+| `v_enrichments` (vue) | — | **Vue de l'écran des fiches.** Dernière ligne par hôtel × champ × entité, plus la dernière décision humaine sur cette ligne, et une ligne `pending_enrichment` par cible pas encore enrichie : `final_status`, `final_value` (la valeur corrigée le cas échéant), `author`, `decided_at`. |
 | `v_approved_enrichments` (vue) | — | Ce qui part à l'export : `final_status` = `human_approved`, `human_corrected` (ou `auto_approved`, désactivé), et dont le rapprochement est toujours validé. |
 | `exports` | job export | Historique des exports : `path` (dossier du bucket), `row_count`, `hotel_count`, `files`, `triggered_by`, `exported_at`. |
 
@@ -73,6 +75,7 @@ Ce sont les **seules tables écrites par le backend.**
 
 | Statut | Sens | Dans l'interface |
 | --- | --- | --- |
+| `pending_enrichment` | cible d'un rapprochement validé, pas encore enrichie (ou dont le contenu a changé depuis) | « en cours » ou masqué |
 | `needs_review` | valeur proposée par l'agent pour un champ vide, extrait à l'appui | **à relire** |
 | `auto_approved` | validation automatique au-dessus d'un seuil (désactivée) | — |
 | `auto_rejected` | rien à proposer, motif dans `reason` (ci-dessous) et texte dans `reason_detail` | masqué, sauf `pim_conflict` |

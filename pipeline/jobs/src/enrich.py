@@ -4,6 +4,8 @@
 2. hotels whose match is validated (auto_approved or human_approved) for at least one source of the family
 3. per hotel: target fields (empty in the PIM, filtered by PRIORITIES), content of the validated sources only,
    fingerprint; a hotel already enriched with the same fingerprint is skipped
+   the targets of all these hotels are written to enhanced.enrichment_targets when they changed (pending_enrichment
+   in the views until a value is there)
 4. batches of ENRICH_BATCH_SIZE hotels to Gemini, answers checked by the code (enrichment_core)
 5. rows appended to enhanced.enrichments; a failed batch writes nothing and is taken again next run
 """
@@ -60,12 +62,12 @@ def run(settings: Settings) -> int:
     if not settings.family:
         raise ValueError("FAMILY is required")
     state = open_state(settings, f"enrich__{settings.family}")
-    acquired, _ = state.acquire(settings.run_id, settings.lease_seconds)
+    acquired, previous = state.acquire(settings.run_id, settings.lease_seconds)
     if not acquired:
         logger.info("Family %s already being enriched, nothing to do", settings.family)
         return 0
     try:
-        failed = enrich(settings, state)
+        failed = enrich(settings, state, previous.get("targets_hash"))
     except Exception:
         state.release(settings.run_id, success=False)
         raise
@@ -117,7 +119,7 @@ def load_context(client: bigquery.Client, settings: Settings, targets: dict, fie
     return valid_sources, scraped, products, entities
 
 
-def enrich(settings: Settings, state) -> int:
+def enrich(settings: Settings, state, targets_hash: str | None = None) -> int:
     started = datetime.now(timezone.utc)
     client = bigquery.Client(project=settings.project_id)
     common, family_block, targets = load_enrichment(storage.Client(project=settings.project_id), settings.prompts_bucket, settings.family)
@@ -140,7 +142,8 @@ def enrich(settings: Settings, state) -> int:
         SELECT DISTINCT rid, source_hash FROM `{settings.table('enhanced', 'enrichments')}` WHERE family = @family
     """, {"family": settings.family})}
 
-    hotels = []
+    hotels, hotel_target_rows = [], []
+    target_context = {"run_id": settings.run_id, "family": settings.family, "computed_at": started}
     for rid, sources in valid_sources.items():
         product = products.get(rid)
         content = {s: c for s, c in scraped.get(rid, {}).items() if s in sources and any(v for v in c.values())}
@@ -152,10 +155,17 @@ def enrich(settings: Settings, state) -> int:
         filled = {f["pim_field"]: product.get(f["pim_field"]) for f in fields
                   if f["entity"] == "Product" and not core.is_empty(f, product.get(f["pim_field"]))}
         h = core.fingerprint(version, settings.priorities, content, hotel_targets, filled)
-        if (rid, h) in done:
-            continue
-        hotels.append({"rid": rid, "pim_entity_id": product["entity_id"], "sources": content, "validated_sources": ",".join(sorted(content)),
-                       "targets": hotel_targets, "filled": filled, "source_hash": h})
+        hotel = {"rid": rid, "pim_entity_id": product["entity_id"], "sources": content, "validated_sources": ",".join(sorted(content)),
+                 "targets": hotel_targets, "filled": filled, "source_hash": h}
+        hotel_target_rows += core.target_rows(hotel, hotel_targets, by_field, target_context)
+        if (rid, h) not in done:
+            hotels.append(hotel)
+
+    to_write, key = core.target_set(hotel_target_rows, target_context)
+    if key != targets_hash:
+        bq.load(client, settings.table("enhanced", "enrichment_targets"), to_write, bq.schema("enrichment_targets"))
+        state.remember(targets_hash=key)
+        logger.info("Family %s: %d targets written", settings.family, len(hotel_target_rows))
 
     pending = len(hotels)
     hotels = hotels[:settings.nb_hotels]

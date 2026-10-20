@@ -3,7 +3,8 @@
 PROVISIONAL FORMAT: to be aligned with the inriver import specification Accor will provide
 (columns, identifiers, multi-values, creation of linked entities).
 
-Runs only when nothing is waiting for a decision (no match or value needs_review), unless FORCE=true.
+Runs only when nothing is waiting (no match pending_judgment or needs_review, no value pending_enrichment or
+needs_review), unless FORCE=true.
 Writes to gs://<output bucket>/export/<yyyymmdd-hhmmss>/ :
   pim_product.csv         one row per hotel: PIM entity id, RID, then one column per enriched field (PIM codes)
   pim_<entity>.csv        one row per linked entity: entity id (or NEW-<RID>-<n> to create), hotel entity id, RID, fields
@@ -37,8 +38,9 @@ def pending(client: bigquery.Client, settings: Settings) -> dict:
         SELECT
           (SELECT COUNT(*) FROM `{settings.table('matching', 'v_matches')}` WHERE final_status IN ('needs_review', 'pending_judgment')) AS matches,
           (SELECT COUNT(*) FROM `{settings.table('enhanced', 'v_enrichments')}` e
-           WHERE final_status = 'needs_review'
-             AND EXISTS (SELECT 1 FROM `{settings.table('matching', 'v_approved_matches')}` r WHERE r.rid = e.rid AND r.source = e.source)
+           WHERE final_status = 'pending_enrichment'
+              OR (final_status = 'needs_review'
+                  AND EXISTS (SELECT 1 FROM `{settings.table('matching', 'v_approved_matches')}` r WHERE r.rid = e.rid AND r.source = e.source))
           ) AS enrichments
     """)[0]
 

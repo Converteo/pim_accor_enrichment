@@ -29,6 +29,7 @@ locals {
     match_judgments      = { dataset = "matching", partition = "judged_at", cluster = ["rid", "status"] }
     match_decisions      = { dataset = "validation", partition = "decided_at", cluster = ["rid", "source"] }
     enrichments          = { dataset = "enhanced", partition = "enriched_at", cluster = ["family", "rid", "status"] }
+    enrichment_targets   = { dataset = "enhanced", partition = "computed_at", cluster = ["family", "rid"] }
     enrichment_decisions = { dataset = "validation", partition = "decided_at", cluster = ["rid", "pim_field"] }
     exports              = { dataset = "enhanced", partition = "exported_at", cluster = [] }
   }

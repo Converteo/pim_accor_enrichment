@@ -55,7 +55,7 @@ ORDER BY e.priorite, e.score DESC
 | `value`, `value_label` | valeur proposée (code PIM et libellé pour les listes) |
 | `source`, `source_field`, `source_excerpt` | justification : la phrase du scraping |
 | `score` (0-100), `confidence`, `warning` | confiance de l'agent ; score plafonné à 50 si l'extrait est introuvable |
-| `final_status` | `needs_review`, `auto_approved` (désactivé), `auto_rejected`, puis `human_approved`, `human_rejected`, `human_corrected` après décision |
+| `final_status` | `pending_enrichment` (pas encore enrichi), `needs_review`, `auto_approved` (désactivé), `auto_rejected`, puis `human_approved`, `human_rejected`, `human_corrected` après décision |
 | `reason`, `reason_detail` | pour `auto_rejected` : code (`not_in_sources`, `model_omitted`, `already_in_pim`, `pim_conflict`, `no_excerpt`, `not_in_pim_list`, `invalid_format`) et texte en français |
 | `final_value` | valeur retenue (la valeur corrigée le cas échéant) |
 
