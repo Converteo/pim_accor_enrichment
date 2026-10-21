@@ -56,6 +56,7 @@ environments = {
       "roles/bigquery.admin",                # IAM des datasets du pipeline
       "roles/secretmanager.admin",           # IAM du secret de la clé API du PIM
       "roles/datastore.owner",               # création de la base Firestore du pipeline (editor ne suffit pas)
+      "roles/iap.admin",                     # Identity-Aware Proxy devant l'interface (accès des relecteurs)
     ]
 
     front_public  = true
