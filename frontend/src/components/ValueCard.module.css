@@ -1,0 +1,162 @@
+.card {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.label {
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.field {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.chip,
+.source,
+.badge {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border-radius: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.badge {
+  color: var(--loyalty);
+  background: var(--loyalty-soft);
+}
+
+.vals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.value {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.key {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
+.proposed {
+  color: var(--ink);
+  font-weight: 500;
+  background: var(--brand-soft);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: -8px -10px;
+}
+
+.code {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* The sentence of the source is the reviewer's evidence */
+.excerpt {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 4px 4px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  font-style: italic;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.warning {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--offer-soft);
+  color: var(--offer);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.track {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.score {
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .vals {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}

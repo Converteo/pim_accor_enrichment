@@ -22,7 +22,7 @@
   top: 0;
   right: 0;
   height: 100%;
-  width: min(480px, 100vw);
+  width: min(560px, 100vw);
   background: var(--surface);
   box-shadow: var(--shadow);
   display: flex;

@@ -31,3 +31,8 @@
     padding: 0 16px 140px;
   }
 }
+
+.sources {
+  font-size: 13px;
+  color: var(--text-muted);
+}

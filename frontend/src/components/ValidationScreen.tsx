@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { fetchFacets, fetchHotels, fetchStats } from "@/data/source";
-import type { Facets, Filters, Stats, TabKey } from "@/domain/types";
+import { fetchFacets, fetchHotel, fetchHotels, fetchStats } from "@/data/source";
+import { cityLine, formatScore } from "@/domain/rules";
+import type { Facets, Filters, HotelDetail, Stats, TabKey } from "@/domain/types";
+import { Drawer } from "./Drawer";
 import { FicheTable } from "./FicheTable";
-import { errorText } from "./labels";
+import { HotelDetailView } from "./HotelDetailView";
+import { errorText, sourceLabel } from "./labels";
 import { Toolbar } from "./Toolbar";
 import { Topbar } from "./Topbar";
 import { usePagedList } from "./usePagedList";
@@ -21,6 +24,12 @@ const EMPTY_FILTERS: Filters = {
 
 const NO_SELECTION: ReadonlySet<string> = new Set();
 
+interface DetailState {
+  rid: string;
+  data: HotelDetail | null;
+  error: unknown;
+}
+
 interface ValidationScreenProps {
   author: string | null;
 }
@@ -33,6 +42,9 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   const [query, setQuery] = useState<Filters>(EMPTY_FILTERS);
   const [stats, setStats] = useState<Stats | null>(null);
   const [facets, setFacets] = useState<Facets | null>(null);
+  const [openRid, setOpenRid] = useState<string | null>(null);
+  // Kept after closing so the drawer slides out with its content.
+  const [detail, setDetail] = useState<DetailState | null>(null);
 
   // The matches tab keeps the last fiche list, so coming back does not reload it.
   const [hotelView, setHotelView] = useState<"review" | "pending">("review");
@@ -60,9 +72,23 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     if (next !== "matches") setHotelView(next);
   }
 
-  function onOpen(rid: string) {
-    void rid;
+  function loadDetail(rid: string) {
+    fetchHotel(rid).then(
+      (data) => setDetail((current) => (current?.rid === rid ? { rid, data, error: null } : current)),
+      (error: unknown) => setDetail((current) => (current?.rid === rid ? { ...current, error } : current)),
+    );
   }
+
+  function onOpen(rid: string) {
+    setOpenRid(rid);
+    setDetail({ rid, data: null, error: null });
+    loadDetail(rid);
+  }
+
+  const onClose = useCallback(() => setOpenRid(null), []);
+
+  const summary = hotels.items.find((hotel) => hotel.rid === detail?.rid);
+  const shownHotel = detail?.data?.hotel ?? summary;
 
   return (
     <>
@@ -103,6 +129,55 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
           </>
         )}
       </main>
+      <Drawer
+        open={openRid !== null}
+        eyebrow={
+          shownHotel
+            ? t("drawer.eyebrow", {
+                brand: shownHotel.brand ?? "—",
+                place: cityLine(shownHotel),
+                rid: shownHotel.rid,
+              })
+            : ""
+        }
+        title={shownHotel?.name ?? ""}
+        meta={
+          detail?.data ? (
+            <>
+              <span className="status-pill pill-review">
+                <i className="dot dot-review" />
+                {t("drawer.toReview", { count: detail.data.toReview.length })}
+              </span>
+              {summary?.avgScore != null ? (
+                <span className="score-pill pill-review">
+                  {t("drawer.avgScore", { score: formatScore(summary.avgScore) })}
+                </span>
+              ) : null}
+              <span className={styles.sources}>
+                {detail.data.hotel.sources.map((source) => sourceLabel(t, source)).join(" · ")}
+              </span>
+            </>
+          ) : null
+        }
+        onClose={onClose}
+      >
+        {detail?.data ? (
+          <HotelDetailView detail={detail.data} />
+        ) : detail?.error ? (
+          <div className={styles.empty} role="alert">
+            <p>
+              {t("drawer.error")} {errorText(t, detail.error)}
+            </p>
+            <button type="button" className="btn btn-ghost" onClick={() => onOpen(detail.rid)}>
+              {t("list.retry")}
+            </button>
+          </div>
+        ) : (
+          <p className={styles.empty} role="status">
+            {t("drawer.loading")}
+          </p>
+        )}
+      </Drawer>
     </>
   );
 }
