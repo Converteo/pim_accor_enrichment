@@ -235,9 +235,10 @@ VALUES (@enrichment_id, @rid, @pim_field, @entity_id, 'human_approved', NULL, @c
 libellé), `True`/`False`, heure `HH:MM`, nombre ; plusieurs codes séparés par `|`. La vue renvoie alors `final_value` =
 `corrected_value`.
 
-Le backend doit contrôler la valeur avant d'écrire (le code existe-t-il dans la liste du champ ?). Pour cela il lui faut
-`raw.pim_model` et `raw.pim_cvl_values`, auxquels son compte de service n'a pas accès aujourd'hui. **À trancher** : lui donner
-la lecture de ces deux tables, ou ajouter une vue des listes de valeurs dans `enhanced`.
+Le backend doit contrôler la valeur avant d'écrire (le code existe-t-il dans la liste du champ ?). Il lit pour cela la vue
+`enhanced.v_field_allowed_values` (une ligne par champ × code : `entity_type, pim_field, label, data_type, multivalue, cvl_id,
+key, value_label`, `key` NULL pour un champ sans liste), construite sur `raw.pim_model` et `raw.pim_cvl_values`. C'est une
+**vue autorisée** sur `raw` : le compte de service du backend n'a pas accès à `raw`.
 
 ### 3.4 Revenir sur une décision
 

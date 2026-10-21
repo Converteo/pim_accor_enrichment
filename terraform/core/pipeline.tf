@@ -40,6 +40,7 @@ locals {
     v_approved_matches     = "matching"
     v_enrichments          = "enhanced"
     v_approved_enrichments = "enhanced"
+    v_field_allowed_values = "enhanced"
   }
 
   # Une étape = un job Cloud Run, même image (pipeline/jobs)
@@ -281,6 +282,33 @@ resource "google_bigquery_table" "view_approved_enrichments" {
   }
 
   depends_on = [google_bigquery_table.view_enrichments, google_bigquery_table.view_approved_matches]
+}
+
+# Codes autorisés par champ, pour contrôler une valeur corrigée dans l'interface (contrat § 3.3)
+resource "google_bigquery_table" "view_field_allowed_values" {
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.pipeline["enhanced"].dataset_id
+  table_id            = "v_field_allowed_values"
+  deletion_protection = false
+
+  view {
+    query          = templatefile("${local.pipeline_src}/views/v_field_allowed_values.sql", local.dataset_refs)
+    use_legacy_sql = false
+  }
+
+  depends_on = [google_bigquery_table.pipeline]
+}
+
+# Vue autorisée sur raw : le backend la lit sans avoir accès à raw
+resource "google_bigquery_dataset_access" "raw_field_allowed_values" {
+  project    = var.project_id
+  dataset_id = google_bigquery_dataset.pipeline["raw"].dataset_id
+
+  view {
+    project_id = var.project_id
+    dataset_id = google_bigquery_table.view_field_allowed_values.dataset_id
+    table_id   = google_bigquery_table.view_field_allowed_values.table_id
+  }
 }
 
 # Moindre privilège : chaque étape lit ce dont elle a besoin et n'écrit que dans son dataset.

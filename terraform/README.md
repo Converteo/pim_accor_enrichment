@@ -39,7 +39,8 @@ Pipeline d'enrichissement (`core/pipeline.tf`), par environnement : 4 datasets B
 `fs-…`, secret de la clé API du PIM, 5 jobs `gcrj-…-{extract-pim,matching,judge,enrich,export}`, service
 `gcr-…-load-bq` déclenché par Eventarc sur le bucket OTA, workflow `wf-…-enrichment`, planificateur (en pause),
 buckets `bkt-…-prompts` et `bkt-…-exports`, un SA par composant. Le SA back lit les vues et écrit les décisions
-(`pipeline/docs/contrat-back.md`).
+(`pipeline/docs/contrat-back.md`) ; il lit les codes autorisés par champ via `enhanced.v_field_allowed_values`, vue autorisée
+sur `raw` (le SA back n'a pas accès à `raw`).
 
 Ressources uniques au projet, gérées **uniquement par dev** (`manage_project_resources = true`) :
 - bucket de state `bkt-cvto-accor-pim-enrichment-dev-euw1-tfstate` (versionné, 20 versions conservées) ;

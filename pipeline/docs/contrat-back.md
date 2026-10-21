@@ -8,7 +8,7 @@ Datasets (un jeu par environnement, `<base>` = `cvto_accor_pim_enrichment_<env>_
 | Dataset | Accès du SA backend | Contenu |
 | --- | --- | --- |
 | `<base>_matching` | lecture | rapprochements RID × source (`match_candidates`), notes de l'agent juge (`match_judgments`), vues `v_matches` et `v_approved_matches` |
-| `<base>_enhanced` | lecture | champs à enrichir (`enrichment_candidates`), réponses de l'agent (`enrichment_proposals`), vues `v_enrichments` et `v_approved_enrichments`, historique `exports` |
+| `<base>_enhanced` | lecture | champs à enrichir (`enrichment_candidates`), réponses de l'agent (`enrichment_proposals`), vues `v_enrichments`, `v_approved_enrichments` et `v_field_allowed_values` (codes autorisés par champ, vue autorisée sur `raw`), historique `exports` |
 | `<base>_validation` | lecture et écriture | décisions humaines (`match_decisions`, `enrichment_decisions`) |
 
 Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.invoker` sur le job d'export et la lecture du bucket des exports.
