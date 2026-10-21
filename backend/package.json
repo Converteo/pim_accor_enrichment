@@ -12,7 +12,7 @@
     "lint": "eslint . && prettier --check . && tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:integration": "node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run --dir test"
+    "test:integration": "BQ_INTEGRATION=1 node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run"
   },
   "dependencies": {
     "@google-cloud/bigquery": "9.4.0",
