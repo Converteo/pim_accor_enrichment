@@ -11,6 +11,7 @@ import type {
   Priority,
   Stats,
 } from './api.js';
+import type { EnrichmentDecisionRow, EnrichmentState } from './decisions.js';
 import { ApiError } from './errors.js';
 import { Bq } from './gcp.js';
 
@@ -42,6 +43,9 @@ export abstract class Repository {
   /** null si le RID est inconnu. */
   abstract hotel(rid: string): Promise<HotelDetail | null>;
   abstract matches(filters: MatchFilters): Promise<Page<MatchItem>>;
+  abstract enrichmentStates(enrichmentIds: string[]): Promise<EnrichmentState[]>;
+  /** Un seul INSERT multi-lignes ; author et decided_at (UTC) posés ici, jamais par le client. */
+  abstract insertEnrichmentDecisions(rows: EnrichmentDecisionRow[], author: string): Promise<void>;
 }
 
 // Curseur opaque = liste + clé de tri de la dernière ligne renvoyée (pagination par clé : une fiche qui sort de la
@@ -346,5 +350,41 @@ export class BigQueryRepository extends Repository {
       { source: 'STRING' },
     );
     return page('matches', rows, f.limit, matchItem);
+  }
+
+  async enrichmentStates(enrichmentIds: string[]): Promise<EnrichmentState[]> {
+    const { approved, enrichments } = this.t;
+    return this.bq.query<EnrichmentState>(
+      `SELECT e.enrichment_id AS enrichmentId, e.rid, e.pim_field AS pimField, e.entity_id AS entityId,
+        e.final_status AS status,
+        EXISTS (SELECT 1 FROM ${approved} r WHERE r.rid = e.rid AND r.source = e.source) AS approved
+      FROM ${enrichments} e
+      WHERE e.enrichment_id IN UNNEST(@ids)`,
+      { ids: enrichmentIds },
+      { ids: ['STRING'] },
+    );
+  }
+
+  async insertEnrichmentDecisions(rows: EnrichmentDecisionRow[], author: string): Promise<void> {
+    await this.bq.query(
+      `INSERT INTO ${this.bq.table('validation', 'enrichment_decisions')}
+        (enrichment_id, rid, pim_field, entity_id, decision, corrected_value, comment, author, decided_at)
+      SELECT enrichment_id, rid, pim_field, entity_id, decision, corrected_value, comment, @author, CURRENT_TIMESTAMP()
+      FROM UNNEST(@rows)`,
+      { rows, author },
+      {
+        rows: [
+          {
+            enrichment_id: 'STRING',
+            rid: 'STRING',
+            pim_field: 'STRING',
+            entity_id: 'STRING',
+            decision: 'STRING',
+            corrected_value: 'STRING',
+            comment: 'STRING',
+          },
+        ],
+      },
+    );
   }
 }

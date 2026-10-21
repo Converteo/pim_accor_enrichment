@@ -25,6 +25,8 @@ export async function appWithMockRepository(): Promise<{ app: INestApplication; 
     stats: vi.fn(),
     hotel: vi.fn(),
     matches: vi.fn(),
+    enrichmentStates: vi.fn(),
+    insertEnrichmentDecisions: vi.fn(),
   } satisfies MockRepository;
   const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(loadConfig(ENV))] })
     .overrideProvider(Repository)

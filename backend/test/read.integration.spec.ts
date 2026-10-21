@@ -46,6 +46,17 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     expect(detail!.toReview).toHaveLength(summary!.toReviewCount);
     expect(detail!.toReview.every((v) => v.status === 'needs_review' && v.enrichmentId)).toBe(true);
     expect(await repo.hotel('ZZZZ-INCONNU')).toBeNull();
+    const [value] = detail!.toReview;
+    expect(await repo.enrichmentStates([value!.enrichmentId!, 'inconnu'])).toEqual([
+      {
+        enrichmentId: value!.enrichmentId,
+        rid: summary!.rid,
+        pimField: value!.pimField,
+        entityId: value!.entityId,
+        status: 'needs_review',
+        approved: true,
+      },
+    ]);
   });
 
   it('matches : needs_review uniquement, facets non vides', async () => {

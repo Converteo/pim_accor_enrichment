@@ -29,12 +29,21 @@ describe('application', () => {
   let app: INestApplication;
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(loadConfig(ENV))] }).compile();
-    app = await moduleRef.createNestApplication().init();
+    app = await moduleRef.createNestApplication({ logger: false }).init();
   });
   afterAll(() => app.close());
 
   it('GET /healthz', async () => {
     await request(app.getHttpServer()).get('/healthz').expect(200, { status: 'ok' });
+  });
+
+  it('renvoie un corps trop volumineux en 413 au format du contrat', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/decisions/enrichments')
+      .set('content-type', 'application/json')
+      .send(JSON.stringify({ items: [{ comment: 'a'.repeat(200_000) }] }))
+      .expect(413);
+    expect(res.body.error.code).toBe('payload_too_large');
   });
 
   it('renvoie les erreurs au format du contrat', async () => {

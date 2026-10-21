@@ -17,6 +17,7 @@ const CODES: Partial<Record<number, [string, string]>> = {
   401: ['unauthorized', 'Auteur manquant.'],
   404: ['not_found', 'Ressource introuvable.'],
   409: ['conflict', "Conflit avec l'état actuel."],
+  413: ['payload_too_large', 'Demande trop volumineuse (2 Mo au plus) : envoyez-la en plusieurs fois.'],
 };
 
 /** Erreurs des clients Google : ApiError (BigQuery, Storage, champs code/errors) ou GoogleError (gRPC, code numérique). */
@@ -34,8 +35,9 @@ export class ErrorFilter implements ExceptionFilter {
       res.status(exception.getStatus()).json(exception.getResponse());
       return;
     }
-    if (exception instanceof HttpException) {
-      const status = exception.getStatus();
+    // body-parser lève une erreur Express (status 413) avant que Nest ne voie la requête
+    if (exception instanceof HttpException || (exception as { type?: string }).type === 'entity.too.large') {
+      const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.PAYLOAD_TOO_LARGE;
       const [code, message] = CODES[status] ?? ['error', 'Erreur.'];
       res.status(status).json({ error: { code, message } });
       return;
