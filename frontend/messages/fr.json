@@ -235,11 +235,13 @@
     "state": {
       "running": "Export en cours…",
       "succeeded": "Export terminé.",
-      "failed": "Export refusé ou en échec."
+      "failed": "Export refusé ou en échec.",
+      "empty": "Export terminé sans fichier : aucune valeur validée à exporter, ou des éléments sont repassés en attente entre-temps."
     },
     "history": "{count, plural, one {Historique (# export)} other {Historique (# exports)}}",
     "record": "{date} · {author} · {hotels, plural, one {# hôtel} other {# hôtels}} · {rows, plural, one {# valeur} other {# valeurs}}",
-    "unauthorized": "Utilisateur non identifié : action refusée par le serveur."
+    "unauthorized": "Utilisateur non identifié : action refusée par le serveur.",
+    "busy": "Un export est en cours : attendez sa fin avant d’en relancer un."
   },
   "number": "{value, number}"
 }

@@ -235,11 +235,13 @@
     "state": {
       "running": "Export running…",
       "succeeded": "Export completed.",
-      "failed": "Export refused or failed."
+      "failed": "Export refused or failed.",
+      "empty": "Export finished without a file: no approved value to export, or items started waiting again in the meantime."
     },
     "history": "{count, plural, one {History (# export)} other {History (# exports)}}",
     "record": "{date} · {author} · {hotels, plural, one {# hotel} other {# hotels}} · {rows, plural, one {# value} other {# values}}",
-    "unauthorized": "Unidentified user: the server refused the action."
+    "unauthorized": "Unidentified user: the server refused the action.",
+    "busy": "An export is running: wait for it to finish before launching another one."
   },
   "number": "{value, number}"
 }

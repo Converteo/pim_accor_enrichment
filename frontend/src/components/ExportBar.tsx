@@ -6,32 +6,18 @@ import { errorText } from "./labels";
 import styles from "./ExportBar.module.css";
 
 const POLL_MS = 3000;
-// Survives a reload of the page while the job runs, so the export is not launched twice.
-const EXECUTION_KEY = "pim-export-execution";
 
 interface ExportBarProps {
   /** Items still waiting for a decision, from /stats: the banner re-reads its status when it changes. */
   pending: number | undefined;
 }
 
-type Execution = { id: string } & ExportExecution;
-
-function storedExecution(): string | null {
-  try {
-    return sessionStorage.getItem(EXECUTION_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function storeExecution(id: string | null) {
-  try {
-    if (id) sessionStorage.setItem(EXECUTION_KEY, id);
-    else sessionStorage.removeItem(EXECUTION_KEY);
-  } catch {
-    // Storage unavailable (private mode): only the reload protection is lost.
-  }
-}
+type Execution = { id: string } & ExportExecution & {
+  /** Exports already in the history when the follow-up started. */
+  known?: string[];
+  /** The job succeeded without adding an export: nothing was approved, or items started waiting again. */
+  empty?: boolean;
+};
 
 /** Export of the PIM enhanced: blocked while values or matches still wait for a decision. */
 export function ExportBar({ pending }: ExportBarProps) {
@@ -46,20 +32,32 @@ export function ExportBar({ pending }: ExportBarProps) {
   const [execution, setExecution] = useState<Execution | null>(null);
   const startRef = useRef<HTMLButtonElement>(null);
 
-  const refresh = useCallback(() => {
-    fetchExportStatus().then(
-      (loaded) => {
-        setStatus(loaded);
-        setError(null);
-        // After a reload, resume following a job launched from this tab.
-        const running = storedExecution();
-        setExecution((current) => current ?? (running ? { id: running, state: "running" } : null));
-      },
-      setError,
-    );
-  }, []);
+  const refresh = useCallback(
+    () =>
+      fetchExportStatus().then(
+        (loaded) => {
+          setStatus(loaded);
+          setError(null);
+          // A job launched elsewhere (another tab, another reviewer, before a reload): follow it too.
+          const running = loaded.runningExecutionId;
+          setExecution((current) =>
+            running && current?.state !== "running"
+              ? { id: running, state: "running", known: loaded.history.map((record) => record.exportId) }
+              : current,
+          );
+          return loaded;
+        },
+        (failure: unknown) => {
+          setError(failure);
+          return null;
+        },
+      ),
+    [],
+  );
 
-  useEffect(refresh, [refresh, pending]);
+  useEffect(() => {
+    void refresh();
+  }, [refresh, pending]);
 
   function errorMessage(failure: unknown): string {
     return failure instanceof ApiError && failure.status === 401 ? t("unauthorized") : errorText(tRoot, failure);
@@ -71,16 +69,24 @@ export function ExportBar({ pending }: ExportBarProps) {
     const timer = setTimeout(() => {
       fetchExecution(execution.id).then(
         (next) => {
-          setExecution({ id: execution.id, ...next });
-          if (next.state !== "running") {
-            storeExecution(null);
-            refresh();
+          if (next.state === "running") {
+            setExecution({ ...execution });
+            return;
           }
+          void refresh().then((loaded) =>
+            setExecution({
+              id: execution.id,
+              ...next,
+              empty:
+                next.state === "succeeded" &&
+                loaded !== null &&
+                loaded.history.every((record) => execution.known?.includes(record.exportId)),
+            }),
+          );
         },
         (failure: unknown) => {
           // Network or server hiccup: try again at the next tick. A 4xx (unknown execution…) will not get better.
           const final = failure instanceof ApiError && failure.status >= 400 && failure.status < 500;
-          if (final) storeExecution(null);
           setExecution(final ? { id: execution.id, state: "failed", message: errorMessage(failure) } : { ...execution });
         },
       );
@@ -97,12 +103,10 @@ export function ExportBar({ pending }: ExportBarProps) {
 
   function launch() {
     setConfirming(false);
-    setExecution({ id: "", state: "running" });
+    const known = status?.history.map((record) => record.exportId) ?? [];
+    setExecution({ id: "", state: "running", known });
     startExport().then(
-      ({ executionId }) => {
-        storeExecution(executionId);
-        setExecution({ id: executionId, state: "running" });
-      },
+      ({ executionId }) => setExecution({ id: executionId, state: "running", known }),
       (failure: unknown) => {
         setExecution({ id: "", state: "failed", message: errorMessage(failure) });
         refresh();
@@ -125,9 +129,11 @@ export function ExportBar({ pending }: ExportBarProps) {
               ? `${t("statusError")} ${errorMessage(error)}`
               : !status
                 ? t("loading")
-                : status.canExport
-                  ? t("ready")
-                  : t("blocked", { count: status.pendingCount })}
+                : status.runningExecutionId
+                  ? t("busy")
+                  : status.canExport
+                    ? t("ready")
+                    : t("blocked", { count: status.pendingCount })}
           </p>
         </div>
         <div className={styles.actions}>
@@ -175,7 +181,7 @@ export function ExportBar({ pending }: ExportBarProps) {
         className={execution?.state === "failed" ? `${styles.execution} ${styles.failed}` : styles.execution}
         role="status"
       >
-        {execution ? t(`state.${execution.state}`) : ""}
+        {execution ? t(execution.empty ? "state.empty" : `state.${execution.state}`) : ""}
         {execution?.message ? ` ${execution.message}` : ""}
       </p>
 

@@ -177,7 +177,10 @@ export interface ExportRecord {
 
 export interface ExportStatus {
   pendingCount: number;
+  /** False while items wait for a decision or while an export runs. */
   canExport: boolean;
+  /** Export job running now, launched from any tab: the banner resumes following it. */
+  runningExecutionId: string | null;
   history: ExportRecord[];
 }
 
