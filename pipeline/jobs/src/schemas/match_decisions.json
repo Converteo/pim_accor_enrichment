@@ -18,7 +18,7 @@
     "name": "decision",
     "type": "STRING",
     "mode": "REQUIRED",
-    "description": "valide_humain | rejete_humain"
+    "description": "human_approved | human_rejected"
   },
   {
     "name": "comment",

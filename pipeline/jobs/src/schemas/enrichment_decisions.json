@@ -23,7 +23,7 @@
     "name": "decision",
     "type": "STRING",
     "mode": "REQUIRED",
-    "description": "validee | invalidee | corrigee"
+    "description": "human_approved | human_rejected | human_corrected"
   },
   {
     "name": "corrected_value",
