@@ -36,3 +36,8 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+
+.comment {
+  flex: 1 1 100%;
+  min-width: 0;
+}

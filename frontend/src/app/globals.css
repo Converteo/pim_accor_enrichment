@@ -207,6 +207,7 @@ h3 {
 
 .btn-icon {
   padding: 7px 14px;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 500;
   background: var(--surface);

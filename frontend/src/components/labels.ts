@@ -1,12 +1,37 @@
 import type { useTranslations } from "next-intl";
 import { ApiError } from "@/data/source";
+import { splitCodes } from "@/domain/rules";
+import type { EnrichmentValue } from "@/domain/types";
 
 type Translate = ReturnType<typeof useTranslations<never>>;
 
-/** Readable name of a pipeline source id (booking_equipements…); unknown ids are shown as is. */
+/** Readable label of a pipeline code (`group.code` in the messages); unknown codes are shown as is. */
+export function codeLabel(t: Translate, group: string, code: string): string {
+  const key = `${group}.${code}` as Parameters<Translate>[0];
+  return t.has(key) ? t(key) : code;
+}
+
+/** PIM raw value made readable: booleans in words, list codes separated by commas. */
+export function readableValue(t: Translate, value: string | null): string {
+  if (value === null || value === "") return "—";
+  if (value === "True") return t("value.yes");
+  if (value === "False") return t("value.no");
+  return splitCodes(value).join(", ");
+}
+
+/** « Parking 2 », « Piscine (nouvelle) »; null for the hotel itself. */
+export function entityLabel(t: Translate, value: EnrichmentValue, ordinals: Map<string, number>): string | null {
+  const entity = value.entity.toLowerCase();
+  if (entity === "product") return null;
+  const name = codeLabel(t, "entities", entity);
+  if (value.entityId === null) return name;
+  if (value.entityId.startsWith("new")) return t("value.newEntity", { name });
+  const ordinal = ordinals.get(`${entity}|${value.entityId}`);
+  return ordinal === undefined ? name : `${name} ${ordinal}`;
+}
+
 export function sourceLabel(t: Translate, source: string): string {
-  const key = `sources.${source}` as Parameters<Translate>[0];
-  return t.has(key) ? t(key) : source;
+  return codeLabel(t, "sources", source);
 }
 
 /** Message shown for a failed call: the back's French message when it gives one. */

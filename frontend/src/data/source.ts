@@ -84,6 +84,15 @@ export function fetchHotel(rid: string): Promise<HotelDetail> {
   return call(`/hotels/${encodeURIComponent(rid)}`);
 }
 
+/** Details of several fiches (bulk decisions), a few calls at a time to spare the back. */
+export async function fetchHotelsDetail(rids: readonly string[]): Promise<HotelDetail[]> {
+  const results: HotelDetail[] = [];
+  for (let start = 0; start < rids.length; start += 4) {
+    results.push(...(await Promise.all(rids.slice(start, start + 4).map(fetchHotel))));
+  }
+  return results;
+}
+
 export function decideEnrichments(items: EnrichmentDecisionItem[]): Promise<DecisionResult<"enrichmentId">> {
   return call("/decisions/enrichments", { method: "POST", body: { items } });
 }

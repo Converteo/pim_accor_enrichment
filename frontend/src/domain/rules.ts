@@ -95,6 +95,27 @@ export function withReviewCount(
     : hotels.map((hotel) => (hotel.rid === rid ? { ...hotel, toReviewCount } : hotel));
 }
 
+/** Next page appended without the items already shown: a fiche whose score or count changed can come back. */
+export function appendUnique<T>(items: readonly T[], page: readonly T[], idOf: (item: T) => string): T[] {
+  const seen = new Set(items.map(idOf));
+  return [...items, ...page.filter((item) => !seen.has(idOf(item)))];
+}
+
+/** Rank of each entity of a fiche (« parking 2 »), by id order; ids `new_*` are entities the agent proposes to create. */
+export function entityOrdinals(values: readonly EnrichmentValue[]): Map<string, number> {
+  const ids = new Map<string, Set<string>>();
+  for (const value of values) {
+    if (value.entityId === null || value.entityId.startsWith("new")) continue;
+    const entity = value.entity.toLowerCase();
+    ids.set(entity, (ids.get(entity) ?? new Set()).add(value.entityId));
+  }
+  const ordinals = new Map<string, number>();
+  for (const [entity, set] of ids) {
+    [...set].sort().forEach((id, index) => ordinals.set(`${entity}|${id}`, index + 1));
+  }
+  return ordinals;
+}
+
 /** Key the back uses in `rejected` for match decisions. */
 export function matchKey(match: Pick<MatchItem, "rid" | "source" | "sourceHash">): string {
   return `${match.rid}|${match.source}|${match.sourceHash}`;

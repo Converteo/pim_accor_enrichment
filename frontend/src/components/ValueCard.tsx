@@ -2,21 +2,21 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { formatScore } from "@/domain/rules";
 import type { EnrichmentValue } from "@/domain/types";
-import { sourceLabel } from "./labels";
+import { codeLabel, readableValue, sourceLabel } from "./labels";
 import styles from "./ValueCard.module.css";
 
 interface ValueCardProps {
   value: EnrichmentValue;
+  /** « Parking 2 »; null for the hotel itself. */
+  entity: string | null;
   /** Decision controls, under the score. */
   children?: ReactNode;
 }
 
-const CONFIDENCES = ["high", "medium", "low"];
-
 /** One proposed value: PIM value, proposal, the source excerpt that justifies it, method, confidence, score. */
-export function ValueCard({ value, children }: ValueCardProps) {
+export function ValueCard({ value, entity, children }: ValueCardProps) {
   const t = useTranslations();
-  const proposed = value.valueLabel ?? value.value ?? "—";
+  const proposed = value.valueLabel ?? readableValue(t, value.value);
 
   return (
     <article className={styles.card}>
@@ -26,23 +26,19 @@ export function ValueCard({ value, children }: ValueCardProps) {
           <span className={styles.field}>{value.pimField}</span>
         </span>
         <span className={styles.chips}>
-          {value.entity.toLowerCase() !== "product" ? (
-            <span className={styles.chip}>
-              {value.entityId ? `${value.entity} ${value.entityId}` : value.entity}
-            </span>
-          ) : null}
+          {entity ? <span className={styles.chip}>{entity}</span> : null}
           <span className={styles.chip}>{value.priority}</span>
         </span>
       </div>
       <div className={styles.vals}>
         <div className={styles.value}>
           <span className={styles.key}>{t("value.current")}</span>
-          {value.pimValue ?? t("value.empty")}
+          {value.pimValue === null ? t("value.empty") : readableValue(t, value.pimValue)}
         </div>
         <div className={`${styles.value} ${styles.proposed}`}>
           <span className={styles.key}>{t("value.proposed")}</span>
           {proposed}
-          {value.value && value.value !== proposed ? (
+          {value.value && value.valueLabel && value.value !== value.valueLabel ? (
             <span className={styles.code}>{value.value}</span>
           ) : null}
         </div>
@@ -63,9 +59,7 @@ export function ValueCard({ value, children }: ValueCardProps) {
         {value.confidence ? (
           <span className={styles.badge}>
             {t("value.confidence", {
-              level: CONFIDENCES.includes(value.confidence)
-                ? t(`value.confidenceLevel.${value.confidence as "high" | "medium" | "low"}`)
-                : value.confidence,
+              level: codeLabel(t, "value.confidenceLevel", value.confidence),
             })}
           </span>
         ) : null}

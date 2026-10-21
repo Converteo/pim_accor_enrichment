@@ -1,0 +1,66 @@
+.region {
+  position: fixed;
+  top: 96px;
+  right: 24px;
+  z-index: 50;
+  width: min(420px, calc(100vw - 32px));
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 4px 0 0 var(--success), var(--shadow);
+  color: var(--ink);
+}
+
+.error {
+  box-shadow: inset 4px 0 0 var(--danger), var(--shadow);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.text {
+  margin: 0;
+  font-weight: 500;
+}
+
+.details {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--text);
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+.close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .region {
+    top: 72px;
+    right: 16px;
+  }
+}

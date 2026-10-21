@@ -81,9 +81,11 @@
   },
   "bulk": {
     "cancel": "Annuler",
-    "reject": "Rejeter la sélection",
-    "validate": "Valider la sélection",
-    "count": "{count, plural, one {# fiche sélectionnée} other {# fiches sélectionnées}}"
+    "reject": "{count, plural, one {Rejeter la fiche} other {Rejeter les # fiches}}",
+    "validate": "{count, plural, one {Valider la fiche} other {Valider les # fiches}}",
+    "count": "{count, plural, one {# fiche sélectionnée} other {# fiches sélectionnées}}",
+    "comment": "Commentaire facultatif",
+    "busy": "Enregistrement…"
   },
   "errors": {
     "network": "Le serveur ne répond pas. Vérifiez votre connexion puis réessayez.",
@@ -114,7 +116,10 @@
       "high": "haute",
       "medium": "moyenne",
       "low": "faible"
-    }
+    },
+    "yes": "Oui",
+    "no": "Non",
+    "newEntity": "{name} (nouveau)"
   },
   "detail": {
     "nothingToReview": "Toutes les valeurs de cette fiche ont été décidées.",
@@ -124,12 +129,110 @@
     "conflictsHint": "La source contredit le PIM. Pour information : le PIM n’est jamais écrasé.",
     "sourceSays": "La source indique « {value} » ({source})",
     "history": "Décisions déjà prises",
-    "decidedBy": "{author}, le {date}"
+    "decidedBy": "{author}, le {date}",
+    "pimHas": "Le PIM contient « {value} »"
   },
   "decision": {
     "human_approved": "Validée",
     "human_rejected": "Rejetée",
     "human_corrected": "Corrigée"
+  },
+  "decide": {
+    "approve": "Valider",
+    "reject": "Rejeter",
+    "approveValue": "Valider « {label} »",
+    "rejectValue": "Rejeter « {label} »",
+    "addComment": "Ajouter un commentaire",
+    "commentPlaceholder": "Commentaire facultatif",
+    "commentFor": "Commentaire pour « {label} »",
+    "ficheComment": "Commentaire pour toute la fiche",
+    "approveFiche": "{count, plural, one {Valider la valeur} other {Valider les # valeurs}}",
+    "rejectFiche": "{count, plural, one {Rejeter la valeur} other {Rejeter les # valeurs}}",
+    "saved": "{count, plural, =0 {Aucune décision enregistrée.} one {# décision enregistrée.} other {# décisions enregistrées.}}",
+    "refused": "{count, plural, one {# valeur refusée par le serveur :} other {# valeurs refusées par le serveur :}}",
+    "failed": "Décision non enregistrée."
+  },
+  "entities": {
+    "parking": "Parking",
+    "pool": "Piscine",
+    "restaurant": "Restaurant",
+    "bar": "Bar",
+    "breakfast": "Petit-déjeuner",
+    "wellnesscenter": "Centre bien-être",
+    "fitnesscenter": "Salle de sport",
+    "sport": "Sport"
+  },
+  "correct": {
+    "open": "Corriger",
+    "title": "Corriger « {label} »",
+    "loading": "Chargement des valeurs autorisées…",
+    "loadError": "Impossible de charger les valeurs autorisées.",
+    "several": "Plusieurs valeurs possibles",
+    "choose": "Choisir une valeur",
+    "valueLabel": "Valeur corrigée",
+    "yes": "Oui",
+    "no": "Non",
+    "cancel": "Annuler",
+    "submit": "Enregistrer la correction"
+  },
+  "matches": {
+    "pim": "Fiche PIM",
+    "page": "Page scrapée",
+    "judge": "Avis de l’agent juge",
+    "check": "Contrôle automatique",
+    "name": "Nom",
+    "city": "Ville",
+    "country": "Pays",
+    "brand": "Marque",
+    "address": "Adresse",
+    "scrapedName": "Nom scrapé",
+    "pageName": "Nom de la page",
+    "openPage": "Ouvrir la page source ↗",
+    "delay": "Une fois validé, l’hôtel est enrichi pour cette source au prochain passage du pipeline (toutes les 15 minutes) : ses valeurs apparaîtront ensuite dans « À relire ». Rejeté, la source n’est plus utilisée pour cet hôtel.",
+    "empty": "Aucun rapprochement à valider pour ce filtre.",
+    "approve": "Valider le rapprochement",
+    "reject": "Rejeter le rapprochement",
+    "comment": "Commentaire facultatif",
+    "reasons": {
+      "consistent": "Concordance",
+      "rebranding": "Changement d’enseigne",
+      "internal_name": "Nom interne",
+      "former_brand": "Ancienne enseigne",
+      "namesake_other_country": "Homonyme dans un autre pays",
+      "neighbouring_hotel": "Hôtel voisin",
+      "shared_page": "Page partagée",
+      "unreadable_page": "Page illisible",
+      "other": "Autre"
+    },
+    "verdicts": {
+      "ok": "Concordant",
+      "to_check": "À vérifier",
+      "rejected": "Rejeté"
+    }
+  },
+  "bulkMatches": {
+    "count": "{count, plural, one {# rapprochement sélectionné} other {# rapprochements sélectionnés}}",
+    "reject": "Rejeter",
+    "validate": "Valider"
+  },
+  "export": {
+    "title": "Export du PIM enhanced",
+    "loading": "Lecture de l’état de l’export…",
+    "statusError": "État de l’export indisponible.",
+    "ready": "Tout est décidé : l’export peut être lancé.",
+    "blocked": "{count, plural, one {# élément attend encore une décision : l’export sera possible quand tout sera décidé.} other {# éléments attendent encore une décision : l’export sera possible quand tout sera décidé.}}",
+    "start": "Lancer l’export",
+    "running": "Export en cours…",
+    "confirm": "Lancer l’export maintenant ?",
+    "cancel": "Annuler",
+    "launch": "Confirmer",
+    "state": {
+      "running": "Export en cours…",
+      "succeeded": "Export terminé.",
+      "failed": "Export refusé ou en échec."
+    },
+    "history": "{count, plural, one {Historique (# export)} other {Historique (# exports)}}",
+    "record": "{date} · {author} · {hotels, number} hôtels · {rows, number} valeurs"
   },
   "number": "{value, number}"
 }

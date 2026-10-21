@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import styles from "./Drawer.module.css";
 
 interface DrawerProps {
@@ -16,15 +16,20 @@ interface DrawerProps {
 export function Drawer({ open, eyebrow, title, meta, footer, onClose, children }: DrawerProps) {
   const t = useTranslations("drawer");
   const closeRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      opener?.focus();
+    };
   }, [open, onClose]);
 
   return (
@@ -34,7 +39,7 @@ export function Drawer({ open, eyebrow, title, meta, footer, onClose, children }
       inert={!open}
     >
       <div className={styles.scrim} onClick={onClose} />
-      <div className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <div className={styles.panel} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <button
           ref={closeRef}
           type="button"
@@ -46,7 +51,7 @@ export function Drawer({ open, eyebrow, title, meta, footer, onClose, children }
         </button>
         <div className={styles.header}>
           <p className={styles.eyebrow}>{eyebrow}</p>
-          <h2 id="drawerTitle" className={styles.heading}>
+          <h2 id={titleId} className={styles.heading}>
             {title}
           </h2>
           {meta ? <div className={styles.meta}>{meta}</div> : null}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { appendUnique } from "@/domain/rules";
 import type { Page } from "@/domain/types";
 
 export type ListStatus = "loading" | "ready" | "error";
@@ -16,7 +17,11 @@ interface ListState<T> {
  * Cursor-paginated list reloaded from its first page whenever `key` changes (tab, filters).
  * Responses of an outdated key are dropped.
  */
-export function usePagedList<T>(key: string, load: (cursor: string | null) => Promise<Page<T>>) {
+export function usePagedList<T>(
+  key: string,
+  load: (cursor: string | null) => Promise<Page<T>>,
+  idOf: (item: T) => string,
+) {
   const [state, setState] = useState<ListState<T>>({
     key,
     items: [],
@@ -27,9 +32,11 @@ export function usePagedList<T>(key: string, load: (cursor: string | null) => Pr
   });
   const [reloads, setReloads] = useState(0);
   const loadRef = useRef(load);
+  const idRef = useRef(idOf);
 
   useEffect(() => {
     loadRef.current = load;
+    idRef.current = idOf;
   });
 
   // Reset during render, not in the effect (React's "adjusting state when a prop changes").
@@ -64,7 +71,7 @@ export function usePagedList<T>(key: string, load: (cursor: string | null) => Pr
       (page) =>
         setState((previous) =>
           previous.key === pageKey && previous.nextCursor === cursor
-            ? { ...previous, items: [...previous.items, ...page.items], nextCursor: page.nextCursor, loadingMore: false, error: null }
+            ? { ...previous, items: appendUnique(previous.items, page.items, idRef.current), nextCursor: page.nextCursor, loadingMore: false, error: null }
             : previous,
         ),
       (error: unknown) =>

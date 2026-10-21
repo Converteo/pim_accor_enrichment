@@ -1,5 +1,7 @@
 import {
+  appendUnique,
   applyDecisions,
+  entityOrdinals,
   formatScore,
   groupByFamily,
   isTime,
@@ -114,6 +116,21 @@ assert(rejected.toReview.length === 1 && rejected.decided[0]?.finalValue === nul
 const hotels = [summary("A", 2), summary("B", 1)];
 assert(withReviewCount(hotels, "A", 1)[0]?.toReviewCount === 1, "count updated");
 assert(withReviewCount(hotels, "B", 0).length === 1, "empty fiche removed");
+
+// « Charger plus » never shows a fiche twice.
+const page2 = appendUnique(hotels, [summary("B", 1), summary("C", 3)], (hotel) => hotel.rid);
+assert(page2.map((hotel) => hotel.rid).join() === "A,B,C", "duplicates dropped");
+
+// Entities numbered by id inside a fiche; entities to create are not numbered.
+const ordinals = entityOrdinals([
+  value({ entity: "Parking", entityId: "368682" }),
+  value({ entity: "Parking", entityId: "120001" }),
+  value({ entity: "Parking", entityId: "368682" }),
+  value({ entity: "Parking", entityId: "new_1" }),
+  value({ entity: "Product", entityId: null }),
+]);
+assert(ordinals.get("parking|120001") === 1 && ordinals.get("parking|368682") === 2, "parking ordinals");
+assert(ordinals.size === 2, "new and product not numbered");
 
 // PIM formats.
 assert(isTime("07:30") && !isTime("7:30") && !isTime("24:00") && !isTime(null), "HH:MM");

@@ -1,8 +1,8 @@
 import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
-import { groupByFamily, statusTone } from "@/domain/rules";
+import { entityOrdinals, groupByFamily, statusTone } from "@/domain/rules";
 import type { EnrichmentValue, HotelDetail } from "@/domain/types";
-import { sourceLabel } from "./labels";
+import { entityLabel, readableValue, sourceLabel } from "./labels";
 import { ValueCard } from "./ValueCard";
 import styles from "./HotelDetailView.module.css";
 
@@ -12,14 +12,17 @@ interface HotelDetailViewProps {
   renderActions?: (value: EnrichmentValue) => ReactNode;
 }
 
-function entityText(value: EnrichmentValue): string {
-  if (value.entity.toLowerCase() === "product") return value.label;
-  return `${value.label} · ${value.entityId ? `${value.entity} ${value.entityId}` : value.entity}`;
-}
-
 export function HotelDetailView({ detail, renderActions }: HotelDetailViewProps) {
   const t = useTranslations();
   const format = useFormatter();
+  // The reviewer's time zone: next-intl would otherwise use the server's (UTC on Cloud Run).
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const ordinals = entityOrdinals([...detail.toReview, ...detail.pending, ...detail.conflicts, ...detail.decided]);
+
+  function entityText(value: EnrichmentValue): string {
+    const entity = entityLabel(t, value, ordinals);
+    return entity ? `${value.label} · ${entity}` : value.label;
+  }
 
   return (
     <>
@@ -36,6 +39,7 @@ export function HotelDetailView({ detail, renderActions }: HotelDetailViewProps)
             <ValueCard
               key={value.enrichmentId ?? `${value.pimField}-${value.entityId}`}
               value={value}
+              entity={entityLabel(t, value, ordinals)}
             >
               {renderActions?.(value)}
             </ValueCard>
@@ -73,8 +77,11 @@ export function HotelDetailView({ detail, renderActions }: HotelDetailViewProps)
               <li key={value.enrichmentId ?? `${value.pimField}-${value.entityId}`}>
                 <strong>{entityText(value)}</strong>
                 <div>
+                  {t("detail.pimHas", { value: readableValue(t, value.pimValue) })}
+                </div>
+                <div>
                   {t("detail.sourceSays", {
-                    value: value.valueLabel ?? value.value ?? "—",
+                    value: value.valueLabel ?? readableValue(t, value.value),
                     source: value.source ? sourceLabel(t, value.source) : "—",
                   })}
                 </div>
@@ -103,7 +110,11 @@ export function HotelDetailView({ detail, renderActions }: HotelDetailViewProps)
                     {t(`decision.${value.status as "human_approved" | "human_rejected" | "human_corrected"}`)}
                   </span>
                 </div>
-                <div>{value.finalValue ?? value.valueLabel ?? value.value ?? "—"}</div>
+                <div>
+                  {value.status === "human_corrected" || value.valueLabel === null
+                    ? readableValue(t, value.finalValue ?? value.value)
+                    : value.valueLabel}
+                </div>
                 {value.lastDecision ? (
                   <div className={styles.muted}>
                     {t("detail.decidedBy", {
@@ -111,6 +122,7 @@ export function HotelDetailView({ detail, renderActions }: HotelDetailViewProps)
                       date: format.dateTime(new Date(value.lastDecision.decidedAt), {
                         dateStyle: "short",
                         timeStyle: "short",
+                        timeZone,
                       }),
                     })}
                     {value.lastDecision.comment ? ` · « ${value.lastDecision.comment} »` : ""}
