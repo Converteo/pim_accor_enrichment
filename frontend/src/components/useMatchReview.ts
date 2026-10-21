@@ -21,6 +21,9 @@ export function useMatchReview({ source, onResult, onError }: Options) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const open = list.items.find((match) => matchKey(match) === openKey) ?? null;
+  const [shown, setShown] = useState<MatchItem | null>(null);
+  if (open !== null && open !== shown) setShown(open);
 
   const close = useCallback(() => setOpenKey(null), []);
 
@@ -40,6 +43,8 @@ export function useMatchReview({ source, onResult, onError }: Options) {
         })),
       );
       const accepted = new Set(result.accepted);
+      // Refused matches are stale (page changed: new sourceHash): re-read the list.
+      if (result.rejected.length > 0) list.reload();
       list.setItems((items) => items.filter((match) => !accepted.has(matchKey(match))));
       setSelected((current) => new Set([...current].filter((key) => !accepted.has(key))));
       setOpenKey((current) => (current !== null && accepted.has(current) ? null : current));
@@ -51,7 +56,7 @@ export function useMatchReview({ source, onResult, onError }: Options) {
           message: rejection.message,
         })),
       });
-      return true;
+      return accepted.size > 0;
     } catch (error) {
       onError(error);
       return false;
@@ -62,7 +67,8 @@ export function useMatchReview({ source, onResult, onError }: Options) {
 
   return {
     list,
-    open: list.items.find((match) => matchKey(match) === openKey) ?? null,
+    open,
+    shown,
     openKey,
     setOpenKey,
     close,

@@ -1,7 +1,7 @@
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatScore } from "@/domain/rules";
 import type { MatchItem } from "@/domain/types";
-import { codeLabel, sourceLabel } from "./labels";
+import { codeLabel, countryName, sourceLabel } from "./labels";
 import styles from "./MatchDetailView.module.css";
 
 interface MatchDetailViewProps {
@@ -12,6 +12,7 @@ interface MatchDetailViewProps {
 export function MatchDetailView({ match }: MatchDetailViewProps) {
   const t = useTranslations("matches");
   const tRoot = useTranslations();
+  const locale = useLocale();
 
   const pim = [
     [t("name"), match.pim.name],
@@ -23,7 +24,7 @@ export function MatchDetailView({ match }: MatchDetailViewProps) {
   const page = [
     [t("scrapedName"), match.page.scrapedName],
     [t("pageName"), match.page.pageName],
-    [t("country"), match.page.country],
+    [t("country"), countryName(locale, match.page.country)],
   ] as const;
 
   return (

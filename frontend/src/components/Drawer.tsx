@@ -17,10 +17,21 @@ export function Drawer({ open, eyebrow, title, meta, footer, onClose, children }
   const t = useTranslations("drawer");
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  // Element focused before opening, tracked while closed: once open, the page behind is inert.
+  const lastFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (open) return;
+    function onFocusIn(event: FocusEvent) {
+      lastFocus.current = event.target as HTMLElement;
+    }
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const opener = document.activeElement as HTMLElement | null;
+    const opener = lastFocus.current;
     closeRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -28,7 +39,8 @@ export function Drawer({ open, eyebrow, title, meta, footer, onClose, children }
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      opener?.focus();
+      // The opener may be gone (row decided and removed from the list).
+      if (opener?.isConnected) opener.focus();
     };
   }, [open, onClose]);
 

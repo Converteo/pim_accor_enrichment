@@ -209,7 +209,9 @@
       "rejected": "Rejected"
     },
     "saved": "{count, plural, =0 {No match saved.} one {# match rejected.} other {# matches rejected.}}",
-    "savedApproved": "{count, plural, =0 {No match saved.} one {# match approved: its values will come with the next pipeline run.} other {# matches approved: their values will come with the next pipeline run.}}"
+    "savedApproved": "{count, plural, =0 {No match saved.} one {# match approved: its values will come with the next pipeline run.} other {# matches approved: their values will come with the next pipeline run.}}",
+    "refused": "{count, plural, one {# match refused by the server:} other {# matches refused by the server:}}",
+    "shown": "{count, plural, one {# match shown} other {# matches shown}}"
   },
   "bulkMatches": {
     "cancel": "Cancel",

@@ -1,8 +1,8 @@
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { ChangeEvent, MouseEvent } from "react";
 import { cityLine, formatScore, matchKey } from "@/domain/rules";
 import type { MatchItem } from "@/domain/types";
-import { sourceLabel } from "./labels";
+import { countryName, sourceLabel } from "./labels";
 import styles from "./FicheTable.module.css";
 
 interface MatchTableProps {
@@ -16,6 +16,7 @@ interface MatchTableProps {
 /** Hotel × source matches the judge agent hesitates on (score 30-79). */
 export function MatchTable({ rows, selected, onToggleRow, onToggleVisible, onOpen }: MatchTableProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const headerChecked = rows.length > 0 && rows.every((row) => selected.has(matchKey(row)));
 
   function onHeaderChange(event: ChangeEvent<HTMLInputElement>) {
@@ -84,7 +85,7 @@ export function MatchTable({ rows, selected, onToggleRow, onToggleVisible, onOpe
                 </td>
                 <td className={styles.cell}>
                   <div>{row.page.scrapedName ?? row.page.pageName ?? "—"}</div>
-                  {row.page.country ? <div className={styles.city}>{row.page.country}</div> : null}
+                  {row.page.country ? <div className={styles.city}>{countryName(locale, row.page.country)}</div> : null}
                 </td>
                 <td className={`${styles.cell} ${styles.source}`}>{sourceLabel(t, row.source)}</td>
                 <td className={styles.cell}>

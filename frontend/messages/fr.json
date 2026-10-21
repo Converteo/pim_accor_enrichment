@@ -209,7 +209,9 @@
       "rejected": "Rejeté"
     },
     "saved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement rejeté.} other {# rapprochements rejetés.}}",
-    "savedApproved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement validé : ses valeurs arriveront au prochain passage du pipeline.} other {# rapprochements validés : leurs valeurs arriveront au prochain passage du pipeline.}}"
+    "savedApproved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement validé : ses valeurs arriveront au prochain passage du pipeline.} other {# rapprochements validés : leurs valeurs arriveront au prochain passage du pipeline.}}",
+    "refused": "{count, plural, one {# rapprochement refusé par le serveur :} other {# rapprochements refusés par le serveur :}}",
+    "shown": "{count, plural, one {# rapprochement affiché} other {# rapprochements affichés}}"
   },
   "bulkMatches": {
     "cancel": "Annuler",

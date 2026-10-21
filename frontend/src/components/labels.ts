@@ -30,6 +30,16 @@ export function entityLabel(t: Translate, value: EnrichmentValue, ordinals: Map<
   return ordinal === undefined ? name : `${name} ${ordinal}`;
 }
 
+/** Country name from an ISO code (« LU » → « Luxembourg »); other values unchanged. */
+export function countryName(locale: string, country: string | null): string | null {
+  if (!country || !/^[A-Z]{2}$/.test(country)) return country;
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(country) ?? country;
+  } catch {
+    return country;
+  }
+}
+
 export function sourceLabel(t: Translate, source: string): string {
   return codeLabel(t, "sources", source);
 }

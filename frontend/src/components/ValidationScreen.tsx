@@ -119,21 +119,19 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   const matches = useMatchReview({
     source: query.source,
     onResult: ({ decision, accepted, refused }) => {
+      const saved = t(decision === "human_approved" ? "matches.savedApproved" : "matches.saved", {
+        count: accepted,
+      });
       setNotice(
         refused.length > 0
           ? {
               tone: "error",
-              text: t("decide.refused", { count: refused.length }),
+              text: `${accepted > 0 ? `${saved} ` : ""}${t("matches.refused", { count: refused.length })}`,
               details: refused.map(({ match, message }) => `${match?.pim.name ?? match?.rid ?? "—"} : ${message}`),
             }
-          : {
-              tone: "success",
-              text: t(decision === "human_approved" ? "matches.savedApproved" : "matches.saved", {
-                count: accepted,
-              }),
-            },
+          : { tone: "success", text: saved },
       );
-      setMatchComment("");
+      if (accepted > 0) setMatchComment("");
       fetchStats().then(setStats, () => undefined);
     },
     onError: (error) => setNotice({ tone: "error", text: failedText(error) }),
@@ -218,7 +216,11 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       );
       setNotice(
         refused.length > 0
-          ? { tone: "error", text: t("decide.refused", { count: refused.length }), details: refused }
+          ? {
+              tone: "error",
+              text: `${result.accepted.length > 0 ? `${t("decide.saved", { count: result.accepted.length })} ` : ""}${t("decide.refused", { count: refused.length })}`,
+              details: refused,
+            }
           : { tone: "success", text: t("decide.saved", { count: result.accepted.length }) },
       );
       return true;
@@ -332,8 +334,9 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     });
   }
 
-  const openMatch = matches.open;
-  const drawerOpen = openRid !== null || openMatch !== null;
+  // Last match shown: the drawer slides out with its content after a decision or a close.
+  const openMatch = matches.shown;
+  const drawerOpen = openRid !== null || matches.open !== null;
 
   const summary = hotels.items.find((hotel) => hotel.rid === detail?.rid);
   const shownHotel = detail?.data?.hotel ?? summary;
@@ -369,6 +372,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
               <ListFooter
                 status={matches.list.status}
                 count={matches.list.items.length}
+                shown={t("matches.shown", { count: matches.list.items.length })}
                 empty={t("matches.empty")}
                 error={matches.list.error}
                 hasMore={matches.list.hasMore}
@@ -392,6 +396,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
               <ListFooter
                 status={hotels.status}
                 count={hotels.items.length}
+                shown={t("list.shown", { count: hotels.items.length })}
                 empty={t(tab === "pending" ? "list.emptyPending" : "list.empty")}
                 error={hotels.error}
                 hasMore={hotels.hasMore}
@@ -497,7 +502,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         )}
       </Drawer>
       <Drawer
-        open={openMatch !== null}
+        open={matches.open !== null}
         eyebrow={
           openMatch
             ? t("drawer.eyebrow", {
@@ -550,14 +555,16 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       </Drawer>
       {tab === "matches" ? (
         <BulkBar
+          key="matches"
           labels="bulkMatches"
-          count={matches.selected.size}
+          count={matches.list.items.filter((match) => matches.selected.has(matchKey(match))).length}
           busy={matches.busy}
           onCancel={() => matches.setSelected(new Set())}
           onDecide={(decision, comment) => matches.decide([...matches.selected], decision, comment)}
         />
       ) : (
         <BulkBar
+          key="fiches"
           labels="bulk"
           count={tab === "review" ? selected.size : 0}
           busy={busy}
@@ -573,6 +580,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
 interface ListFooterProps {
   status: "loading" | "ready" | "error";
   count: number;
+  shown: string;
   empty: string;
   error: unknown;
   hasMore: boolean;
@@ -585,6 +593,7 @@ interface ListFooterProps {
 export function ListFooter({
   status,
   count,
+  shown,
   empty,
   error,
   hasMore,
@@ -618,7 +627,7 @@ export function ListFooter({
   }
   return (
     <div className={styles.more}>
-      <span>{t("list.shown", { count })}</span>
+      <span>{shown}</span>
       {error ? <span role="alert">{errorText(t, error)}</span> : null}
       {hasMore ? (
         <button type="button" className="btn btn-ghost" disabled={loadingMore} onClick={onMore}>
