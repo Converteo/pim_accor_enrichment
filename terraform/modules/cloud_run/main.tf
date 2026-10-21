@@ -4,6 +4,7 @@ resource "google_cloud_run_v2_service" "this" {
   location            = var.region
   ingress             = var.ingress
   deletion_protection = var.deletion_protection
+  iap_enabled         = var.iap_enabled
   labels              = var.labels
 
   template {

@@ -69,7 +69,9 @@ variable "environments" {
     # Rôles projet ajoutés au SA Terraform (pris en compte si manage_project_resources = true)
     terraform_sa_extra_roles = optional(set(string), [])
     # Frontend accessible sans authentification (allUsers → roles/run.invoker)
-    front_public  = optional(bool, false)
+    front_public = optional(bool, false)
+    # IAP sur le Cloud Run front, réservé à domain:converteo.com (incompatible avec front_public)
+    front_iap     = optional(bool, false)
     front_scaling = optional(object({ min = number, max = number }), { min = 0, max = 2 })
     back_scaling  = optional(object({ min = number, max = number }), { min = 0, max = 2 })
 
@@ -91,6 +93,11 @@ variable "environments" {
   validation {
     condition     = alltrue([for name in keys(var.environments) : contains(["dev", "stg"], name)])
     error_message = "Environnements attendus : dev, stg."
+  }
+
+  validation {
+    condition     = alltrue([for e in values(var.environments) : !(e.front_public && e.front_iap)])
+    error_message = "front_iap = true exige front_public = false."
   }
 
   validation {

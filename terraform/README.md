@@ -54,6 +54,12 @@ URLs : `terraform output front_url` dans le workspace voulu.
 Sécurité :
 - front public (`front_public = true`) ; back privé : seul le SA front a `roles/run.invoker`
   (l'URL du back est injectée dans le front via `BACKEND_URL`) ;
+- IAP sur le front, par environnement (`front_iap = true`, avec `front_public = false`, désactivé par défaut) : IAP
+  directement sur le Cloud Run (`iap_enabled`, sans load balancer), `roles/iap.httpsResourceAccessor` pour
+  `domain:converteo.com`, `roles/run.invoker` pour l'agent de service IAP (à la place de `allUsers`), API `iap.googleapis.com`.
+  Le front reçoit `IAP_AUDIENCE` (`/projects/<numéro>/locations/<région>/services/<front>`, vide sans IAP) pour vérifier
+  l'en-tête `x-goog-iap-jwt-assertion`. Prérequis (owners) : `roles/iap.admin` pour le SA Terraform, puis l'ajouter à
+  `terraform_sa_extra_roles` ; agent de service IAP créé une fois (`gcloud services identity create --service=iap.googleapis.com`) ;
 - SA back : aucun droit sur les buckets de fichiers PIM et OTA (pas de dépôt depuis l'interface), lecture du bucket exports ;
   variables posées par Terraform : `GCP_PROJECT_ID`, `REGION`, `BQ_{MATCHING,ENHANCED,VALIDATION}_DATASET`, `EXPORT_JOB`, `EXPORTS_BUCKET` ;
 - buckets : accès uniforme, accès public bloqué, versioning, anciennes versions supprimées après 30 jours.
