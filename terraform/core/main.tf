@@ -157,6 +157,7 @@ module "cloud_run_back" {
   name                  = "gcr-${local.base}-back"
   image                 = local.placeholder_image
   service_account_email = module.iam.emails["back"]
+  health_check_path     = "/healthz" # sondes de démarrage et de vie (le back ne répond pas sur /)
   min_instances         = local.cfg.back_scaling.min
   max_instances         = local.cfg.back_scaling.max
   labels                = { component = "back" }
