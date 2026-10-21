@@ -31,18 +31,16 @@ export function checkCorrectedValue(field: FieldValues, raw: string): Checked {
       return { value: String(n) };
     }
     case 'CVL': {
-      const keys = [
-        ...new Set(
-          v
-            .split(/[|;,]/)
-            .map((k) => k.trim())
-            .filter(Boolean),
-        ),
-      ];
+      const all = v
+        .split(/[|;,]/)
+        .map((k) => k.trim())
+        .filter(Boolean);
+      const keys = [...new Set(all)];
+      if (!keys.length) return { error: 'Valeur vide.' };
       const allowed = new Set(field.values.map((x) => x.key));
       const unknown = keys.filter((k) => !allowed.has(k));
       if (unknown.length) return { error: `Hors de la liste du PIM : ${unknown.join(', ')}.` };
-      if (!field.multivalue && keys.length > 1) return { error: 'Une seule valeur attendue pour ce champ.' };
+      if (!field.multivalue && all.length > 1) return { error: 'Une seule valeur attendue pour ce champ.' };
       return { value: keys.join('|') };
     }
     default:

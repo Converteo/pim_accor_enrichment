@@ -35,6 +35,8 @@ describe('checkCorrectedValue', () => {
 
   it.each([
     ['vide', field({}), '  ', /vide/],
+    ['liste faite de séparateurs', cvl(true), ' | ; ', /vide/],
+    ['code répété pour un champ simple (comme le pipeline)', cvl(false), 'Sauna|Sauna', /Une seule valeur/],
     ['libellé au lieu du code', cvl(false), 'Turkish bath', /Hors de la liste.*Turkish bath/],
     ['plusieurs codes pour un champ simple', cvl(false), 'Sauna|Hammam', /Une seule valeur/],
     ['booléen mal formé', field({ dataType: 'Boolean' }), 'oui', /True ou False/],

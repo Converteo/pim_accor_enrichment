@@ -1,4 +1,4 @@
-import { ExecutionsClient, JobsClient } from '@google-cloud/run';
+import { ExecutionsClient, JobsClient, protos } from '@google-cloud/run';
 import { Storage } from '@google-cloud/storage';
 import {
   Controller,
@@ -12,6 +12,7 @@ import {
   Post,
   StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { Author } from './author.js';
 import { CONFIG, type Config } from './config.js';
 import { ApiError } from './errors.js';
@@ -20,7 +21,7 @@ import { Repository } from './repository.js';
 /** Clients GCP de l'export, remplacés par des faux dans les tests. */
 export interface ExportClients {
   jobs: Pick<JobsClient, 'runJob'>;
-  executions: Pick<ExecutionsClient, 'getExecution'>;
+  executions: Pick<ExecutionsClient, 'getExecution' | 'listExecutions'>;
   storage: Pick<Storage, 'bucket'>;
 }
 export const EXPORT_CLIENTS = Symbol('EXPORT_CLIENTS');
@@ -35,8 +36,21 @@ export interface ExportRecord {
   exportedAt: string;
 }
 
+const State = protos.google.cloud.run.v2.Condition.State;
 const NOT_FOUND = 5;
 const PERMISSION_DENIED = 7;
+type Execution = protos.google.cloud.run.v2.IExecution;
+
+/** La condition Completed fait foi (les compteurs ne sont pas garantis à jour en même temps que completionTime). */
+function stateOf(execution: Execution): { state: 'running' | 'succeeded' | 'failed'; message?: string } {
+  const completed = execution.conditions?.find((c) => c.type === 'Completed');
+  const state = completed?.state;
+  if (state === State.CONDITION_SUCCEEDED || state === 'CONDITION_SUCCEEDED') return { state: 'succeeded' };
+  if (state === State.CONDITION_FAILED || state === 'CONDITION_FAILED')
+    return { state: 'failed', message: completed?.message || "L'exécution de l'export a échoué." };
+  return { state: 'running' };
+}
+
 const ID = /^[a-z0-9-]{1,63}$/;
 
 @Injectable()
@@ -53,14 +67,36 @@ export class ExportService {
     return `projects/${this.config.GCP_PROJECT_ID}/locations/${this.config.REGION}/jobs/${this.config.EXPORT_JOB}`;
   }
 
+  /** Id de l'exécution du job en cours, s'il y en a une (les plus récentes d'abord). */
+  private async runningExecution(): Promise<string | null> {
+    const [executions] = await this.gcp.executions.listExecutions(
+      { parent: this.job, pageSize: 20 },
+      { autoPaginate: false },
+    );
+    const running = executions.find((e) => stateOf(e).state === 'running');
+    return running?.name?.split('/').pop() ?? null;
+  }
+
   async status() {
-    const [stats, history] = await Promise.all([this.repo.stats(), this.repo.exports()]);
-    return { pendingCount: stats.pendingForExport, canExport: stats.pendingForExport === 0, history };
+    const [stats, history, runningExecutionId] = await Promise.all([
+      this.repo.stats(),
+      this.repo.exports(),
+      this.runningExecution(),
+    ]);
+    return {
+      pendingCount: stats.pendingForExport,
+      canExport: stats.pendingForExport === 0 && !runningExecutionId,
+      runningExecutionId,
+      history,
+    };
   }
 
   /** Lance le job d'export ; il revérifie lui-même qu'il ne reste rien en attente. */
   async run(author: string) {
-    const { pendingForExport } = await this.repo.stats();
+    const [{ pendingForExport }, running] = await Promise.all([this.repo.stats(), this.runningExecution()]);
+    // shortcut: deux POST au même instant peuvent encore passer tous les deux ; le job revérifie l'attente, pas le doublon
+    if (running)
+      throw new ApiError(HttpStatus.CONFLICT, 'export_running', `Un export est déjà en cours (exécution ${running}).`);
     if (pendingForExport > 0)
       throw new ApiError(
         HttpStatus.CONFLICT,
@@ -91,10 +127,7 @@ export class ExportService {
       .catch((e: { code?: number }) => {
         throw e.code === NOT_FOUND ? notFound : e;
       });
-    if (!execution.completionTime) return { state: 'running' as const };
-    if ((execution.succeededCount ?? 0) >= (execution.taskCount ?? 1)) return { state: 'succeeded' as const };
-    const completed = execution.conditions?.find((c) => c.type === 'Completed');
-    return { state: 'failed' as const, message: completed?.message || "L'exécution de l'export a échoué." };
+    return stateOf(execution);
   }
 
   async file(exportId: string, name: string): Promise<StreamableFile> {
@@ -112,6 +145,16 @@ export class ExportService {
     return new StreamableFile(file.createReadStream(), {
       type: name.endsWith('.csv') ? 'text/csv; charset=utf-8' : 'application/octet-stream',
       disposition: `attachment; filename="${name.replace(/"/g, '')}"`,
+    }).setErrorHandler((err, response) => {
+      this.logger.error({ message: `Lecture de ${object} interrompue : ${err.message}` });
+      const res = response as unknown as Response;
+      // Après le premier octet, couper la connexion : le navigateur voit un échec, pas un CSV tronqué
+      if (res.headersSent) return res.destroy(err);
+      res.removeHeader('Content-Disposition');
+      res.removeHeader('Content-Type');
+      res
+        .status(HttpStatus.BAD_GATEWAY)
+        .json({ error: { code: 'upstream_error', message: 'Lecture du fichier impossible, réessayez plus tard.' } });
     });
   }
 }

@@ -1,8 +1,13 @@
 import { Readable } from 'node:stream';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ENV } from '../test/helpers.js';
+import { AppModule } from './app.module.js';
+import { loadConfig } from './config.js';
 import type { Config } from './config.js';
-import { ExportService, type ExportClients } from './export.js';
-import type { Repository } from './repository.js';
+import { EXPORT_CLIENTS, ExportService, type ExportClients } from './export.js';
+import { Repository } from './repository.js';
 
 const config = {
   GCP_PROJECT_ID: 'proj',
@@ -24,7 +29,7 @@ const record = {
 let repo: { stats: ReturnType<typeof vi.fn>; exports: ReturnType<typeof vi.fn>; exportById: ReturnType<typeof vi.fn> };
 let gcp: {
   jobs: { runJob: ReturnType<typeof vi.fn> };
-  executions: { getExecution: ReturnType<typeof vi.fn> };
+  executions: { getExecution: ReturnType<typeof vi.fn>; listExecutions: ReturnType<typeof vi.fn> };
   file: { exists: ReturnType<typeof vi.fn>; createReadStream: ReturnType<typeof vi.fn> };
   bucket: ReturnType<typeof vi.fn>;
   object: ReturnType<typeof vi.fn>;
@@ -38,7 +43,7 @@ beforeEach(() => {
   const bucket = vi.fn(() => ({ file: object }));
   gcp = {
     jobs: { runJob: vi.fn().mockResolvedValue([{ metadata: { name: `${JOB}/executions/gcrj-base-export-abc12` } }]) },
-    executions: { getExecution: vi.fn() },
+    executions: { getExecution: vi.fn(), listExecutions: vi.fn().mockResolvedValue([[]]) },
     file,
     bucket,
     object,
@@ -51,7 +56,28 @@ describe('ExportService', () => {
   it('status : compteur en attente et historique', async () => {
     repo.stats.mockResolvedValue({ pendingForExport: 4 });
     repo.exports.mockResolvedValue([record]);
-    expect(await service.status()).toEqual({ pendingCount: 4, canExport: false, history: [record] });
+    expect(await service.status()).toEqual({
+      pendingCount: 4,
+      canExport: false,
+      runningExecutionId: null,
+      history: [record],
+    });
+    expect(gcp.executions.listExecutions).toHaveBeenCalledWith({ parent: JOB, pageSize: 20 }, { autoPaginate: false });
+  });
+
+  it('status et run : une exécution en cours bloque un nouvel export (409 export_running)', async () => {
+    gcp.executions.listExecutions.mockResolvedValue([
+      [
+        { name: `${JOB}/executions/x-2`, conditions: [{ type: 'Completed', state: 1 }] },
+        { name: `${JOB}/executions/x-1`, conditions: [{ type: 'Completed', state: 4 }] },
+      ],
+    ]);
+    expect(await service.status()).toMatchObject({ canExport: false, runningExecutionId: 'x-2' });
+    await expect(service.run('a@converteo.com')).rejects.toMatchObject({
+      status: 409,
+      response: { error: { code: 'export_running' } },
+    });
+    expect(gcp.jobs.runJob).not.toHaveBeenCalled();
   });
 
   it("run : 409 tant qu'il reste des éléments en attente, sans lancer le job", async () => {
@@ -76,11 +102,15 @@ describe('ExportService', () => {
 
   it.each([
     [{}, { state: 'running' }],
-    [{ completionTime: {}, succeededCount: 1, taskCount: 1 }, { state: 'succeeded' }],
+    [{ conditions: [{ type: 'Completed', state: 1 }] }, { state: 'running' }],
+    [{ completionTime: {}, conditions: [{ type: 'Completed', state: 4 }] }, { state: 'succeeded' }],
+    [{ conditions: [{ type: 'Completed', state: 'CONDITION_SUCCEEDED' }] }, { state: 'succeeded' }],
     [
-      { completionTime: {}, failedCount: 1, taskCount: 1, conditions: [{ type: 'Completed', message: 'Task failed' }] },
+      { completionTime: {}, conditions: [{ type: 'Completed', state: 3, message: 'Task failed' }] },
       { state: 'failed', message: 'Task failed' },
     ],
+    // Compteurs à 0 par défaut (protobuf) : ne pas conclure au succès sans la condition
+    [{ completionTime: {}, succeededCount: 0, taskCount: 0 }, { state: 'running' }],
   ])('execution %j', async (execution, expected) => {
     gcp.executions.getExecution.mockResolvedValue([execution]);
     expect(await service.execution('gcrj-base-export-abc12')).toEqual(expected);
@@ -115,5 +145,50 @@ describe('ExportService', () => {
   ])('file : 404 si %s', async (_, rec, name) => {
     repo.exportById.mockResolvedValue(rec);
     await expect(service.file('e1', name)).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('GET /exports/:exportId/files/:name, erreur du flux GCS', () => {
+  async function appStreaming(stream: () => Readable) {
+    const file = { exists: vi.fn().mockResolvedValue([true]), createReadStream: vi.fn(stream) };
+    const clients = { storage: { bucket: () => ({ file: () => file }) } };
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(loadConfig(ENV))] })
+      .overrideProvider(Repository)
+      .useValue({ exportById: vi.fn().mockResolvedValue({ ...record, path: 'gs://bucket/export/x/' }) })
+      .overrideProvider(EXPORT_CLIENTS)
+      .useValue(clients)
+      .compile();
+    return moduleRef.createNestApplication({ logger: false }).init();
+  }
+
+  it('502 au format du contrat si la lecture échoue avant le premier octet', async () => {
+    const app = await appStreaming(
+      () =>
+        new Readable({
+          read() {
+            this.destroy(new Error('403 Forbidden'));
+          },
+        }),
+    );
+    const res = await request(app.getHttpServer()).get('/exports/e1/files/traceability.csv').expect(502);
+    expect(res.body.error.code).toBe('upstream_error');
+    expect(res.headers['content-disposition']).toBeUndefined();
+    await app.close();
+  });
+
+  it('coupe la connexion si la lecture échoue en cours de route (pas de CSV tronqué « réussi »)', async () => {
+    const app = await appStreaming(() => {
+      let sent = false;
+      return new Readable({
+        read() {
+          if (!sent) {
+            sent = true;
+            this.push('a;b\n');
+          } else setTimeout(() => this.destroy(new Error('CRC32C mismatch')), 10);
+        },
+      });
+    });
+    await expect(request(app.getHttpServer()).get('/exports/e1/files/traceability.csv')).rejects.toThrow();
+    await app.close();
   });
 });

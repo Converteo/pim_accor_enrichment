@@ -22,7 +22,7 @@ Datasets : `cvto_accor_pim_enrichment_<env>_euw1_{matching,enhanced,validation}`
   rien n'est écrit pour lui), `invalid_decision`, `not_found` (valeur ré-enrichie ou page de rapprochement changée :
   recharger), `invalid_status`, `match_not_approved`, `corrected_value_required`, `invalid_corrected_value`.
 - Autres codes d'erreur : `invalid_request` (400), `invalid_cursor` (400), `author_required`, `author_invalid` (401), `author_forbidden` (403), `hotel_not_found`,
-  `field_not_found`, `execution_not_found`, `file_not_found` (404), `export_blocked` (409), `payload_too_large` (413,
+  `field_not_found`, `execution_not_found`, `file_not_found` (404), `export_blocked`, `export_running` (409), `payload_too_large` (413,
   corps > 2 Mo : découper le lot), `upstream_error` (502).
 
 ## Types
@@ -92,10 +92,11 @@ interface FieldValues { pimField: string; dataType: string; multivalue: boolean;
 | GET | `/fields/:pimField/values` | `FieldValues` | codes autorisés (vue `enhanced.v_field_allowed_values`, livrée par la session infra) |
 | GET | `/matches?source&limit&cursor` | `{items: MatchItem[], nextCursor}` | `final_status = 'needs_review'` |
 | POST | `/decisions/matches` | `{accepted: string[], rejected: {key, code, message}[]}` | corps `{items: {rid, source, sourceHash, decision: 'human_approved'|'human_rejected', comment?}[]}` ; `key` = `rid|source|sourceHash` |
-| GET | `/export/status` | `{pendingCount: number, canExport: boolean, history: {exportId, path, rowCount, hotelCount, files: string[], triggeredBy, exportedAt}[]}` | |
-| POST | `/export` | `{executionId}` | lance `gcrj-<base>-export` (Cloud Run jobs.run) ; 409 si pendingCount > 0 |
-| GET | `/export/executions/:id` | `{state: 'running'|'succeeded'|'failed', message?}` | |
+| GET | `/export/status` | `{pendingCount: number, canExport: boolean, runningExecutionId: string\|null, history: {exportId, path, rowCount, hotelCount, files: string[], triggeredBy, exportedAt}[]}` | `canExport` faux tant qu'il reste des éléments en attente ou qu'une exécution tourne ; `runningExecutionId` pour reprendre le suivi |
+| POST | `/export` | `{executionId}` | lance `gcrj-<base>-export` (Cloud Run jobs.run) ; 409 `export_blocked` si pendingCount > 0, 409 `export_running` si une exécution tourne déjà |
+| GET | `/export/executions/:id` | `{state: 'running'|'succeeded'|'failed', message?}` | `succeeded` sans nouvelle ligne dans `history` = le job n'avait rien à exporter (aucune valeur validée) ou a refusé (attente apparue entre-temps) |
 | GET | `/exports/:exportId/files/:name` | flux du fichier (Content-Disposition) | lecture du bucket exports |
 
 ## Modifications proposées
 - 21/10 [front] ✅ acceptée par back (11:50), intégrée ci-dessus : `GET /hotels?view=pending` et `Stats.hotelsPending` (fiches ayant ≥1 champ `pending_enrichment`), pour l'onglet « En cours » de PIM-17. Tant que le back ne les sert pas, le front affiche l'onglet vide avec un message.
+- 21/10 [front] ✅ acceptée par back, intégrée ci-dessus : `POST /export` : refuser en 409 (`export_running`) quand une exécution du job est déjà en cours, et indiquer `runningExecutionId: string|null` dans `GET /export/status`. Le front ne protège que son propre onglet (sessionStorage) : deux relecteurs, ou deux onglets, peuvent sinon lancer deux jobs.
