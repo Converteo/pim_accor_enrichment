@@ -1,0 +1,101 @@
+/* Low-emphasis band, as the loyalty banners of all.accor.com */
+.band {
+  margin: 0 0 24px;
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  background: var(--loyalty-soft);
+  border: 1px solid var(--brand-line);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.text {
+  min-width: 0;
+}
+
+.title {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.status {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.confirm {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.execution {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--loyalty);
+}
+
+.execution:empty {
+  display: none;
+}
+
+.failed {
+  color: var(--offer);
+}
+
+.history {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.history summary {
+  cursor: pointer;
+  color: var(--link);
+  width: fit-content;
+}
+
+.history summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.history ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-top: 1px solid var(--brand-line);
+  color: var(--text);
+}
+
+.files {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.files a {
+  color: var(--link);
+}

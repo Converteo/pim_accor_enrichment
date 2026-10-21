@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "check": "node --import tsx scripts/check-rules.mts"
+    "check": "node --import tsx scripts/check-rules.mts && node --import tsx scripts/check-relay.mts && node --import tsx scripts/check-author.mts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "next": "16.3.8",

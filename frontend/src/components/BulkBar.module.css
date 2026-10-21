@@ -13,6 +13,7 @@
   align-items: center;
   gap: 20px;
   z-index: 30;
+  max-width: calc(100vw - 48px);
 }
 
 .count {
@@ -68,4 +69,25 @@
     padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
     gap: 12px;
   }
+}
+
+.comment {
+  height: 40px;
+  min-width: 0;
+  flex: 1 1 180px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.comment::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.comment:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
 }

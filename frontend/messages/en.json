@@ -1,27 +1,30 @@
 {
   "meta": {
-    "title": "Hotel PIM Validation (Copy)"
+    "title": "Hotel PIM Validation"
   },
   "header": {
     "title": "Enrichment validation",
     "subtitle": "Accor PIM · Property records",
-    "badge": "Mockup",
-    "language": "Language"
+    "language": "Language",
+    "noUser": "Unidentified user"
   },
   "kpi": {
-    "processed": "Records processed",
-    "auto": "Auto-validatable",
-    "review": "To review",
-    "failure": "Failed"
+    "hotelsToReview": "Records to review",
+    "valuesToReview": "Values to review",
+    "matchesToReview": "Matches to validate",
+    "valuesPending": "Fields being enriched",
+    "valuesApproved": "Values ready for export"
   },
-  "status": {
-    "valide": "Validated",
-    "haute": "High confidence",
-    "revoir": "To review",
-    "echec": "Failed"
+  "legend": {
+    "item": "{label} ({count})",
+    "review": "To review",
+    "pending": "Being enriched",
+    "approved": "Approved"
   },
   "tabs": {
-    "all": "All"
+    "review": "To review",
+    "matches": "Matches to validate",
+    "pending": "In progress"
   },
   "search": {
     "placeholder": "Search for a hotel or city…"
@@ -29,54 +32,216 @@
   "filters": {
     "allBrands": "All brands",
     "allSources": "All sources",
+    "allFamilies": "All families",
+    "allPriorities": "All priorities",
     "searchLabel": "Property",
     "brandLabel": "Brand",
-    "sourceLabel": "Source"
+    "sourceLabel": "Source",
+    "familyLabel": "Family",
+    "priorityLabel": "Priority"
+  },
+  "families": {
+    "general": "Welcome and services",
+    "accessibility_safety": "Accessibility and safety",
+    "dining": "Dining",
+    "pool": "Pool",
+    "parking": "Parking",
+    "wellness_fitness": "Wellness and fitness"
+  },
+  "sources": {
+    "booking_equipements": "Booking.com (amenities)",
+    "booking_piscines": "Booking.com (pools)",
+    "expedia": "Expedia"
   },
   "columns": {
     "property": "Property record",
-    "source": "Source",
-    "attributes": "Enriched attributes",
-    "score": "Overall score",
-    "status": "Status",
+    "sources": "Sources",
+    "toReview": "To review",
+    "score": "Average score",
+    "info": "Information",
     "actions": "Actions"
   },
   "row": {
     "view": "View details",
-    "attributes": "{count} attributes",
+    "values": "{count, plural, =0 {no value} one {# value} other {# values}}",
+    "pending": "{count, plural, one {# field in progress} other {# fields in progress}}",
+    "conflicts": "{count, plural, one {# PIM conflict} other {# PIM conflicts}}",
     "select": "Select {name}",
     "selectAll": "Select all"
   },
-  "empty": "No records match these filters.",
-  "note": "Demo data (mockup) — 14 records from Booking.com / Expedia / Salesforce extracts, to demonstrate scoring and review.",
-  "drawer": {
-    "eyebrow": "{brand} · {city} · {source}",
-    "score": "Score {score}",
-    "via": "via {src}",
-    "current": "Current PIM value",
-    "proposed": "Proposed value",
-    "accept": "Accept this attribute",
-    "rejectAttr": "Reject this attribute",
-    "reject": "Reject record",
-    "validate": "Validate record",
-    "close": "Close details"
+  "list": {
+    "loading": "Loading…",
+    "empty": "No record matches these filters.",
+    "emptyPending": "No field is being enriched for these filters.",
+    "error": "The list could not be loaded.",
+    "retry": "Try again",
+    "loadMore": "Load more",
+    "shown": "{count, plural, one {# record shown} other {# records shown}}"
   },
   "bulk": {
     "cancel": "Cancel",
-    "reject": "Reject selection",
-    "validate": "Validate selection",
-    "count": "{count, plural, one {# record selected} other {# records selected}}"
+    "reject": "{count, plural, one {Reject the record} other {Reject the # records}}",
+    "validate": "{count, plural, one {Approve the record} other {Approve the # records}}",
+    "count": "{count, plural, one {# record selected} other {# records selected}}",
+    "comment": "Optional comment",
+    "busy": "Saving…"
   },
-  "legend": {
-    "item": "{label} ({count})"
+  "errors": {
+    "network": "The server is not responding. Check your connection and try again.",
+    "unauthorized": "Unidentified user: the decision was not saved.",
+    "generic": "Unexpected error ({status})."
   },
-  "percent": "{value}%",
-  "attributes": {
-    "address": "Address & geolocation",
-    "amenities": "Facilities & services",
-    "description": "Marketing description",
-    "classification": "Classification (category)",
-    "contact": "Contact details",
-    "photo": "Cover photo"
-  }
+  "drawer": {
+    "close": "Close details",
+    "eyebrow": "{brand} · {place} · {rid}",
+    "toReview": "{count, plural, =0 {Nothing to review} one {# value to review} other {# values to review}}",
+    "avgScore": "Average score {score}/100",
+    "loading": "Loading the record…",
+    "error": "The record could not be loaded."
+  },
+  "value": {
+    "current": "Current PIM value",
+    "proposed": "Proposed value",
+    "empty": "Not set",
+    "via": "Source: {source}",
+    "score": "{score}/100",
+    "method": {
+      "extracted": "Extracted",
+      "converted": "Converted",
+      "inferred": "Inferred"
+    },
+    "confidence": "{level} confidence",
+    "confidenceLevel": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "yes": "Yes",
+    "no": "No",
+    "newEntity": "{name} (new)"
+  },
+  "detail": {
+    "nothingToReview": "Every value of this record has been decided.",
+    "pending": "Being enriched",
+    "pendingHint": "These fields are waiting for the next run of the enrichment agent.",
+    "conflicts": "Conflicts with the PIM",
+    "conflictsHint": "The source contradicts the PIM. For information only: the PIM is never overwritten.",
+    "sourceSays": "The source says “{value}” ({source})",
+    "history": "Decisions already made",
+    "decidedBy": "{author}, {date}",
+    "pimHas": "The PIM has “{value}”"
+  },
+  "decision": {
+    "human_approved": "Approved",
+    "human_rejected": "Rejected",
+    "human_corrected": "Corrected"
+  },
+  "decide": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveValue": "Approve “{label}”",
+    "rejectValue": "Reject “{label}”",
+    "addComment": "Add a comment",
+    "commentPlaceholder": "Optional comment",
+    "commentFor": "Comment for “{label}”",
+    "ficheComment": "Comment for the whole record",
+    "approveFiche": "{count, plural, one {Approve the value} other {Approve the # values}}",
+    "rejectFiche": "{count, plural, one {Reject the value} other {Reject the # values}}",
+    "saved": "{count, plural, =0 {No decision saved.} one {# decision saved.} other {# decisions saved.}}",
+    "refused": "{count, plural, one {# value refused by the server:} other {# values refused by the server:}}",
+    "failed": "Decision not saved."
+  },
+  "entities": {
+    "parking": "Parking",
+    "pool": "Pool",
+    "restaurant": "Restaurant",
+    "bar": "Bar",
+    "breakfast": "Breakfast",
+    "wellnesscenter": "Wellness center",
+    "fitnesscenter": "Fitness center",
+    "sport": "Sport"
+  },
+  "correct": {
+    "open": "Correct",
+    "title": "Correct “{label}”",
+    "loading": "Loading the allowed values…",
+    "loadError": "The allowed values could not be loaded.",
+    "several": "Several values allowed",
+    "choose": "Choose a value",
+    "yes": "Yes",
+    "no": "No",
+    "cancel": "Cancel",
+    "submit": "Save the correction",
+    "openFor": "Correct “{label}”"
+  },
+  "matches": {
+    "pim": "PIM record",
+    "page": "Scraped page",
+    "judge": "Judge agent’s opinion",
+    "check": "Automatic check",
+    "name": "Name",
+    "city": "City",
+    "country": "Country",
+    "brand": "Brand",
+    "address": "Address",
+    "scrapedName": "Scraped name",
+    "pageName": "Page name",
+    "openPage": "Open the source page ↗",
+    "delay": "Once approved, the hotel is enriched for this source on the next pipeline run (every 15 minutes); its values then appear in “To review”. Once rejected, the source is no longer used for this hotel.",
+    "empty": "No match to validate for this filter.",
+    "approve": "Approve the match",
+    "reject": "Reject the match",
+    "comment": "Optional comment",
+    "reasons": {
+      "consistent": "Consistent",
+      "rebranding": "Rebranding",
+      "internal_name": "Internal name",
+      "former_brand": "Former brand",
+      "namesake_other_country": "Namesake in another country",
+      "neighbouring_hotel": "Neighbouring hotel",
+      "shared_page": "Shared page",
+      "unreadable_page": "Unreadable page",
+      "other": "Other"
+    },
+    "verdicts": {
+      "ok": "Consistent",
+      "to_check": "To check",
+      "rejected": "Rejected"
+    },
+    "saved": "{count, plural, =0 {No match saved.} one {# match rejected.} other {# matches rejected.}}",
+    "savedApproved": "{count, plural, =0 {No match saved.} one {# match approved: its values will come with the next pipeline run.} other {# matches approved: their values will come with the next pipeline run.}}",
+    "refused": "{count, plural, one {# match refused by the server:} other {# matches refused by the server:}}",
+    "shown": "{count, plural, one {# match shown} other {# matches shown}}"
+  },
+  "bulkMatches": {
+    "cancel": "Cancel",
+    "reject": "{count, plural, one {Reject the match} other {Reject the # matches}}",
+    "validate": "{count, plural, one {Approve the match} other {Approve the # matches}}",
+    "count": "{count, plural, one {# match selected} other {# matches selected}}",
+    "comment": "Optional comment",
+    "busy": "Saving…"
+  },
+  "export": {
+    "title": "PIM enhanced export",
+    "loading": "Reading the export status…",
+    "statusError": "Export status unavailable.",
+    "ready": "Everything is decided: the export can be launched.",
+    "blocked": "{count, plural, one {# item still waits for a decision: the export will be possible once everything is decided.} other {# items still wait for a decision: the export will be possible once everything is decided.}}",
+    "start": "Launch the export",
+    "running": "Export running…",
+    "confirm": "Launch the export now?",
+    "cancel": "Cancel",
+    "launch": "Confirm",
+    "state": {
+      "running": "Export running…",
+      "succeeded": "Export completed.",
+      "failed": "Export refused or failed.",
+      "empty": "Export finished without a file: no approved value to export, or items started waiting again in the meantime."
+    },
+    "history": "{count, plural, one {History (# export)} other {History (# exports)}}",
+    "record": "{date} · {author} · {hotels, plural, one {# hotel} other {# hotels}} · {rows, plural, one {# value} other {# values}}",
+    "unauthorized": "Unidentified user: the server refused the action.",
+    "busy": "An export is running: wait for it to finish before launching another one."
+  },
+  "number": "{value, number}"
 }

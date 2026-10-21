@@ -1,10 +1,17 @@
-import { loadFiches } from "../src/data/source";
 import {
-  rejectFiche,
-  statusFor,
-  summarize,
-  validateFiche,
+  appendUnique,
+  applyDecisions,
+  entityOrdinals,
+  formatScore,
+  groupByFamily,
+  isTime,
+  joinCodes,
+  matchKey,
+  splitCodes,
+  statusTone,
+  withReviewCount,
 } from "../src/domain/rules";
+import type { EnrichmentValue, HotelDetail, HotelSummary } from "../src/domain/types";
 
 function assert(condition: boolean, message: string): void {
   if (!condition) {
@@ -12,74 +19,123 @@ function assert(condition: boolean, message: string): void {
   }
 }
 
-const fiches = loadFiches();
-const summary = summarize(fiches);
-
-assert(fiches.length === 14, `expected 14 fiches, got ${fiches.length}`);
-assert(summary.counts.valide === 3, `valide ${summary.counts.valide}`);
-assert(summary.counts.haute === 5, `haute ${summary.counts.haute}`);
-assert(summary.counts.revoir === 4, `revoir ${summary.counts.revoir}`);
-assert(summary.counts.echec === 2, `echec ${summary.counts.echec}`);
-assert(summary.autoPercent === 57, `auto ${summary.autoPercent}`);
-assert(summary.segments.map((segment) => segment.width).join(",") === "21.43%,35.71%,28.57%,14.29%", "widths");
-
-assert(statusFor(1) === "valide", "statusFor(1)");
-assert(statusFor(0.8) === "revoir", "statusFor(0.8)");
-assert(statusFor(0.5) === "echec", "statusFor(0.5)");
-assert(statusFor(0.98) === "haute", "statusFor(0.98)");
-
-const fiche6 = fiches.find((fiche) => fiche.id === 6);
-assert(fiche6 !== undefined, "fiche 6");
-if (fiche6) {
-  const validated = validateFiche(fiche6);
-  assert(validated.score === 1, "validate score");
-  assert(validated.status === "valide", "validate status");
-  assert(
-    validated.attrs.every((attr, index) => attr.score === fiche6.attrs[index]?.score),
-    "validate keeps attr scores",
-  );
-  const rejectedAfter = rejectFiche(validated);
-  assert(rejectedAfter.score === 1, "validate then reject keeps score 1");
-  assert(rejectedAfter.status === "echec", "validate then reject is echec");
-  const afterValidate6 = summarize(
-    fiches.map((fiche) => (fiche.id === 6 ? validated : fiche)),
-  );
-  assert(afterValidate6.counts.valide === 4, "validate 6 valide");
-  assert(afterValidate6.counts.revoir === 3, "validate 6 revoir");
-  assert(afterValidate6.autoPercent === 64, "validate 6 auto");
+// Test fixtures only: the screen reads the back through /api.
+function value(overrides: Partial<EnrichmentValue>): EnrichmentValue {
+  return {
+    enrichmentId: "e1",
+    family: "general",
+    priority: "P2",
+    entity: "product",
+    entityId: null,
+    pimField: "ProductFitnessCenter",
+    label: "Fitness center",
+    pimValue: null,
+    value: "True",
+    valueLabel: "Yes",
+    method: "extracted",
+    source: "booking_equipements",
+    sourceField: "equipements",
+    sourceExcerpt: "Salle de sport",
+    score: 92,
+    confidence: "high",
+    warning: null,
+    status: "needs_review",
+    reason: null,
+    reasonDetail: null,
+    finalValue: null,
+    lastDecision: null,
+    ...overrides,
+  };
 }
 
-const fiche5 = fiches.find((fiche) => fiche.id === 5);
-assert(fiche5 !== undefined, "fiche 5");
-if (fiche5) {
-  const rejected = rejectFiche(fiche5);
-  assert(rejected.status === "echec", "reject status");
-  assert(rejected.score === fiche5.score, "reject keeps score");
-  assert(rejected.score === 0.95, "fiche 5 score");
-  const afterReject5 = summarize(
-    fiches.map((fiche) => (fiche.id === 5 ? rejected : fiche)),
-  );
-  assert(afterReject5.counts.haute === 4, "reject 5 haute");
-  assert(afterReject5.counts.echec === 3, "reject 5 echec");
-  assert(afterReject5.autoPercent === 50, "reject 5 auto");
+function summary(rid: string, toReviewCount: number): HotelSummary {
+  return {
+    rid,
+    name: rid,
+    brand: null,
+    city: null,
+    country: null,
+    sources: [],
+    toReviewCount,
+    avgScore: null,
+    pendingCount: 0,
+    conflictCount: 0,
+    families: [],
+  };
 }
 
-const again = loadFiches();
-const first = fiches[0];
-const second = again[0];
-assert(first !== undefined && second !== undefined, "fiche 1 present");
-if (first && second && first.attrs[0] && second.attrs[0]) {
-  first.score = 0;
-  first.attrs[0].accepted = true;
-  first.attrs[0].proposed = "mutated";
-  assert(second.score === 1, "loadFiches returns an independent score");
-  assert(second.attrs[0].accepted === null, "loadFiches returns neutral attributes");
-  assert(second.attrs[0].proposed !== "mutated", "loadFiches deep-copies attributes");
-}
-assert(!("statusInitial" in (fiches[1] ?? {})), "statusInitial dropped");
-assert(!("statusInitial" in (fiches[1]?.attrs[0] ?? {})), "attr statusInitial dropped");
+// Statuses come from the pipeline, scores only display.
+assert(statusTone("needs_review") === "review", "needs_review tone");
+assert(statusTone("human_corrected") === "approved", "human_corrected tone");
+assert(statusTone("auto_rejected") === "rejected", "auto_rejected tone");
+assert(statusTone("pending_judgment") === "pending", "pending_judgment tone");
+assert(formatScore(92) === "92", "score on 100");
+assert(formatScore(69.6) === "70", "score rounded");
+assert(formatScore(null) === "—", "no score");
 
-const contact = fiches.find((fiche) => fiche.id === 9)?.attrs[4];
-assert(contact?.proposed === "+39 02 6749 9, h0319@accor.com", "fiche 9 comma");
+// Families in display order, priority first, back order kept inside a priority.
+const groups = groupByFamily([
+  value({ enrichmentId: "a", family: "pool", priority: "P2", score: 90 }),
+  value({ enrichmentId: "b", family: "general", priority: "P3" }),
+  value({ enrichmentId: "c", family: "pool", priority: "P1", score: 40 }),
+  value({ enrichmentId: "d", family: "pool", priority: "P2", score: 80 }),
+]);
+assert(groups.map((group) => group.family).join() === "general,pool", "family order");
+assert(
+  groups[1]?.values.map((v) => v.enrichmentId).join() === "c,a,d",
+  "priority then back order",
+);
+
+// Optimistic decisions: values move to the history, the agent score never changes.
+const detail: HotelDetail = {
+  hotel: { rid: "B6F6", name: "B6F6", brand: null, city: null, country: null, sources: [] },
+  toReview: [value({ enrichmentId: "a" }), value({ enrichmentId: "b", value: "Hammam|Sauna" })],
+  pending: [],
+  conflicts: [],
+  decided: [value({ enrichmentId: "old", status: "human_rejected" })],
+};
+const after = applyDecisions(
+  detail,
+  [
+    { enrichmentId: "a", decision: "human_approved" },
+    { enrichmentId: "b", decision: "human_corrected", correctedValue: "Sauna", comment: "hammam payant" },
+  ],
+  "test@converteo.com",
+  "2026-10-21T10:04:00Z",
+);
+assert(after.toReview.length === 0, "decided values leave toReview");
+assert(after.decided.map((v) => v.enrichmentId).join() === "a,b,old", "history order");
+assert(after.decided[0]?.score === 92, "score unchanged");
+assert(after.decided[1]?.finalValue === "Sauna", "corrected final value");
+assert(after.decided[1]?.lastDecision?.comment === "hammam payant", "comment kept");
+assert(detail.toReview.length === 2, "applyDecisions does not mutate");
+const rejected = applyDecisions(detail, [{ enrichmentId: "a", decision: "human_rejected" }], null, "");
+assert(rejected.toReview.length === 1 && rejected.decided[0]?.finalValue === null, "reject one");
+
+// A fiche with nothing left to review leaves the list.
+const hotels = [summary("A", 2), summary("B", 1)];
+assert(withReviewCount(hotels, "A", 1)[0]?.toReviewCount === 1, "count updated");
+assert(withReviewCount(hotels, "B", 0).length === 1, "empty fiche removed");
+
+// « Charger plus » never shows a fiche twice.
+const page2 = appendUnique(hotels, [summary("B", 1), summary("C", 3)], (hotel) => hotel.rid);
+assert(page2.map((hotel) => hotel.rid).join() === "A,B,C", "duplicates dropped");
+
+// Entities numbered by id inside a fiche; entities to create are not numbered.
+const ordinals = entityOrdinals([
+  value({ entity: "Parking", entityId: "368682" }),
+  value({ entity: "Parking", entityId: "120001" }),
+  value({ entity: "Parking", entityId: "368682" }),
+  value({ entity: "Parking", entityId: "new_1" }),
+  value({ entity: "Product", entityId: null }),
+]);
+assert(ordinals.get("parking|120001") === 1 && ordinals.get("parking|368682") === 2, "parking ordinals");
+assert(ordinals.size === 2, "new and product not numbered");
+
+// PIM formats.
+assert(isTime("07:30") && !isTime("7:30") && !isTime("24:00") && !isTime(null), "HH:MM");
+assert(joinCodes(splitCodes("Hammam|Sauna")) === "Hammam|Sauna", "codes round trip");
+assert(splitCodes("").length === 0 && splitCodes(null).length === 0, "no codes");
+assert(matchKey({ rid: "B6F6", source: "expedia", sourceHash: "9c1e" }) === "B6F6|expedia|9c1e", "match key");
 
 console.log("check-rules: ok");

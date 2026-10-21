@@ -1,27 +1,30 @@
 {
   "meta": {
-    "title": "Validation PIM Hôtels (Copy)"
+    "title": "Validation PIM Hôtels"
   },
   "header": {
     "title": "Validation des enrichissements",
     "subtitle": "PIM Accor · Fiches établissement",
-    "badge": "Maquette",
-    "language": "Langue"
+    "language": "Langue",
+    "noUser": "Utilisateur non identifié"
   },
   "kpi": {
-    "processed": "Fiches traitées",
-    "auto": "Auto-validables",
-    "review": "À revoir",
-    "failure": "Échec"
+    "hotelsToReview": "Fiches à relire",
+    "valuesToReview": "Valeurs à relire",
+    "matchesToReview": "Rapprochements à valider",
+    "valuesPending": "Champs en cours d’enrichissement",
+    "valuesApproved": "Valeurs prêtes à l’export"
   },
-  "status": {
-    "valide": "Validée",
-    "haute": "Confiance haute",
-    "revoir": "À revoir",
-    "echec": "Échec"
+  "legend": {
+    "item": "{label} ({count})",
+    "review": "À relire",
+    "pending": "En cours d’enrichissement",
+    "approved": "Validées"
   },
   "tabs": {
-    "all": "Toutes"
+    "review": "À relire",
+    "matches": "Rapprochements à valider",
+    "pending": "En cours"
   },
   "search": {
     "placeholder": "Rechercher un hôtel, une ville…"
@@ -29,54 +32,216 @@
   "filters": {
     "allBrands": "Toutes les marques",
     "allSources": "Toutes les sources",
+    "allFamilies": "Toutes les familles",
+    "allPriorities": "Toutes les priorités",
     "searchLabel": "Établissement",
     "brandLabel": "Marque",
-    "sourceLabel": "Source"
+    "sourceLabel": "Source",
+    "familyLabel": "Famille",
+    "priorityLabel": "Priorité"
+  },
+  "families": {
+    "general": "Accueil et services",
+    "accessibility_safety": "Accessibilité et sécurité",
+    "dining": "Restauration",
+    "pool": "Piscine",
+    "parking": "Parking",
+    "wellness_fitness": "Bien-être et sport"
+  },
+  "sources": {
+    "booking_equipements": "Booking.com (équipements)",
+    "booking_piscines": "Booking.com (piscines)",
+    "expedia": "Expedia"
   },
   "columns": {
     "property": "Fiche établissement",
-    "source": "Source",
-    "attributes": "Attributs enrichis",
-    "score": "Score global",
-    "status": "Statut",
+    "sources": "Sources",
+    "toReview": "À relire",
+    "score": "Score moyen",
+    "info": "Informations",
     "actions": "Actions"
   },
   "row": {
     "view": "Voir détail",
-    "attributes": "{count} attributs",
+    "values": "{count, plural, =0 {aucune valeur} one {# valeur} other {# valeurs}}",
+    "pending": "{count, plural, one {# champ en cours} other {# champs en cours}}",
+    "conflicts": "{count, plural, one {# conflit PIM} other {# conflits PIM}}",
     "select": "Sélectionner {name}",
     "selectAll": "Tout sélectionner"
   },
-  "empty": "Aucune fiche ne correspond à ces filtres.",
-  "note": "Exemple de données (maquette) — 14 fiches issues d'extractions Booking.com / Expedia / Salesforce, à des fins de démonstration de la mécanique de scoring et de revue.",
-  "drawer": {
-    "eyebrow": "{brand} · {city} · {source}",
-    "score": "Score {score}",
-    "via": "via {src}",
-    "current": "Valeur PIM actuelle",
-    "proposed": "Valeur proposée",
-    "accept": "Accepter cet attribut",
-    "rejectAttr": "Rejeter cet attribut",
-    "reject": "Rejeter la fiche",
-    "validate": "Valider la fiche",
-    "close": "Fermer le détail"
+  "list": {
+    "loading": "Chargement…",
+    "empty": "Aucune fiche ne correspond à ces filtres.",
+    "emptyPending": "Aucun champ en cours d’enrichissement pour ces filtres.",
+    "error": "Impossible de charger la liste.",
+    "retry": "Réessayer",
+    "loadMore": "Charger plus",
+    "shown": "{count, plural, one {# fiche affichée} other {# fiches affichées}}"
   },
   "bulk": {
     "cancel": "Annuler",
-    "reject": "Rejeter la sélection",
-    "validate": "Valider la sélection",
-    "count": "{count, plural, one {# fiche sélectionnée} other {# fiches sélectionnées}}"
+    "reject": "{count, plural, one {Rejeter la fiche} other {Rejeter les # fiches}}",
+    "validate": "{count, plural, one {Valider la fiche} other {Valider les # fiches}}",
+    "count": "{count, plural, one {# fiche sélectionnée} other {# fiches sélectionnées}}",
+    "comment": "Commentaire facultatif",
+    "busy": "Enregistrement…"
   },
-  "legend": {
-    "item": "{label} ({count})"
+  "errors": {
+    "network": "Le serveur ne répond pas. Vérifiez votre connexion puis réessayez.",
+    "unauthorized": "Utilisateur non identifié : la décision n’a pas été enregistrée.",
+    "generic": "Erreur inattendue ({status})."
   },
-  "percent": "{value}%",
-  "attributes": {
-    "address": "Adresse & géolocalisation",
-    "amenities": "Équipements & services",
-    "description": "Description commerciale",
-    "classification": "Classification (catégorie)",
-    "contact": "Coordonnées de contact",
-    "photo": "Photo de couverture"
-  }
+  "drawer": {
+    "close": "Fermer le détail",
+    "eyebrow": "{brand} · {place} · {rid}",
+    "toReview": "{count, plural, =0 {Rien à relire} one {# valeur à relire} other {# valeurs à relire}}",
+    "avgScore": "Score moyen {score}/100",
+    "loading": "Chargement de la fiche…",
+    "error": "Impossible de charger la fiche."
+  },
+  "value": {
+    "current": "Valeur PIM actuelle",
+    "proposed": "Valeur proposée",
+    "empty": "Non renseigné",
+    "via": "Source : {source}",
+    "score": "{score}/100",
+    "method": {
+      "extracted": "Extraite",
+      "converted": "Convertie",
+      "inferred": "Déduite"
+    },
+    "confidence": "Confiance {level}",
+    "confidenceLevel": {
+      "high": "haute",
+      "medium": "moyenne",
+      "low": "faible"
+    },
+    "yes": "Oui",
+    "no": "Non",
+    "newEntity": "{name} (nouveau)"
+  },
+  "detail": {
+    "nothingToReview": "Toutes les valeurs de cette fiche ont été décidées.",
+    "pending": "En cours d’enrichissement",
+    "pendingHint": "Ces champs attendent le prochain passage de l’agent d’enrichissement.",
+    "conflicts": "Conflits avec le PIM",
+    "conflictsHint": "La source contredit le PIM. Pour information : le PIM n’est jamais écrasé.",
+    "sourceSays": "La source indique « {value} » ({source})",
+    "history": "Décisions déjà prises",
+    "decidedBy": "{author}, le {date}",
+    "pimHas": "Le PIM contient « {value} »"
+  },
+  "decision": {
+    "human_approved": "Validée",
+    "human_rejected": "Rejetée",
+    "human_corrected": "Corrigée"
+  },
+  "decide": {
+    "approve": "Valider",
+    "reject": "Rejeter",
+    "approveValue": "Valider « {label} »",
+    "rejectValue": "Rejeter « {label} »",
+    "addComment": "Ajouter un commentaire",
+    "commentPlaceholder": "Commentaire facultatif",
+    "commentFor": "Commentaire pour « {label} »",
+    "ficheComment": "Commentaire pour toute la fiche",
+    "approveFiche": "{count, plural, one {Valider la valeur} other {Valider les # valeurs}}",
+    "rejectFiche": "{count, plural, one {Rejeter la valeur} other {Rejeter les # valeurs}}",
+    "saved": "{count, plural, =0 {Aucune décision enregistrée.} one {# décision enregistrée.} other {# décisions enregistrées.}}",
+    "refused": "{count, plural, one {# valeur refusée par le serveur :} other {# valeurs refusées par le serveur :}}",
+    "failed": "Décision non enregistrée."
+  },
+  "entities": {
+    "parking": "Parking",
+    "pool": "Piscine",
+    "restaurant": "Restaurant",
+    "bar": "Bar",
+    "breakfast": "Petit-déjeuner",
+    "wellnesscenter": "Centre bien-être",
+    "fitnesscenter": "Salle de sport",
+    "sport": "Sport"
+  },
+  "correct": {
+    "open": "Corriger",
+    "title": "Corriger « {label} »",
+    "loading": "Chargement des valeurs autorisées…",
+    "loadError": "Impossible de charger les valeurs autorisées.",
+    "several": "Plusieurs valeurs possibles",
+    "choose": "Choisir une valeur",
+    "yes": "Oui",
+    "no": "Non",
+    "cancel": "Annuler",
+    "submit": "Enregistrer la correction",
+    "openFor": "Corriger « {label} »"
+  },
+  "matches": {
+    "pim": "Fiche PIM",
+    "page": "Page scrapée",
+    "judge": "Avis de l’agent juge",
+    "check": "Contrôle automatique",
+    "name": "Nom",
+    "city": "Ville",
+    "country": "Pays",
+    "brand": "Marque",
+    "address": "Adresse",
+    "scrapedName": "Nom scrapé",
+    "pageName": "Nom de la page",
+    "openPage": "Ouvrir la page source ↗",
+    "delay": "Une fois validé, l’hôtel est enrichi pour cette source au prochain passage du pipeline (toutes les 15 minutes) : ses valeurs apparaîtront ensuite dans « À relire ». Rejeté, la source n’est plus utilisée pour cet hôtel.",
+    "empty": "Aucun rapprochement à valider pour ce filtre.",
+    "approve": "Valider le rapprochement",
+    "reject": "Rejeter le rapprochement",
+    "comment": "Commentaire facultatif",
+    "reasons": {
+      "consistent": "Concordance",
+      "rebranding": "Changement d’enseigne",
+      "internal_name": "Nom interne",
+      "former_brand": "Ancienne enseigne",
+      "namesake_other_country": "Homonyme dans un autre pays",
+      "neighbouring_hotel": "Hôtel voisin",
+      "shared_page": "Page partagée",
+      "unreadable_page": "Page illisible",
+      "other": "Autre"
+    },
+    "verdicts": {
+      "ok": "Concordant",
+      "to_check": "À vérifier",
+      "rejected": "Rejeté"
+    },
+    "saved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement rejeté.} other {# rapprochements rejetés.}}",
+    "savedApproved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement validé : ses valeurs arriveront au prochain passage du pipeline.} other {# rapprochements validés : leurs valeurs arriveront au prochain passage du pipeline.}}",
+    "refused": "{count, plural, one {# rapprochement refusé par le serveur :} other {# rapprochements refusés par le serveur :}}",
+    "shown": "{count, plural, one {# rapprochement affiché} other {# rapprochements affichés}}"
+  },
+  "bulkMatches": {
+    "cancel": "Annuler",
+    "reject": "{count, plural, one {Rejeter le rapprochement} other {Rejeter les # rapprochements}}",
+    "validate": "{count, plural, one {Valider le rapprochement} other {Valider les # rapprochements}}",
+    "count": "{count, plural, one {# rapprochement sélectionné} other {# rapprochements sélectionnés}}",
+    "comment": "Commentaire facultatif",
+    "busy": "Enregistrement…"
+  },
+  "export": {
+    "title": "Export du PIM enhanced",
+    "loading": "Lecture de l’état de l’export…",
+    "statusError": "État de l’export indisponible.",
+    "ready": "Tout est décidé : l’export peut être lancé.",
+    "blocked": "{count, plural, one {# élément attend encore une décision : l’export sera possible quand tout sera décidé.} other {# éléments attendent encore une décision : l’export sera possible quand tout sera décidé.}}",
+    "start": "Lancer l’export",
+    "running": "Export en cours…",
+    "confirm": "Lancer l’export maintenant ?",
+    "cancel": "Annuler",
+    "launch": "Confirmer",
+    "state": {
+      "running": "Export en cours…",
+      "succeeded": "Export terminé.",
+      "failed": "Export refusé ou en échec.",
+      "empty": "Export terminé sans fichier : aucune valeur validée à exporter, ou des éléments sont repassés en attente entre-temps."
+    },
+    "history": "{count, plural, one {Historique (# export)} other {Historique (# exports)}}",
+    "record": "{date} · {author} · {hotels, plural, one {# hôtel} other {# hôtels}} · {rows, plural, one {# valeur} other {# valeurs}}",
+    "unauthorized": "Utilisateur non identifié : action refusée par le serveur.",
+    "busy": "Un export est en cours : attendez sa fin avant d’en relancer un."
+  },
+  "number": "{value, number}"
 }

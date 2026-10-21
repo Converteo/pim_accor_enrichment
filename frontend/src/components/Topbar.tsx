@@ -1,21 +1,16 @@
 import { useTranslations } from "next-intl";
-import type { StatusSegment } from "@/domain/types";
+import type { Stats } from "@/domain/types";
 import { KpiStrip } from "./KpiStrip";
 import { LanguageSelect } from "./LanguageSelect";
 import { StatusDistribution } from "./StatusDistribution";
 import styles from "./Topbar.module.css";
 
 interface TopbarProps {
-  summary: {
-    total: number;
-    autoPercent: number;
-    reviewCount: number;
-    failureCount: number;
-  };
-  segments: StatusSegment[];
+  stats: Stats | null;
+  author: string | null;
 }
 
-export function Topbar({ summary, segments }: TopbarProps) {
+export function Topbar({ stats, author }: TopbarProps) {
   const t = useTranslations("header");
 
   return (
@@ -32,24 +27,21 @@ export function Topbar({ summary, segments }: TopbarProps) {
               height={62}
             />
             <span className={styles.divider} aria-hidden="true" />
-            <span className={styles.product}>
-              {t("subtitle")}
-              <span className={styles.badge}>{t("badge")}</span>
-            </span>
+            <span className={styles.product}>{t("subtitle")}</span>
           </div>
-          <LanguageSelect />
+          <div className={styles.navEnd}>
+            <span className={author ? styles.badge : `${styles.badge} ${styles.noUser}`}>
+              {author ?? t("noUser")}
+            </span>
+            <LanguageSelect />
+          </div>
         </div>
       </header>
       <section className={styles.hero}>
         <div className={styles.heroInner}>
           <h1 className={styles.title}>{t("title")}</h1>
-          <KpiStrip
-            total={summary.total}
-            autoPercent={summary.autoPercent}
-            reviewCount={summary.reviewCount}
-            failureCount={summary.failureCount}
-          />
-          <StatusDistribution segments={segments} />
+          <KpiStrip stats={stats} />
+          <StatusDistribution stats={stats} />
         </div>
       </section>
     </>

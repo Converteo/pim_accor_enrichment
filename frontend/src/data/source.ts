@@ -1,50 +1,126 @@
-import { statusFor } from "../domain/rules";
-import type { Fiche } from "../domain/types";
-import { demoFiches } from "./demo-fiches";
+import type {
+  DecisionResult,
+  EnrichmentDecisionItem,
+  ExportExecution,
+  ExportStatus,
+  Facets,
+  FieldValues,
+  Filters,
+  HotelDetail,
+  HotelSummary,
+  MatchDecisionItem,
+  MatchItem,
+  Page,
+  Stats,
+} from "../domain/types";
 
-export interface FicheSource {
-  load(): Fiche[];
+// Only client module that talks to the back, through the Next.js relay /api/* (src/app/api/[...path]).
+
+const PAGE_SIZE = 50;
+
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
 }
 
-function distinctSorted(values: readonly string[]): readonly string[] {
-  return Array.from(new Set(values)).sort();
+async function call<T>(path: string, init?: { method: "POST"; body: unknown }): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, {
+      method: init?.method ?? "GET",
+      headers: init ? { "Content-Type": "application/json" } : undefined,
+      body: init ? JSON.stringify(init.body) : undefined,
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError(0, "network", "");
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: { code?: string; message?: string };
+    } | null;
+    throw new ApiError(
+      response.status,
+      body?.error?.code ?? "http_error",
+      body?.error?.message ?? "",
+    );
+  }
+  return (await response.json()) as T;
 }
 
-export const brandOptions: readonly string[] = distinctSorted(
-  demoFiches.map((fiche) => fiche.brand),
-);
-
-export const sourceOptions: readonly string[] = distinctSorted(
-  demoFiches.map((fiche) => fiche.source),
-);
-
-function toFiche(raw: (typeof demoFiches)[number]): Fiche {
-  return {
-    id: raw.id,
-    name: raw.name,
-    brand: raw.brand,
-    city: raw.city,
-    source: raw.source,
-    score: raw.score,
-    status: statusFor(raw.score),
-    selected: false,
-    attrs: raw.attrs.map((attr) => ({
-      label: attr.label,
-      current: attr.current,
-      proposed: attr.proposed,
-      score: attr.score,
-      src: attr.src,
-      accepted: null,
-    })),
-  };
+function query(params: Record<string, string | number | null | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : "";
 }
 
-export const demoSource: FicheSource = {
-  load() {
-    return demoFiches.map(toFiche);
-  },
-};
+export function fetchStats(): Promise<Stats> {
+  return call("/stats");
+}
 
-export function loadFiches(): Fiche[] {
-  return demoSource.load();
+export function fetchFacets(): Promise<Facets> {
+  return call("/hotels/facets");
+}
+
+export function fetchHotels(
+  view: "review" | "pending",
+  filters: Filters,
+  cursor: string | null,
+): Promise<Page<HotelSummary>> {
+  return call(
+    `/hotels${query({ view, ...filters, limit: PAGE_SIZE, cursor })}`,
+  );
+}
+
+export function fetchHotel(rid: string): Promise<HotelDetail> {
+  return call(`/hotels/${encodeURIComponent(rid)}`);
+}
+
+/** Details of several fiches (bulk decisions), a few calls at a time to spare the back. */
+export async function fetchHotelsDetail(rids: readonly string[]): Promise<HotelDetail[]> {
+  const results: HotelDetail[] = [];
+  for (let start = 0; start < rids.length; start += 4) {
+    results.push(...(await Promise.all(rids.slice(start, start + 4).map(fetchHotel))));
+  }
+  return results;
+}
+
+export function decideEnrichments(items: EnrichmentDecisionItem[]): Promise<DecisionResult<"enrichmentId">> {
+  return call("/decisions/enrichments", { method: "POST", body: { items } });
+}
+
+export function fetchFieldValues(pimField: string): Promise<FieldValues> {
+  return call(`/fields/${encodeURIComponent(pimField)}/values`);
+}
+
+export function fetchMatches(source: string, cursor: string | null): Promise<Page<MatchItem>> {
+  return call(`/matches${query({ source, limit: PAGE_SIZE, cursor })}`);
+}
+
+export function decideMatches(items: MatchDecisionItem[]): Promise<DecisionResult<"key">> {
+  return call("/decisions/matches", { method: "POST", body: { items } });
+}
+
+export function fetchExportStatus(): Promise<ExportStatus> {
+  return call("/export/status");
+}
+
+export function startExport(): Promise<{ executionId: string }> {
+  return call("/export", { method: "POST", body: {} });
+}
+
+export function fetchExecution(executionId: string): Promise<ExportExecution> {
+  return call(`/export/executions/${encodeURIComponent(executionId)}`);
+}
+
+export function exportFileUrl(exportId: string, name: string): string {
+  return `/api/exports/${encodeURIComponent(exportId)}/files/${encodeURIComponent(name)}`;
 }
