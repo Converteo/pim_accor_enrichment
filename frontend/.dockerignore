@@ -10,3 +10,4 @@ Dockerfile
 .dockerignore
 docs
 README.md
+.env*

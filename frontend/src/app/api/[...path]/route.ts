@@ -39,6 +39,12 @@ async function relay(request: Request, context: Context): Promise<Response> {
   }
   const target = "/" + path.map(encodeURIComponent).join("/") + new URL(request.url).search;
 
+  // Behind IAP, every call needs a verified identity: reads too, should IAP be bypassed (direct run.app URL).
+  const author = await currentAuthor(request.headers);
+  if (process.env.IAP_AUDIENCE?.trim() && !author) {
+    return relayError(401, "iap_required", "Identité non vérifiée : rechargez la page pour vous reconnecter.");
+  }
+
   let upstream: Response;
   try {
     const body = request.method === "POST" ? await request.arrayBuffer() : null;
@@ -46,7 +52,7 @@ async function relay(request: Request, context: Context): Promise<Response> {
       method: request.method,
       path: target,
       body: body && body.byteLength > 0 ? body : null,
-      author: await currentAuthor(request.headers),
+      author,
       signal: request.signal,
     });
   } catch (error) {

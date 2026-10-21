@@ -125,16 +125,28 @@ response = await GET(new Request("http://front/api/hotels/x"), context("hotels",
 assert(response.status === 400, `dot-dot status ${response.status}`);
 assert(seen === null, "dot-dot not relayed");
 
-// No author outside local dev.
-process.env.IAP_AUDIENCE = "/projects/1/global/backendServices/2";
+// No DEV_AUTHOR on Cloud Run; forged browser identity never relayed.
+process.env.K_SERVICE = "front";
 await GET(
   new Request("http://front/api/stats", {
     headers: { "X-PIM-Author": "pirate@example.com", Authorization: "Bearer forged" },
   }),
   context("stats"),
 );
-assert(lastSeen().headers["x-pim-author"] === undefined, "no author once IAP is set, forged one dropped");
+assert(lastSeen().headers["x-pim-author"] === undefined, "no author on Cloud Run, forged one dropped");
 assert(lastSeen().headers.authorization === undefined, "browser Authorization dropped");
+delete process.env.K_SERVICE;
+
+// Behind IAP without a verified identity: refused before the back, reads included.
+process.env.IAP_AUDIENCE = "/projects/1/locations/europe-west1/services/front";
+seen = null;
+response = await GET(
+  new Request("http://front/api/stats", { headers: { "x-goog-iap-jwt-assertion": "forged.jwt.value" } }),
+  context("stats"),
+);
+assert(response.status === 401, `IAP without identity status ${response.status}`);
+assert((await response.json()).error.code === "iap_required", "IAP error code");
+assert(seen === null, "unidentified call not relayed");
 delete process.env.IAP_AUDIENCE;
 
 await new Promise<void>((resolve) => server.close(() => resolve()));

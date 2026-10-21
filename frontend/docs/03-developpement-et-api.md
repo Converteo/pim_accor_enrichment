@@ -103,7 +103,7 @@ Le navigateur n’appelle que le front, sur `/api/*`. Il ne connaît ni l’URL 
 
 **Local ou Cloud Run.** Si `BACKEND_URL` commence par `https://` (Cloud Run), le relais demande au serveur de métadonnées un jeton d’identité Google, audience = `BACKEND_URL` sans slash final, le garde 50 minutes en mémoire et l’envoie en `Authorization: Bearer`. En `http://` (local), l’appel part sans jeton.
 
-**Auteur.** `X-PIM-Author` est posé par le relais, jamais par le navigateur ; un `X-PIM-Author` venu du navigateur est ignoré. Aujourd’hui sa seule source est `DEV_AUTHOR`, lue uniquement hors Cloud Run (`K_SERVICE` absente) et tant que `IAP_AUDIENCE` est vide. Sans auteur, le back refuse les écritures (401). L’auteur lu depuis IAP viendra avec PIM-37.
+**Auteur.** `X-PIM-Author` est posé par le relais, jamais par le navigateur ; un `X-PIM-Author` venu du navigateur est ignoré. Source de l’auteur (`src/server/author.ts`) : quand `IAP_AUDIENCE` est posée, l’e-mail de l’en-tête signé `x-goog-iap-jwt-assertion`, vérifié côté serveur (signature ES256 avec les clés publiques d’IAP, rechargées au plus une fois par minute ; émetteur `https://cloud.google.com/iap` ; audience = `IAP_AUDIENCE` ; expiration). Pour IAP activé directement sur Cloud Run, `IAP_AUDIENCE` = `/projects/<numéro du projet>/locations/europe-west1/services/<nom du service front>` (le numéro, pas l’identifiant du projet ; une audience fausse est signalée une fois dans les logs). Quand `IAP_AUDIENCE` est posée, un appel sans identité vérifiée est refusé par le relais (401 `iap_required`), lectures comprises : protection si IAP est contourné. Sans IAP : `DEV_AUTHOR`, lue uniquement hors Cloud Run (`K_SERVICE` absente) ; elle doit être une adresse `@converteo.com` (le back refuse les autres en 403), `test@converteo.com` pour les essais en dev. Sans auteur, le back refuse les écritures (401). L’auteur est affiché dans l’en-tête de l’écran (lu par la page côté serveur). Contrôle : `scripts/check-author.mts`.
 
 **Erreurs du relais.** Format du contrat, `{ "error": { "code", "message" } }` : `BACKEND_URL` absente → 500 `backend_not_configured` ; back injoignable ou jeton impossible à obtenir → 502 `backend_unreachable` ; erreur du back sans corps JSON (403 HTML de Cloud Run, 5xx du load balancer) → 502 `backend_error`. Les erreurs JSON du back (400, 401, 404, 409, 502) passent telles quelles. Un `POST` venu d’un autre site (`Sec-Fetch-Site` différent de `same-origin`) est refusé en 403 `cross_site`, un corps qui n’est pas en `application/json` en 415 : ces écritures portent l’identité du relecteur. Les redirections du back ne sont pas suivies.
 
@@ -112,5 +112,5 @@ Le navigateur n’appelle que le front, sur `/api/*`. Il ne connaît ni l’URL 
 Lancer en local, back démarré sur le port 3101 :
 
 ```bash
-BACKEND_URL=http://localhost:3101 DEV_AUTHOR=prenom.nom@converteo.com npm run dev -- --port 3100
+BACKEND_URL=http://localhost:3101 DEV_AUTHOR=test@converteo.com npm run dev -- --port 3100
 ```
