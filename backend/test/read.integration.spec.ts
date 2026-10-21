@@ -63,6 +63,9 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     const m = await repo.matches({ limit: 3 });
     expect(m.items.length).toBeGreaterThan(0);
     expect(m.items.every((x) => x.status === 'needs_review' && x.sourceHash)).toBe(true);
+    const [first] = m.items;
+    const key = `${first!.rid}|${first!.source}|${first!.sourceHash}`;
+    expect(await repo.matchStatuses([key, 'x|y|z'])).toEqual(new Map([[key, 'needs_review']]));
     const f = await repo.facets();
     expect(f.sources.length).toBeGreaterThan(0);
   });

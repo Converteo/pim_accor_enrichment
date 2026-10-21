@@ -11,7 +11,7 @@ import type {
   Priority,
   Stats,
 } from './api.js';
-import type { EnrichmentDecisionRow, EnrichmentState } from './decisions.js';
+import type { EnrichmentDecisionRow, EnrichmentState, MatchDecisionRow } from './decisions.js';
 import { ApiError } from './errors.js';
 import { Bq } from './gcp.js';
 
@@ -46,6 +46,9 @@ export abstract class Repository {
   abstract enrichmentStates(enrichmentIds: string[]): Promise<EnrichmentState[]>;
   /** Un seul INSERT multi-lignes ; author et decided_at (UTC) posés ici, jamais par le client. */
   abstract insertEnrichmentDecisions(rows: EnrichmentDecisionRow[], author: string): Promise<void>;
+  /** Clé rid|source|source_hash → final_status, pour les clés présentes dans v_matches. */
+  abstract matchStatuses(keys: string[]): Promise<Map<string, string>>;
+  abstract insertMatchDecisions(rows: MatchDecisionRow[], author: string): Promise<void>;
 }
 
 // Curseur opaque = liste + clé de tri de la dernière ligne renvoyée (pagination par clé : une fiche qui sort de la
@@ -385,6 +388,27 @@ export class BigQueryRepository extends Repository {
           },
         ],
       },
+    );
+  }
+
+  async matchStatuses(keys: string[]): Promise<Map<string, string>> {
+    const rows = await this.bq.query<{ key: string; final_status: string }>(
+      `SELECT CONCAT(rid, '|', source, '|', source_hash) AS key, final_status FROM ${this.t.matches}
+      WHERE CONCAT(rid, '|', source, '|', source_hash) IN UNNEST(@keys)`,
+      { keys },
+      { keys: ['STRING'] },
+    );
+    return new Map(rows.map((r) => [r.key, r.final_status]));
+  }
+
+  async insertMatchDecisions(rows: MatchDecisionRow[], author: string): Promise<void> {
+    await this.bq.query(
+      `INSERT INTO ${this.bq.table('validation', 'match_decisions')}
+        (rid, source, source_hash, decision, comment, author, decided_at)
+      SELECT rid, source, source_hash, decision, comment, @author, CURRENT_TIMESTAMP()
+      FROM UNNEST(@rows)`,
+      { rows, author },
+      { rows: [{ rid: 'STRING', source: 'STRING', source_hash: 'STRING', decision: 'STRING', comment: 'STRING' }] },
     );
   }
 }

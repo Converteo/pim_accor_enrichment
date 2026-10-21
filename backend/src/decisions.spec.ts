@@ -2,7 +2,12 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { appWithMockRepository, type MockRepository } from '../test/helpers.js';
-import { checkEnrichmentDecisions, type EnrichmentState } from './decisions.js';
+import {
+  checkEnrichmentDecisions,
+  checkMatchDecisions,
+  type EnrichmentState,
+  type MatchDecisionItem,
+} from './decisions.js';
 
 const state = (id: string, over: Partial<EnrichmentState> = {}): EnrichmentState => ({
   enrichmentId: id,
@@ -143,5 +148,84 @@ describe('POST /decisions/enrichments', () => {
     const res = await post({ items: [{ enrichmentId: 'a', decision: 'human_approved' }] }).expect(200);
     expect(res.body.accepted).toEqual([]);
     expect(repo.insertEnrichmentDecisions).not.toHaveBeenCalled();
+  });
+});
+
+describe('checkMatchDecisions', () => {
+  const item = (over: Partial<MatchDecisionItem> = {}): MatchDecisionItem => ({
+    rid: 'B6F6',
+    source: 'booking_equipements',
+    sourceHash: '9c1e',
+    decision: 'human_approved',
+    ...over,
+  });
+  const KEY = 'B6F6|booking_equipements|9c1e';
+
+  it('écrit la clé lue à l’affichage, avec la décision et le commentaire', () => {
+    const { rows, rejected } = checkMatchDecisions([item({ comment: 'TEST' })], new Map([[KEY, 'needs_review']]));
+    expect(rejected).toEqual([]);
+    expect(rows).toEqual([
+      { rid: 'B6F6', source: 'booking_equipements', source_hash: '9c1e', decision: 'human_approved', comment: 'TEST' },
+    ]);
+  });
+
+  it.each([
+    ['page changée (empreinte inconnue)', item({ sourceHash: 'autre' }), 'not_found'],
+    ['correction impossible sur un rapprochement', item({ decision: 'human_corrected' }), 'invalid_decision'],
+  ])('refuse : %s', (_, i, code) => {
+    const { rows, rejected } = checkMatchDecisions([i], new Map([[KEY, 'needs_review']]));
+    expect(rows).toEqual([]);
+    expect(rejected).toMatchObject([{ code }]);
+  });
+
+  it.each(['auto_approved', 'auto_rejected', 'pending_judgment'])('refuse le statut %s', (status) => {
+    expect(checkMatchDecisions([item()], new Map([[KEY, status]])).rejected).toMatchObject([
+      { key: KEY, code: 'invalid_status' },
+    ]);
+  });
+
+  it('accepte de revenir sur une décision humaine', () => {
+    const { rows } = checkMatchDecisions([item({ decision: 'human_rejected' })], new Map([[KEY, 'human_approved']]));
+    expect(rows).toHaveLength(1);
+  });
+});
+
+describe('POST /decisions/matches', () => {
+  let app: INestApplication;
+  let repo: MockRepository;
+  beforeAll(async () => ({ app, repo } = await appWithMockRepository()));
+  afterAll(() => app.close());
+  beforeEach(() => Object.values(repo).forEach((fn) => fn.mockReset()));
+
+  it('401 sans auteur', async () => {
+    await request(app.getHttpServer())
+      .post('/decisions/matches')
+      .send({ items: [{ rid: 'a', source: 's', sourceHash: 'h', decision: 'human_approved' }] })
+      .expect(401);
+    expect(repo.matchStatuses).not.toHaveBeenCalled();
+  });
+
+  it('un seul INSERT, clés acceptées et refusées au format rid|source|sourceHash', async () => {
+    repo.matchStatuses.mockResolvedValue(new Map([['a|s|h', 'needs_review']]));
+    const res = await request(app.getHttpServer())
+      .post('/decisions/matches')
+      .set('X-PIM-Author', 'test@converteo.com')
+      .send({
+        items: [
+          { rid: 'a', source: 's', sourceHash: 'h', decision: 'human_approved' },
+          { rid: 'b', source: 's', sourceHash: 'h', decision: 'human_rejected' },
+        ],
+      })
+      .expect(200);
+    expect(res.body).toEqual({
+      accepted: ['a|s|h'],
+      rejected: [{ key: 'b|s|h', code: 'not_found', message: expect.any(String) }],
+    });
+    expect(repo.matchStatuses).toHaveBeenCalledWith(['a|s|h', 'b|s|h']);
+    expect(repo.insertMatchDecisions).toHaveBeenCalledTimes(1);
+    expect(repo.insertMatchDecisions).toHaveBeenCalledWith(
+      [{ rid: 'a', source: 's', source_hash: 'h', decision: 'human_approved', comment: null }],
+      'test@converteo.com',
+    );
   });
 });
