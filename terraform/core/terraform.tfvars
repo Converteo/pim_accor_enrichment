@@ -61,6 +61,9 @@ environments = {
     front_public  = true
     front_scaling = { min = 0, max = 2 }
     back_scaling  = { min = 0, max = 2 }
+
+    # Planificateur repris : les rapprochements validés dans l'interface sont enrichis sans relance manuelle (coûts LLM à surveiller)
+    pipeline = { scheduler_paused = false }
   }
 
   stg = {
