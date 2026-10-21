@@ -4,6 +4,7 @@ import type {
   EnrichmentValue,
   Facets,
   Family,
+  FieldValues,
   HotelDetail,
   HotelSummary,
   MatchItem,
@@ -49,6 +50,8 @@ export abstract class Repository {
   /** Clé rid|source|source_hash → final_status, pour les clés présentes dans v_matches. */
   abstract matchStatuses(keys: string[]): Promise<Map<string, string>>;
   abstract insertMatchDecisions(rows: MatchDecisionRow[], author: string): Promise<void>;
+  /** Type et codes autorisés des champs (vue v_field_allowed_values) ; un champ inconnu est absent du résultat. */
+  abstract fieldValues(pimFields: string[]): Promise<FieldValues[]>;
 }
 
 // Curseur opaque = liste + clé de tri de la dernière ligne renvoyée (pagination par clé : une fiche qui sort de la
@@ -410,5 +413,35 @@ export class BigQueryRepository extends Repository {
       { rows, author },
       { rows: [{ rid: 'STRING', source: 'STRING', source_hash: 'STRING', decision: 'STRING', comment: 'STRING' }] },
     );
+  }
+
+  async fieldValues(pimFields: string[]): Promise<FieldValues[]> {
+    const rows = await this.bq.query<{
+      pim_field: string;
+      data_type: string;
+      multivalue: boolean | null;
+      key: string | null;
+      value_label: string | null;
+    }>(
+      `SELECT pim_field, data_type, multivalue, key, value_label
+      FROM ${this.bq.table('enhanced', 'v_field_allowed_values')}
+      WHERE pim_field IN UNNEST(@fields)
+      ORDER BY pim_field, value_label, key`,
+      { fields: pimFields },
+      { fields: ['STRING'] },
+    );
+    const fields = new Map<string, FieldValues>();
+    for (const r of rows) {
+      const field = fields.get(r.pim_field) ?? {
+        pimField: r.pim_field,
+        dataType: r.data_type,
+        multivalue: r.multivalue ?? false,
+        values: [],
+      };
+      if (r.key && !field.values.some((v) => v.key === r.key))
+        field.values.push({ key: r.key, label: r.value_label ?? r.key });
+      fields.set(r.pim_field, field);
+    }
+    return [...fields.values()];
   }
 }

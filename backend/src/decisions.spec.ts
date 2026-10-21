@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { appWithMockRepository, type MockRepository } from '../test/helpers.js';
+import type { FieldValues } from './api.js';
 import {
   checkEnrichmentDecisions,
   checkMatchDecisions,
@@ -88,6 +89,50 @@ describe('checkEnrichmentDecisions', () => {
     expect(rejected).toEqual([{ key: 'a', code: 'duplicate', message: expect.any(String) }]);
   });
 
+  describe('correction (PIM-26)', () => {
+    const spa: FieldValues = {
+      pimField: 'WellnessCenterFreeWellnessCenterServices',
+      dataType: 'CVL',
+      multivalue: true,
+      values: [
+        { key: 'Sauna', label: 'Sauna' },
+        { key: 'Hammam', label: 'Hammam' },
+      ],
+    };
+    const s1 = states(state('a', { pimField: spa.pimField }));
+    const fields = new Map([[spa.pimField, spa]]);
+
+    it('écrit la valeur normalisée au format PIM', () => {
+      const { rows } = checkEnrichmentDecisions(
+        [{ enrichmentId: 'a', decision: 'human_corrected', correctedValue: 'Sauna ; Hammam' }],
+        s1,
+        fields,
+      );
+      expect(rows[0]?.corrected_value).toBe('Sauna|Hammam');
+    });
+
+    it('refuse un code hors de la liste', () => {
+      const { rows, rejected } = checkEnrichmentDecisions(
+        [{ enrichmentId: 'a', decision: 'human_corrected', correctedValue: 'Piscine' }],
+        s1,
+        fields,
+      );
+      expect(rows).toEqual([]);
+      expect(rejected).toMatchObject([
+        { key: 'a', code: 'invalid_corrected_value', message: expect.stringMatching(/Piscine/) },
+      ]);
+    });
+
+    it('refuse un champ absent du modèle PIM', () => {
+      const { rejected } = checkEnrichmentDecisions(
+        [{ enrichmentId: 'a', decision: 'human_corrected', correctedValue: 'Sauna' }],
+        s1,
+        new Map(),
+      );
+      expect(rejected).toMatchObject([{ code: 'invalid_corrected_value' }]);
+    });
+  });
+
   it('ignore correctedValue hors correction', () => {
     const { rows } = checkEnrichmentDecisions(
       [{ enrichmentId: 'a', decision: 'human_approved', correctedValue: 'x' }],
@@ -141,6 +186,28 @@ describe('POST /decisions/enrichments', () => {
       [expect.objectContaining({ enrichment_id: 'a', comment: 'TEST ok' })],
       'test@converteo.com',
     );
+  });
+
+  it('lit les codes autorisés des seuls champs corrigés', async () => {
+    repo.enrichmentStates.mockResolvedValue([state('a'), state('b', { pimField: 'ProductCheckIn' })]);
+    repo.fieldValues.mockResolvedValue([
+      { pimField: 'ProductCheckIn', dataType: 'String', multivalue: false, values: [] },
+    ]);
+    const res = await post({
+      items: [
+        { enrichmentId: 'a', decision: 'human_approved' },
+        { enrichmentId: 'b', decision: 'human_corrected', correctedValue: '9:00' },
+      ],
+    }).expect(200);
+    expect(res.body.accepted).toEqual(['a', 'b']);
+    expect(repo.fieldValues).toHaveBeenCalledWith(['ProductCheckIn']);
+    expect(repo.insertEnrichmentDecisions.mock.calls[0]![0][1]).toMatchObject({ corrected_value: '09:00' });
+  });
+
+  it('ne lit pas les codes autorisés sans correction', async () => {
+    repo.enrichmentStates.mockResolvedValue([state('a')]);
+    await post({ items: [{ enrichmentId: 'a', decision: 'human_approved' }] }).expect(200);
+    expect(repo.fieldValues).not.toHaveBeenCalled();
   });
 
   it("n'écrit rien si tout est refusé", async () => {

@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
+import type { FieldValues } from './api.js';
 import { Repository } from './repository.js';
+import { checkCorrectedValue } from './values.js';
 
 const comment = z.string().trim().max(2000).nullish();
 
@@ -72,6 +74,7 @@ function dedupe<T>(items: T[], keyOf: (item: T) => string): { unique: T[]; dupli
 export function checkEnrichmentDecisions(
   items: EnrichmentDecisionItem[],
   states: Map<string, EnrichmentState>,
+  fields: Map<string, FieldValues> = new Map(),
 ): { rows: EnrichmentDecisionRow[]; rejected: Rejected<string>[] } {
   const rows: EnrichmentDecisionRow[] = [];
   const { unique, duplicates: rejected } = dedupe(items, (i) => i.enrichmentId);
@@ -97,16 +100,29 @@ export function checkEnrichmentDecisions(
       rejected.push(reject(id, 'match_not_approved', "Le rapprochement de cette source n'est plus validé."));
     else if (item.decision === 'human_corrected' && !corrected)
       rejected.push(reject(id, 'corrected_value_required', 'Valeur corrigée obligatoire pour une correction.'));
-    else
+    else {
+      let correctedValue: string | null = null;
+      if (item.decision === 'human_corrected') {
+        const field = fields.get(state.pimField);
+        const checked = field
+          ? checkCorrectedValue(field, corrected!)
+          : { error: `Champ ${state.pimField} inconnu du modèle PIM.` };
+        if ('error' in checked) {
+          rejected.push(reject(id, 'invalid_corrected_value', checked.error));
+          continue;
+        }
+        correctedValue = checked.value;
+      }
       rows.push({
         enrichment_id: id,
         rid: state.rid,
         pim_field: state.pimField,
         entity_id: state.entityId,
         decision: item.decision,
-        corrected_value: item.decision === 'human_corrected' ? corrected : null,
+        corrected_value: correctedValue,
         comment: item.comment || null,
       });
+    }
   }
   return { rows, rejected };
 }
@@ -179,8 +195,19 @@ export class DecisionsService {
   constructor(@Inject(Repository) private readonly repo: Repository) {}
 
   async decideEnrichments(items: EnrichmentDecisionItem[], author: string) {
-    const states = await this.repo.enrichmentStates([...new Set(items.map((i) => i.enrichmentId))]);
-    const { rows, rejected } = checkEnrichmentDecisions(items, new Map(states.map((s) => [s.enrichmentId, s])));
+    const states = new Map(
+      (await this.repo.enrichmentStates([...new Set(items.map((i) => i.enrichmentId))])).map((s) => [
+        s.enrichmentId,
+        s,
+      ]),
+    );
+    // Codes autorisés lus seulement pour les champs corrigés
+    const corrected = items
+      .filter((i) => i.decision === 'human_corrected')
+      .map((i) => states.get(i.enrichmentId)?.pimField);
+    const pimFields = [...new Set(corrected.filter((f) => f !== undefined))];
+    const fields = pimFields.length ? await this.repo.fieldValues(pimFields) : [];
+    const { rows, rejected } = checkEnrichmentDecisions(items, states, new Map(fields.map((f) => [f.pimField, f])));
     if (rows.length) await this.repo.insertEnrichmentDecisions(rows, author);
     return {
       accepted: rows.map((r) => r.enrichment_id),

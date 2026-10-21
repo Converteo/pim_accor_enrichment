@@ -113,3 +113,10 @@ export interface Facets {
   brands: string[];
   sources: string[];
 }
+
+export interface FieldValues {
+  pimField: string;
+  dataType: string;
+  multivalue: boolean;
+  values: { key: string; label: string }[];
+}

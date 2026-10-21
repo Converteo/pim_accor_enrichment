@@ -109,3 +109,18 @@ describe('GET /matches', () => {
     expect(repo.matches).toHaveBeenCalledWith({ source: 'expedia', limit: 5, cursor: 'x' });
   });
 });
+
+describe('GET /fields/:pimField/values', () => {
+  it('renvoie le type et les codes du champ', async () => {
+    const field = { pimField: 'F', dataType: 'CVL', multivalue: true, values: [{ key: 'k', label: 'K' }] };
+    repo.fieldValues.mockResolvedValue([field]);
+    await request(app.getHttpServer()).get('/fields/F/values').expect(200, field);
+    expect(repo.fieldValues).toHaveBeenCalledWith(['F']);
+  });
+
+  it('404 si le champ est inconnu', async () => {
+    repo.fieldValues.mockResolvedValue([]);
+    const res = await request(app.getHttpServer()).get('/fields/Inconnu/values').expect(404);
+    expect(res.body.error.code).toBe('field_not_found');
+  });
+});

@@ -69,4 +69,14 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     const f = await repo.facets();
     expect(f.sources.length).toBeGreaterThan(0);
   });
+
+  it('fieldValues : types et codes depuis v_field_allowed_values', async () => {
+    const fields = await repo.fieldValues(['WellnessCenterFreeWellnessCenterServices', 'ProductCheckIn', 'Inconnu']);
+    const byName = new Map(fields.map((f) => [f.pimField, f]));
+    expect(byName.has('Inconnu')).toBe(false);
+    expect(byName.get('ProductCheckIn')).toMatchObject({ dataType: 'String', values: [] });
+    const spa = byName.get('WellnessCenterFreeWellnessCenterServices')!;
+    expect(spa).toMatchObject({ dataType: 'CVL', multivalue: true });
+    expect(spa.values.map((v) => v.key)).toContain('Hammam');
+  });
 });

@@ -40,6 +40,13 @@ export class HotelsController {
     return this.repo.facets();
   }
 
+  @Get('fields/:pimField/values')
+  async fieldValues(@Param('pimField') pimField: string) {
+    const [field] = await this.repo.fieldValues([pimField]);
+    if (!field) throw new ApiError(HttpStatus.NOT_FOUND, 'field_not_found', `Champ ${pimField} inconnu du modèle PIM.`);
+    return field;
+  }
+
   @Get('hotels/:rid')
   async hotel(@Param('rid') rid: string) {
     const detail = await this.repo.hotel(rid);
