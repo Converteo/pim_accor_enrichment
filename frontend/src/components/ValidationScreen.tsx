@@ -11,7 +11,7 @@ import {
   fetchHotelsDetail,
   fetchStats,
 } from "@/data/source";
-import { applyDecisions, cityLine, formatScore, withReviewCount } from "@/domain/rules";
+import { applyDecisions, cityLine, formatScore, matchKey, withReviewCount } from "@/domain/rules";
 import type {
   EnrichmentDecisionItem,
   EnrichmentValue,
@@ -26,10 +26,13 @@ import { BulkBar } from "./BulkBar";
 import { Drawer } from "./Drawer";
 import { FicheTable } from "./FicheTable";
 import { HotelDetailView } from "./HotelDetailView";
+import { MatchDetailView } from "./MatchDetailView";
+import { MatchTable } from "./MatchTable";
 import { errorText, sourceLabel } from "./labels";
 import { Toolbar } from "./Toolbar";
 import { Topbar } from "./Topbar";
 import { Notice, type NoticeState } from "./Notice";
+import { useMatchReview } from "./useMatchReview";
 import { usePagedList } from "./usePagedList";
 import { ValueDecision } from "./ValueDecision";
 import styles from "./ValidationScreen.module.css";
@@ -98,6 +101,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [ficheComment, setFicheComment] = useState("");
+  const [matchComment, setMatchComment] = useState("");
   // Read after an await: the fiche open when the back answers, not when the reviewer clicked.
   const openRidRef = useRef(openRid);
 
@@ -111,6 +115,28 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     fetchHotels(hotelView, query, cursor),
     (hotel) => hotel.rid,
   );
+  const matches = useMatchReview({
+    source: query.source,
+    onResult: ({ decision, accepted, refused }) => {
+      setNotice(
+        refused.length > 0
+          ? {
+              tone: "error",
+              text: t("decide.refused", { count: refused.length }),
+              details: refused.map(({ match, message }) => `${match?.pim.name ?? match?.rid ?? "—"} : ${message}`),
+            }
+          : {
+              tone: "success",
+              text: t(decision === "human_approved" ? "matches.savedApproved" : "matches.saved", {
+                count: accepted,
+              }),
+            },
+      );
+      setMatchComment("");
+      fetchStats().then(setStats, () => undefined);
+    },
+    onError: (error) => setNotice({ tone: "error", text: failedText(error) }),
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(filters), filters.search === query.search ? 0 : 300);
@@ -127,11 +153,13 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   function onFilter(patch: Partial<Filters>) {
     setFilters((current) => ({ ...current, ...patch }));
     setSelected(new Set());
+    matches.setSelected(new Set());
   }
 
   function onTab(next: TabKey) {
     setTab(next);
     setSelected(new Set());
+    matches.setSelected(new Set());
     if (next !== "matches") setHotelView(next);
   }
 
@@ -282,7 +310,29 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     loadDetail(rid);
   }
 
-  const onClose = useCallback(() => setOpenRid(null), []);
+  const closeMatch = matches.close;
+  const onClose = useCallback(() => {
+    setOpenRid(null);
+    closeMatch();
+  }, [closeMatch]);
+
+  function onOpenMatch(key: string) {
+    setOpenRid(null);
+    setMatchComment("");
+    matches.setOpenKey(key);
+  }
+
+  function onToggleMatch(key: string, checked: boolean) {
+    matches.setSelected((current) => {
+      const next = new Set(current);
+      if (checked) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  const openMatch = matches.open;
+  const drawerOpen = openRid !== null || openMatch !== null;
 
   const summary = hotels.items.find((hotel) => hotel.rid === detail?.rid);
   const shownHotel = detail?.data?.hotel ?? summary;
@@ -290,7 +340,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   return (
     <>
       {/* The drawer is modal: the page behind it leaves the focus order and the accessibility tree. */}
-      <div inert={openRid !== null}>
+      <div inert={drawerOpen}>
         <Topbar stats={stats} author={author} />
         <main className={styles.app}>
           <Toolbar
@@ -302,7 +352,29 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             onTab={onTab}
           />
           {tab === "matches" ? (
-            <p className={styles.empty}>{t("list.soon")}</p>
+            <>
+              {matches.list.status === "ready" && matches.list.items.length > 0 ? (
+                <MatchTable
+                  rows={matches.list.items}
+                  selected={matches.selected}
+                  onToggleRow={onToggleMatch}
+                  onToggleVisible={(checked) =>
+                    matches.setSelected(checked ? new Set(matches.list.items.map(matchKey)) : new Set())
+                  }
+                  onOpen={onOpenMatch}
+                />
+              ) : null}
+              <ListFooter
+                status={matches.list.status}
+                count={matches.list.items.length}
+                empty={t("matches.empty")}
+                error={matches.list.error}
+                hasMore={matches.list.hasMore}
+                loadingMore={matches.list.loadingMore}
+                onMore={matches.list.loadMore}
+                onRetry={matches.list.reload}
+              />
+            </>
           ) : (
             <>
               {hotels.status === "ready" && hotels.items.length > 0 ? (
@@ -422,12 +494,75 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
           </p>
         )}
       </Drawer>
-      <BulkBar
-        count={tab === "review" ? selected.size : 0}
-        busy={busy}
-        onCancel={() => setSelected(new Set())}
-        onDecide={decideSelection}
-      />
+      <Drawer
+        open={openMatch !== null}
+        eyebrow={
+          openMatch
+            ? t("drawer.eyebrow", {
+                brand: openMatch.pim.brand ?? "—",
+                place: cityLine(openMatch.pim),
+                rid: openMatch.rid,
+              })
+            : ""
+        }
+        title={openMatch?.pim.name ?? openMatch?.rid ?? ""}
+        meta={
+          openMatch ? (
+            <span className={styles.sources}>{sourceLabel(t, openMatch.source)}</span>
+          ) : null
+        }
+        footer={
+          openMatch ? (
+            <>
+              <input
+                className={`field ${styles.comment}`}
+                type="text"
+                value={matchComment}
+                maxLength={500}
+                placeholder={t("matches.comment")}
+                aria-label={t("matches.comment")}
+                onChange={(event) => setMatchComment(event.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={matches.busy}
+                onClick={() => void matches.decide([matchKey(openMatch)], "human_rejected", matchComment)}
+              >
+                {t("matches.reject")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={matches.busy}
+                onClick={() => void matches.decide([matchKey(openMatch)], "human_approved", matchComment)}
+              >
+                {t("matches.approve")}
+              </button>
+            </>
+          ) : null
+        }
+        onClose={onClose}
+      >
+        {openMatch ? <MatchDetailView match={openMatch} /> : null}
+      </Drawer>
+      {tab === "matches" ? (
+        <BulkBar
+          labels="bulkMatches"
+          count={matches.selected.size}
+          busy={matches.busy}
+          onCancel={() => matches.setSelected(new Set())}
+          onDecide={(decision, comment) => matches.decide([...matches.selected], decision, comment)}
+        />
+      ) : (
+        <BulkBar
+          labels="bulk"
+          count={tab === "review" ? selected.size : 0}
+          busy={busy}
+          onCancel={() => setSelected(new Set())}
+          onDecide={decideSelection}
+        />
+      )}
       <Notice notice={notice} onClose={() => setNotice(null)} />
     </>
   );

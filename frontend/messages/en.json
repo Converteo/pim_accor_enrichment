@@ -76,8 +76,7 @@
     "error": "The list could not be loaded.",
     "retry": "Try again",
     "loadMore": "Load more",
-    "shown": "{count, plural, one {# record shown} other {# records shown}}",
-    "soon": "Matches to validate are coming in the next version of this screen."
+    "shown": "{count, plural, one {# record shown} other {# records shown}}"
   },
   "bulk": {
     "cancel": "Cancel",
@@ -208,12 +207,17 @@
       "ok": "Consistent",
       "to_check": "To check",
       "rejected": "Rejected"
-    }
+    },
+    "saved": "{count, plural, =0 {No match saved.} one {# match rejected.} other {# matches rejected.}}",
+    "savedApproved": "{count, plural, =0 {No match saved.} one {# match approved: its values will come with the next pipeline run.} other {# matches approved: their values will come with the next pipeline run.}}"
   },
   "bulkMatches": {
+    "cancel": "Cancel",
+    "reject": "{count, plural, one {Reject the match} other {Reject the # matches}}",
+    "validate": "{count, plural, one {Approve the match} other {Approve the # matches}}",
     "count": "{count, plural, one {# match selected} other {# matches selected}}",
-    "reject": "Reject",
-    "validate": "Approve"
+    "comment": "Optional comment",
+    "busy": "Saving…"
   },
   "export": {
     "title": "PIM enhanced export",

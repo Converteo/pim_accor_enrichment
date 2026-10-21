@@ -76,8 +76,7 @@
     "error": "Impossible de charger la liste.",
     "retry": "Réessayer",
     "loadMore": "Charger plus",
-    "shown": "{count, plural, one {# fiche affichée} other {# fiches affichées}}",
-    "soon": "Les rapprochements à valider arrivent dans la prochaine version de l’écran."
+    "shown": "{count, plural, one {# fiche affichée} other {# fiches affichées}}"
   },
   "bulk": {
     "cancel": "Annuler",
@@ -208,12 +207,17 @@
       "ok": "Concordant",
       "to_check": "À vérifier",
       "rejected": "Rejeté"
-    }
+    },
+    "saved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement rejeté.} other {# rapprochements rejetés.}}",
+    "savedApproved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement validé : ses valeurs arriveront au prochain passage du pipeline.} other {# rapprochements validés : leurs valeurs arriveront au prochain passage du pipeline.}}"
   },
   "bulkMatches": {
+    "cancel": "Annuler",
+    "reject": "{count, plural, one {Rejeter le rapprochement} other {Rejeter les # rapprochements}}",
+    "validate": "{count, plural, one {Valider le rapprochement} other {Valider les # rapprochements}}",
     "count": "{count, plural, one {# rapprochement sélectionné} other {# rapprochements sélectionnés}}",
-    "reject": "Rejeter",
-    "validate": "Valider"
+    "comment": "Commentaire facultatif",
+    "busy": "Enregistrement…"
   },
   "export": {
     "title": "Export du PIM enhanced",

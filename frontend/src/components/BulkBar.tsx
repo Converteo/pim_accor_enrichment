@@ -1,22 +1,27 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ValueDecision } from "@/domain/types";
+
+// A bulk decision approves or rejects; corrections are made value by value.
+type BulkDecision = Exclude<ValueDecision, "human_corrected">;
 import styles from "./BulkBar.module.css";
 
 interface BulkBarProps {
+  /** Messages of the fiches or of the matches tab. */
+  labels: "bulk" | "bulkMatches";
   count: number;
   busy: boolean;
   onCancel: () => void;
   /** Resolves to true once saved: the comment is kept otherwise. */
-  onDecide: (decision: ValueDecision, comment: string) => Promise<boolean>;
+  onDecide: (decision: BulkDecision, comment: string) => Promise<boolean>;
 }
 
-/** Decides every value to review of the selected fiches. */
-export function BulkBar({ count, busy, onCancel, onDecide }: BulkBarProps) {
-  const t = useTranslations("bulk");
+/** Decides the selected fiches (all their values to review) or the selected matches. */
+export function BulkBar({ labels, count, busy, onCancel, onDecide }: BulkBarProps) {
+  const t = useTranslations(labels);
   const [comment, setComment] = useState("");
 
-  function decide(decision: ValueDecision) {
+  function decide(decision: BulkDecision) {
     void onDecide(decision, comment).then((saved) => saved && setComment(""));
   }
 
