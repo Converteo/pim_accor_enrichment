@@ -59,6 +59,18 @@
   border-radius: 4px;
 }
 
+.navEnd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.noUser {
+  color: var(--offer);
+  background: var(--offer-soft);
+}
+
 /* Grey-blue hero band, as behind the booking engine */
 .hero {
   background: var(--band);
@@ -96,6 +108,10 @@
 
   .product {
     font-size: 14px;
+  }
+
+  .navEnd .badge {
+    display: none;
   }
 
   .title {

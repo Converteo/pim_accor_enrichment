@@ -1,12 +1,10 @@
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import type { Stats } from "@/domain/types";
 import styles from "./KpiStrip.module.css";
 
 interface KpiStripProps {
-  total: number;
-  autoPercent: number;
-  reviewCount: number;
-  failureCount: number;
+  stats: Stats | null;
 }
 
 function Icon({ children }: { children: ReactNode }) {
@@ -28,55 +26,59 @@ function Icon({ children }: { children: ReactNode }) {
 }
 
 const ICONS = {
-  processed: (
+  hotelsToReview: (
     <Icon>
       <rect x="4" y="3" width="13" height="17" rx="2" />
       <path d="M8 8h5M8 12h5M8 16h3" />
       <path d="M20 7v12a2 2 0 0 1-2 2H8" />
     </Icon>
   ),
-  auto: (
-    <Icon>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="m8.5 12.2 2.4 2.4 4.6-5" />
-    </Icon>
-  ),
-  review: (
+  valuesToReview: (
     <Icon>
       <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
       <circle cx="12" cy="12" r="3" />
     </Icon>
   ),
-  failure: (
+  matchesToReview: (
     <Icon>
-      <path d="M12 3.5 21.5 20h-19L12 3.5Z" />
-      <path d="M12 10v4.5M12 17.2v.1" />
+      <path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" />
+      <path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" />
+    </Icon>
+  ),
+  valuesPending: (
+    <Icon>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </Icon>
+  ),
+  valuesApproved: (
+    <Icon>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m8.5 12.2 2.4 2.4 4.6-5" />
     </Icon>
   ),
 };
 
-export function KpiStrip({
-  total,
-  autoPercent,
-  reviewCount,
-  failureCount,
-}: KpiStripProps) {
-  const t = useTranslations();
+const ITEMS = [
+  { key: "hotelsToReview", tone: "" },
+  { key: "valuesToReview", tone: "" },
+  { key: "matchesToReview", tone: styles.warn },
+  { key: "valuesPending", tone: styles.warn },
+  { key: "valuesApproved", tone: styles.success },
+] as const;
 
-  const items = [
-    { key: "processed", value: String(total), tone: "" },
-    { key: "auto", value: t("percent", { value: autoPercent }), tone: styles.success },
-    { key: "review", value: String(reviewCount), tone: styles.warn },
-    { key: "failure", value: String(failureCount), tone: styles.danger },
-  ] as const;
+export function KpiStrip({ stats }: KpiStripProps) {
+  const t = useTranslations();
 
   return (
     <div className={styles.kpis}>
-      {items.map((item) => (
+      {ITEMS.map((item) => (
         <div key={item.key} className={styles.chip}>
           <span className={styles.tile}>{ICONS[item.key]}</span>
           <div>
-            <div className={`${styles.value} ${item.tone}`}>{item.value}</div>
+            <div className={`${styles.value} ${item.tone}`}>
+              {stats ? t("number", { value: stats[item.key] }) : "—"}
+            </div>
             <div className={styles.label}>{t(`kpi.${item.key}`)}</div>
           </div>
         </div>

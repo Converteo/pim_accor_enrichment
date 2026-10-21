@@ -52,11 +52,11 @@
   --neutral-soft: #eceef0; /* hover-surface-container-hi */
 
   /* Status mapping, brand colours only */
-  --success: var(--brand); /* Validée = bleu nuit */
+  --success: var(--brand); /* validé = bleu nuit */
   --success-soft: var(--brand-soft);
-  --warn: var(--neutral-text); /* À revoir = gris neutre */
+  --warn: var(--neutral-text); /* en cours = gris neutre */
   --warn-soft: var(--neutral-soft);
-  --danger: var(--offer); /* Échec / rejet = magenta */
+  --danger: var(--offer); /* rejet = magenta */
   --danger-soft: var(--offer-soft);
 
   --shadow: 0 16px 40px -16px rgba(5, 0, 51, 0.28);
@@ -277,48 +277,48 @@ h3 {
   display: inline-block;
 }
 
-/* Validée: solid navy badge ("high" emphasis) */
-.pill-valide {
+/* Approved: solid navy badge ("high" emphasis) */
+.pill-approved {
   background: var(--brand);
   color: #ffffff;
 }
 
-.pill-valide .dot {
+.pill-approved .dot {
   background: #ffffff;
 }
 
-.pill-haute {
+.pill-review {
   background: var(--accent-soft);
   color: var(--accent);
   box-shadow: inset 0 0 0 1px #ccd2ff;
 }
 
-.pill-revoir {
+.pill-pending {
   background: var(--neutral-soft);
   color: var(--neutral-text);
 }
 
-.pill-echec {
+.pill-rejected {
   background: var(--offer-soft);
   color: var(--offer);
 }
 
-.dot-valide {
+.dot-approved {
   background: var(--brand);
   color: var(--brand);
 }
 
-.dot-haute {
+.dot-review {
   background: var(--accent);
   color: var(--accent);
 }
 
-.dot-revoir {
+.dot-pending {
   background: var(--neutral);
   color: var(--neutral);
 }
 
-.dot-echec {
+.dot-rejected {
   background: var(--offer);
   color: var(--offer);
 }
@@ -328,4 +328,17 @@ input[type="checkbox"] {
   height: 18px;
   accent-color: var(--brand);
   cursor: pointer;
+}
+
+.btn:disabled,
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.btn-small {
+  padding: 6px 14px;
+  font-size: 13px;
+  line-height: 18px;
 }
