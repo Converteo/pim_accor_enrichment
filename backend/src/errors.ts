@@ -1,5 +1,9 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { z } from 'zod';
+
+// Messages de validation en français, renvoyés tels quels à l'interface
+z.config(z.locales.fr());
 
 /** Erreur renvoyée telle quelle à l'interface : `{ error: { code, message } }`, message en français. */
 export class ApiError extends HttpException {
@@ -14,6 +18,10 @@ const CODES: Partial<Record<number, [string, string]>> = {
   404: ['not_found', 'Ressource introuvable.'],
   409: ['conflict', "Conflit avec l'état actuel."],
 };
+
+/** Erreurs des clients Google : ApiError (BigQuery, Storage, champs code/errors) ou GoogleError (gRPC, code numérique). */
+const isGcpError = (e: unknown) =>
+  e instanceof Error && ('errors' in e || typeof (e as { code?: unknown }).code === 'number');
 
 @Catch()
 export class ErrorFilter implements ExceptionFilter {
@@ -32,7 +40,7 @@ export class ErrorFilter implements ExceptionFilter {
       res.status(status).json({ error: { code, message } });
       return;
     }
-    // Tout le reste vient de BigQuery ou de GCP : 502, détail dans les logs seulement
+    // Détail dans les logs seulement ; 502 pour une erreur renvoyée par BigQuery ou une API GCP, 500 sinon (bug du back)
     const trace = req.header('x-cloud-trace-context')?.split('/')[0];
     this.logger.error({
       message: exception instanceof Error ? exception.message : String(exception),
@@ -40,8 +48,25 @@ export class ErrorFilter implements ExceptionFilter {
       httpRequest: { requestMethod: req.method, requestUrl: req.originalUrl },
       ...(trace && { 'logging.googleapis.com/trace': `projects/${process.env.GCP_PROJECT_ID}/traces/${trace}` }),
     });
-    res
-      .status(HttpStatus.BAD_GATEWAY)
-      .json({ error: { code: 'upstream_error', message: 'Erreur BigQuery ou GCP, réessayez plus tard.' } });
+    if (isGcpError(exception)) {
+      res
+        .status(HttpStatus.BAD_GATEWAY)
+        .json({ error: { code: 'upstream_error', message: 'Erreur BigQuery ou GCP, réessayez plus tard.' } });
+    } else {
+      res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .json({ error: { code: 'internal_error', message: 'Erreur interne du serveur.' } });
+    }
   }
+}
+
+/** Valide une entrée (query, corps) ; 400 avec le chemin du premier champ invalide sinon. */
+export function parse<T>(schema: z.ZodType<T>, input: unknown): T {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    const where = issue?.path.length ? ` (${issue.path.join('.')})` : '';
+    throw new ApiError(HttpStatus.BAD_REQUEST, 'invalid_request', `Requête invalide${where} : ${issue?.message ?? ''}`);
+  }
+  return result.data;
 }

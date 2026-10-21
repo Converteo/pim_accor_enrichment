@@ -14,6 +14,10 @@ Datasets : `cvto_accor_pim_enrichment_<env>_euw1_{matching,enhanced,validation}`
 - Le back n'est appelable que par le SA du front (jeton d'identité Google, audience = URL du back). Le navigateur appelle uniquement le relais `/api/*` du front, même chemin que le back (préfixe `/api` retiré).
 - Erreurs : `{ "error": { "code": "string", "message": "texte FR" } }` ; 400 validation, 401 auteur manquant, 404, 409 conflit d'état, 502 erreur BigQuery/GCP.
 - Pagination : `?limit=50&cursor=<opaque>` → `{ items, nextCursor }` (`nextCursor` null en fin de liste).
+  Curseur propre à une liste (`view=review`, `view=pending`, `/matches`) : réutilisé sur une autre → 400 `invalid_cursor`.
+  La clé de tri contient des compteurs (priorité, score moyen, nombre de champs) : une fiche modifiée entre deux pages peut
+  revenir dans la page suivante → **le front dédoublonne par `rid`** (par `rid|source|sourceHash` pour `/matches`).
+- 500 `internal_error` : erreur du back lui-même (502 reste réservé aux erreurs BigQuery/GCP).
 
 ## Types
 ```ts
@@ -74,10 +78,10 @@ interface FieldValues { pimField: string; dataType: string; multivalue: boolean;
 | Méthode | Chemin | Réponse | Notes |
 |---|---|---|---|
 | GET | `/healthz` | `{status:'ok'}` | |
-| GET | `/stats` | `Stats` | |
+| GET | `/stats` | `Stats` | `pendingForExport` = compte du job d'export ; il peut inclure des champs `pending_enrichment` d'hôtels dont plus aucun rapprochement n'est validé (invisibles dans les listes) |
 | GET | `/hotels?view&brand&source&family&priority&search&limit&cursor` | `{items: HotelSummary[], nextCursor}` | `view=review` (défaut) : fiches avec ≥1 valeur à relire ; filtre `EXISTS v_approved_matches` obligatoire ; tri priorité min puis avgScore desc. `view=pending` : fiches avec ≥1 champ `pending_enrichment` (filtres `family`/`priority` appliqués à ces champs, `source` aux sources validées), tri pendingCount desc |
 | GET | `/hotels/facets` | `{brands: string[], sources: string[]}` | listes des filtres |
-| GET | `/hotels/:rid` | `HotelDetail` | 404 si inconnu |
+| GET | `/hotels/:rid` | `HotelDetail` | 404 si inconnu ; `hotel.sources` = toutes les sources dont le rapprochement est validé (PIM-19), pas seulement celles qui ont des valeurs à relire |
 | POST | `/decisions/enrichments` | `{accepted: string[], rejected: {enrichmentId, code, message}[]}` | corps `{items: {enrichmentId, decision: 'human_approved'|'human_rejected'|'human_corrected', correctedValue?, comment?}[]}` ; contrôles du contrat § 3.2-3.3 ; un seul INSERT |
 | GET | `/fields/:pimField/values` | `FieldValues` | codes autorisés (vue `enhanced.v_field_allowed_values`, livrée par la session infra) |
 | GET | `/matches?source&limit&cursor` | `{items: MatchItem[], nextCursor}` | `final_status = 'needs_review'` |

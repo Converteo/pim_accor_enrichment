@@ -11,15 +11,15 @@ export. Contrat : [docs/api-contract.md](docs/api-contract.md). Règles métier 
 
 ## Configuration
 
-| Variable | Exemple (dev) |
-| --- | --- |
-| `GCP_PROJECT_ID` | `cvto-accor-pim-enrichment-dev` |
-| `REGION` | `europe-west1` |
-| `BQ_MATCHING_DATASET`, `BQ_ENHANCED_DATASET`, `BQ_VALIDATION_DATASET` | `cvto_accor_pim_enrichment_dev_euw1_matching`… |
-| `EXPORT_JOB` | `gcrj-cvto-accor-pim-enrichment-dev-euw1-export` |
-| `EXPORTS_BUCKET` | `bkt-cvto-accor-pim-enrichment-dev-euw1-exports` |
-| `PORT` | injecté par Cloud Run (8080) ; `3101` en local |
-| `GOOGLE_IMPERSONATE_SERVICE_ACCOUNT` | local uniquement, voir ci-dessous |
+| Variable                                                              | Exemple (dev)                                    |
+| --------------------------------------------------------------------- | ------------------------------------------------ |
+| `GCP_PROJECT_ID`                                                      | `cvto-accor-pim-enrichment-dev`                  |
+| `REGION`                                                              | `europe-west1`                                   |
+| `BQ_MATCHING_DATASET`, `BQ_ENHANCED_DATASET`, `BQ_VALIDATION_DATASET` | `cvto_accor_pim_enrichment_dev_euw1_matching`…   |
+| `EXPORT_JOB`                                                          | `gcrj-cvto-accor-pim-enrichment-dev-euw1-export` |
+| `EXPORTS_BUCKET`                                                      | `bkt-cvto-accor-pim-enrichment-dev-euw1-exports` |
+| `PORT`                                                                | injecté par Cloud Run (8080) ; `3101` en local   |
+| `GOOGLE_IMPERSONATE_SERVICE_ACCOUNT`                                  | local uniquement, voir ci-dessous                |
 
 Une variable manquante arrête le démarrage avec son nom dans le message.
 

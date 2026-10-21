@@ -5,6 +5,8 @@ import { CONFIG, Config } from './config.js';
 import { ErrorFilter } from './errors.js';
 import { Bq, createBq, gcpAuthClient } from './gcp.js';
 import { HealthController } from './health.controller.js';
+import { HotelsController } from './hotels.controller.js';
+import { MatchesController } from './matches.controller.js';
 import { BigQueryRepository, Repository } from './repository.js';
 
 export const GCP_AUTH = Symbol('GCP_AUTH');
@@ -14,7 +16,7 @@ export class AppModule {
   static forRoot(config: Config): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController],
+      controllers: [HealthController, HotelsController, MatchesController],
       providers: [
         { provide: CONFIG, useValue: config },
         { provide: APP_FILTER, useClass: ErrorFilter },
