@@ -11,7 +11,7 @@ Datasets (un jeu par environnement, `<base>` = `cvto_accor_pim_enrichment_<env>_
 | `<base>_enhanced` | lecture | champs à enrichir (`enrichment_candidates`), réponses de l'agent (`enrichment_proposals`), vues `v_enrichments`, `v_approved_enrichments` et `v_field_allowed_values` (codes autorisés par champ, vue autorisée sur `raw`), historique `exports` |
 | `<base>_validation` | lecture et écriture | décisions humaines (`match_decisions`, `enrichment_decisions`) |
 
-Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.invoker` sur le job d'export et la lecture du bucket des exports.
+Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.jobsExecutorWithOverrides` sur le job d'export (lancement avec surcharge d'env, suivi de l'exécution) et la lecture du bucket des exports.
 Les schémas des tables sont dans `pipeline/jobs/src/schemas/`, les vues dans `pipeline/jobs/src/views/`.
 
 ## 1. Rapprochements (bloquant)
@@ -73,7 +73,7 @@ une ligne de `v_enrichments`, `score` / 100 pour l'échelle 0-1. À caler avec l
 ## 3. Export
 
 Le fichier plat sort quand plus rien n'est en attente. Le backend lance le job `gcrj-<base>-export` (API Cloud Run
-`jobs.run`). Le job vérifie lui-même que rien n'est en attente et refuse sinon : aucun rapprochement `pending_judgment` ou
+`jobs.run`, surcharge d'env `TRIGGERED_BY` = auteur ; suivi par `executions.get`). Le job vérifie lui-même que rien n'est en attente et refuse sinon : aucun rapprochement `pending_judgment` ou
 `needs_review`, aucune valeur `pending_enrichment`, ni `needs_review` sur un rapprochement validé. Il écrit dans `bkt-<base>-exports/export/<date>/` et ajoute une ligne dans `<base>_enhanced.exports`.
 
 Nombre de décisions en attente (pour griser le bouton) :

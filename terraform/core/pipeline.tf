@@ -409,8 +409,8 @@ module "pipeline_jobs" {
 
   iam_members = concat(
     [{ role = "roles/run.developer", member = local.build_sa_member }],
-    # Le backend lance l'export depuis l'interface
-    each.key == "export" ? [{ role = "roles/run.invoker", member = module.iam.members["back"] }] : [],
+    # Le backend lance l'export depuis l'interface (surcharge TRIGGERED_BY = auteur) et suit l'exécution
+    each.key == "export" ? [{ role = "roles/run.jobsExecutorWithOverrides", member = module.iam.members["back"] }] : [],
   )
 
   depends_on = [module.apis, module.iam_pipeline]
