@@ -59,7 +59,9 @@ environments = {
       "roles/iap.admin",                     # Identity-Aware Proxy devant l'interface (accès des relecteurs)
     ]
 
-    front_public  = true
+    # Front réservé aux comptes Converteo via IAP (plus d'accès public)
+    front_public  = false
+    front_iap     = true
     front_scaling = { min = 0, max = 2 }
     back_scaling  = { min = 0, max = 2 }
 
