@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { EnrichmentValue, ValueDecision as Decision } from "@/domain/types";
 import { CorrectionForm } from "./CorrectionForm";
 import styles from "./ValueDecision.module.css";
@@ -18,6 +18,7 @@ export function ValueDecision({ value, busy, onDecide }: ValueDecisionProps) {
   const [commenting, setCommenting] = useState(false);
   const [comment, setComment] = useState("");
   const [correcting, setCorrecting] = useState(false);
+  const correctRef = useRef<HTMLButtonElement>(null);
   const label = value.label;
 
   return (
@@ -42,9 +43,11 @@ export function ValueDecision({ value, busy, onDecide }: ValueDecisionProps) {
         )}
         <div className={styles.buttons}>
           <button
+            ref={correctRef}
             type="button"
             className="btn btn-ghost btn-small"
             disabled={busy}
+            aria-label={tCorrect("openFor", { label })}
             aria-expanded={correcting}
             onClick={() => setCorrecting((open) => !open)}
           >
@@ -74,7 +77,10 @@ export function ValueDecision({ value, busy, onDecide }: ValueDecisionProps) {
         <CorrectionForm
           value={value}
           busy={busy}
-          onCancel={() => setCorrecting(false)}
+          onCancel={() => {
+            setCorrecting(false);
+            correctRef.current?.focus();
+          }}
           onSubmit={(corrected) => onDecide("human_corrected", comment, corrected)}
         />
       ) : null}

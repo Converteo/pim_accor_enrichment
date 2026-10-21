@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { fetchFieldValues } from "@/data/source";
 import { isTime, joinCodes, splitCodes } from "@/domain/rules";
 import type { EnrichmentValue, FieldValues } from "@/domain/types";
@@ -31,6 +31,7 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
   const [error, setError] = useState<unknown>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [text, setText] = useState(value.value ?? "");
+  const titleId = useId();
 
   useEffect(() => {
     let current = true;
@@ -55,6 +56,14 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
       </p>
     );
   }
+  // A list field whose codes are missing from the view: free text would only be refused by the back.
+  if (field?.dataType === "CVL" && field.values.length === 0) {
+    return (
+      <p className={styles.error} role="alert">
+        {t("loadError")}
+      </p>
+    );
+  }
   if (!field) {
     return (
       <p className={styles.hint} role="status">
@@ -65,7 +74,15 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
 
   const hasList = field.values.length > 0;
   const input = inputFor(field, value.value);
-  const corrected = hasList ? joinCodes(codes) : text.trim();
+  // Codes in the list's order: the same selection always gives the same value.
+  const corrected = hasList
+    ? joinCodes(field.values.map((option) => option.key).filter((key) => codes.includes(key)))
+    : input === "number" && text.trim() !== ""
+      ? String(Number(text))
+      : text.trim();
+  const unchanged = hasList
+    ? corrected === joinCodes(field.values.map((option) => option.key).filter((key) => splitCodes(value.value).includes(key)))
+    : corrected === (value.value ?? "");
 
   function toggle(key: string, checked: boolean) {
     setCodes((current) => (checked ? [...current, key] : current.filter((code) => code !== key)));
@@ -73,14 +90,16 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (corrected !== "") onSubmit(corrected);
+    if (corrected !== "" && !unchanged) onSubmit(corrected);
   }
 
   return (
-    <form className={styles.form} onSubmit={submit}>
-      <span className={styles.title}>{t("title", { label: value.label })}</span>
+    <form className={styles.form} aria-labelledby={titleId} onSubmit={submit}>
+      <span id={titleId} className={styles.title}>
+        {t("title", { label: value.label })}
+      </span>
       {hasList && field.multivalue ? (
-        <fieldset className={styles.options}>
+        <fieldset className={styles.options} aria-describedby={titleId}>
           <legend className={styles.hint}>{t("several")}</legend>
           {field.values.map((option) => (
             <label key={option.key} className={styles.option}>
@@ -96,7 +115,7 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
       ) : hasList ? (
         <select
           className="field"
-          aria-label={t("choose")}
+          aria-labelledby={titleId}
           value={codes[0] ?? ""}
           onChange={(event) => setCodes(event.target.value ? [event.target.value] : [])}
         >
@@ -110,7 +129,7 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
       ) : input === "boolean" ? (
         <select
           className="field"
-          aria-label={t("choose")}
+          aria-labelledby={titleId}
           value={text}
           onChange={(event) => setText(event.target.value)}
         >
@@ -124,7 +143,7 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
           type={input}
           min={input === "number" ? 0 : undefined}
           step={input === "number" ? (field.dataType === "Integer" ? 1 : "any") : undefined}
-          aria-label={t("valueLabel")}
+          aria-labelledby={titleId}
           value={text}
           onChange={(event) => setText(event.target.value)}
         />
@@ -133,7 +152,7 @@ export function CorrectionForm({ value, busy, onCancel, onSubmit }: CorrectionFo
         <button type="button" className="btn btn-ghost btn-small" onClick={onCancel}>
           {t("cancel")}
         </button>
-        <button type="submit" className="btn btn-primary btn-small" disabled={busy || corrected === ""}>
+        <button type="submit" className="btn btn-primary btn-small" disabled={busy || corrected === "" || unchanged}>
           {t("submit")}
         </button>
       </div>

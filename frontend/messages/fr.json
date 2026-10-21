@@ -168,11 +168,11 @@
     "loadError": "Impossible de charger les valeurs autorisées.",
     "several": "Plusieurs valeurs possibles",
     "choose": "Choisir une valeur",
-    "valueLabel": "Valeur corrigée",
     "yes": "Oui",
     "no": "Non",
     "cancel": "Annuler",
-    "submit": "Enregistrer la correction"
+    "submit": "Enregistrer la correction",
+    "openFor": "Corriger « {label} »"
   },
   "matches": {
     "pim": "Fiche PIM",

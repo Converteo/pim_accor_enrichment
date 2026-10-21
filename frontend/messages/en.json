@@ -168,11 +168,11 @@
     "loadError": "The allowed values could not be loaded.",
     "several": "Several values allowed",
     "choose": "Choose a value",
-    "valueLabel": "Corrected value",
     "yes": "Yes",
     "no": "No",
     "cancel": "Cancel",
-    "submit": "Save the correction"
+    "submit": "Save the correction",
+    "openFor": "Correct “{label}”"
   },
   "matches": {
     "pim": "PIM record",
