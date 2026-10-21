@@ -74,6 +74,12 @@ variable "invoker_members" {
   default     = []
 }
 
+variable "iap_enabled" {
+  description = "IAP directement sur le service (sans load balancer)."
+  type        = bool
+  default     = false
+}
+
 variable "deletion_protection" {
   type    = bool
   default = false

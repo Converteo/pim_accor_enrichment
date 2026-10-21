@@ -22,6 +22,10 @@ locals {
 
   # Identité GitHub autorisée à agir en tant que le SA de build de cet env : un push sur SA branche
   github_branch_principal = "principalSet://iam.googleapis.com/${local.wif_pool_name}/attribute.ref/refs/heads/${local.cfg.deploy_branch}"
+
+  front_name = "gcr-${local.base}-front"
+  # Agent de service IAP : c'est lui qui appelle le front une fois l'utilisateur authentifié
+  iap_agent_member = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-iap.iam.gserviceaccount.com"
 }
 
 data "google_project" "this" {
@@ -33,7 +37,7 @@ module "apis" {
   source = "../modules/apis"
 
   project_id = var.project_id
-  services   = var.apis
+  services   = local.cfg.front_iap ? setunion(var.apis, ["iap.googleapis.com"]) : var.apis
 }
 
 # ---------- Bucket de state Terraform (unique au projet) ----------
@@ -66,7 +70,7 @@ module "iam" {
     back = {
       account_id   = "sa-${local.env}-backend"
       display_name = "Cloud Run backend (${local.env})"
-      description  = "Identité d'exécution du Cloud Run backend (lecture/écriture des buckets PIM et OTA)."
+      description  = "Identité d'exécution du Cloud Run backend (lecture des vues, écriture des décisions, lancement de l'export)."
     }
     build = {
       account_id   = "sa-${local.env}-cloudbuild"
@@ -129,10 +133,6 @@ module "bucket_pim_files" {
   versioning                = true
   noncurrent_retention_days = var.files_noncurrent_retention_days
 
-  iam_members = [
-    { role = "roles/storage.objectAdmin", member = module.iam.members["back"] },
-  ]
-
   depends_on = [module.apis]
 }
 
@@ -144,10 +144,6 @@ module "bucket_ota_files" {
   location                  = var.region
   versioning                = true
   noncurrent_retention_days = var.files_noncurrent_retention_days
-
-  iam_members = [
-    { role = "roles/storage.objectAdmin", member = module.iam.members["back"] },
-  ]
 
   depends_on = [module.apis]
 }
@@ -173,9 +169,15 @@ module "cloud_run_back" {
     { role = "roles/run.developer", member = local.build_sa_member },
   ]
 
+  # Lues par NestJS (noms fixés avec le back, voir pipeline/docs/contrat-back.md)
   env = {
-    PIM_FILES_BUCKET = module.bucket_pim_files.name
-    OTA_FILES_BUCKET = module.bucket_ota_files.name
+    GCP_PROJECT_ID        = var.project_id
+    REGION                = var.region
+    BQ_MATCHING_DATASET   = google_bigquery_dataset.pipeline["matching"].dataset_id
+    BQ_ENHANCED_DATASET   = google_bigquery_dataset.pipeline["enhanced"].dataset_id
+    BQ_VALIDATION_DATASET = google_bigquery_dataset.pipeline["validation"].dataset_id
+    EXPORT_JOB            = module.pipeline_jobs["export"].name
+    EXPORTS_BUCKET        = module.bucket_exports.name
   }
 
   depends_on = [module.apis]
@@ -187,14 +189,15 @@ module "cloud_run_front" {
 
   project_id            = var.project_id
   region                = var.region
-  name                  = "gcr-${local.base}-front"
+  name                  = local.front_name
   image                 = local.placeholder_image
   service_account_email = module.iam.emails["front"]
   min_instances         = local.cfg.front_scaling.min
   max_instances         = local.cfg.front_scaling.max
   labels                = { component = "front" }
 
-  invoker_members = local.cfg.front_public ? ["allUsers"] : []
+  iap_enabled     = local.cfg.front_iap
+  invoker_members = local.cfg.front_public ? ["allUsers"] : local.cfg.front_iap ? [local.iap_agent_member] : []
 
   iam_members = [
     { role = "roles/run.developer", member = local.build_sa_member },
@@ -203,9 +206,22 @@ module "cloud_run_front" {
   env = {
     NEXT_TELEMETRY_DISABLED = "1"
     BACKEND_URL             = module.cloud_run_back.uri
+    # Audience du jeton IAP (x-goog-iap-jwt-assertion) vérifié par le front ; vide sans IAP
+    IAP_AUDIENCE = local.cfg.front_iap ? "/projects/${data.google_project.this.number}/locations/${var.region}/services/${local.front_name}" : ""
   }
 
   depends_on = [module.apis]
+}
+
+# Accès au front via IAP : comptes Converteo uniquement
+resource "google_iap_web_cloud_run_service_iam_member" "front_converteo" {
+  count = local.cfg.front_iap ? 1 : 0
+
+  project                = var.project_id
+  location               = var.region
+  cloud_run_service_name = module.cloud_run_front.name
+  role                   = "roles/iap.httpsResourceAccessor"
+  member                 = "domain:converteo.com"
 }
 
 # ---------- CI/CD : GitHub Actions → Cloud Build ----------
