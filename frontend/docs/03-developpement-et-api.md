@@ -44,13 +44,13 @@ Où est le code :
 
 ```bash
 npm install
-npm run dev
+npm run dev -- --port 3100
 ```
 
-- Français : http://localhost:3000
-- Anglais : http://localhost:3000/en
+- Français : http://localhost:3100
+- Anglais : http://localhost:3100/en
 
-Si le port 3000 est déjà pris : `npm run dev -- --port 3456`, puis les mêmes chemins sur ce port.
+Le port 3000 est pris par un autre projet : le front tourne sur 3100, le back sur 3101. Pour brancher le back, voir §4.
 
 Production locale : `npm run build` puis `npm run start`. Contrôle des règles, sans Jest : `npm run check`.
 
@@ -95,216 +95,22 @@ Contrôle anglais minimal : `lang="en"`, titre d’onglet « Hotel PIM Validatio
 
 ---
 
-## 4. Frontière actuelle
+## 4. Branchement au back
 
-L’écran n’appelle qu’une fonction : `loadFiches(): Fiche[]`, dans `src/data/source.ts`. Elle délègue à `demoSource`, qui implémente :
+Le navigateur n’appelle que le front, sur `/api/*`. Il ne connaît ni l’URL du back ni aucun jeton.
 
-```ts
-export interface FicheSource {
-  load(): Fiche[];
-}
+**Relais.** `src/app/api/[...path]/route.ts` (avec `src/server/backend.ts` et `src/server/author.ts`) relaie `GET` et `POST` vers `BACKEND_URL`, même chemin sans le préfixe `/api`, query string conservée. Chaque segment est réencodé ; `.` et `..` sont refusés (400). Les en-têtes envoyés au back sont reconstruits : `Accept`, `Content-Type: application/json` s’il y a un corps, `Authorization` et `X-PIM-Author` décrits ci-dessous. Aucun en-tête du navigateur n’est recopié. La réponse garde le statut et le corps du back, avec `Content-Type`, `Content-Disposition` (téléchargements d’export) et `Cache-Control: no-store`.
+
+**Local ou Cloud Run.** Si `BACKEND_URL` commence par `https://` (Cloud Run), le relais demande au serveur de métadonnées un jeton d’identité Google, audience = `BACKEND_URL` sans slash final, le garde 50 minutes en mémoire et l’envoie en `Authorization: Bearer`. En `http://` (local), l’appel part sans jeton.
+
+**Auteur.** `X-PIM-Author` est posé par le relais, jamais par le navigateur ; un `X-PIM-Author` venu du navigateur est ignoré. Aujourd’hui sa seule source est `DEV_AUTHOR`, lue uniquement hors Cloud Run (`K_SERVICE` absente) et tant que `IAP_AUDIENCE` est vide. Sans auteur, le back refuse les écritures (401). L’auteur lu depuis IAP viendra avec PIM-37.
+
+**Erreurs du relais.** Format du contrat, `{ "error": { "code", "message" } }` : `BACKEND_URL` absente → 500 `backend_not_configured` ; back injoignable ou jeton impossible à obtenir → 502 `backend_unreachable` ; erreur du back sans corps JSON (403 HTML de Cloud Run, 5xx du load balancer) → 502 `backend_error`. Les erreurs JSON du back (400, 401, 404, 409, 502) passent telles quelles. Un `POST` venu d’un autre site (`Sec-Fetch-Site` différent de `same-origin`) est refusé en 403 `cross_site`, un corps qui n’est pas en `application/json` en 415 : ces écritures portent l’identité du relecteur. Les redirections du back ne sont pas suivies.
+
+**Côté client.** `src/data/source.ts` est le seul module client qui appelle `/api`. Le contrat de référence (chemins, types, erreurs) est le contrat partagé entre back et front (`pim-chantier/api-contract.md`, recopié dans `backend/docs/api-contract.md` sur la branche du back). Contrôle du relais : `scripts/check-relay.mts`, lancé par `npm run check`.
+
+Lancer en local, back démarré sur le port 3101 :
+
+```bash
+BACKEND_URL=http://localhost:3101 DEV_AUTHOR=prenom.nom@converteo.com npm run dev -- --port 3100
 ```
-
-`load()` recopie le littéral de `demo-fiches.ts`. Pour chaque fiche : `status = statusFor(score)`, `selected = false`. Pour chaque attribut : `accepted = null`. `statusInitial` et `statusLabelInitial` sont jetés. Les listes de marques et de sources (`brandOptions`, `sourceOptions`) sont calculées une fois sur ce littéral, tri UTF-16, et ne sont pas reconstruites.
-
-Après ce chargement, les fiches mutées vivent dans l’état React. Rien n’est envoyé. Rien n’est écrit en `localStorage` ni en `sessionStorage`. Un rechargement ou un changement de langue repart du jeu initial. Le cookie de locale next-intl ne contient pas de fiche.
-
-`loadFiches()` est synchrone. C’est voulu : la démo est un tableau en mémoire, pas un appel réseau.
-
----
-
-## 5. Contrats cibles
-
-Ces interfaces ne sont pas implémentées. Aucun fichier `src/` ne les déclare. Elles décrivent ce qu’il faudra brancher, plus tard, pour alimenter la fiche hôtel et, une fois la fiche validée, la page produit. Les noms ci-dessous sont un contrat d’intention, pas du code livré.
-
-Aujourd’hui l’écran attend un tableau complet : il n’a pas de pagination. Une API paginée reste derrière `loadFiches()` : `source.ts` parcourt les pages et renvoie encore un `Fiche[]`. Les composants ne voient pas le curseur.
-
-### 5.1 Lecture des fiches à valider
-
-Liste paginée. Les filtres serveur sont optionnels : s’ils sont absents, l’écran continue de filtrer en local, comme aujourd’hui. `hotelId` est l’identifiant hôtel Accor. Le jeu de démo n’en a pas ; ses `id` 1 à 14 sont des identifiants de maquette, pas des codes établissement.
-
-```ts
-type FicheStatus = "valide" | "haute" | "revoir" | "echec";
-
-type FicheSourceName =
-  | "Booking.com"
-  | "Expedia"
-  | "Salesforce - contact center";
-
-interface ValidationListQuery {
-  cursor?: string;
-  /** Taille de page demandée. L’écran actuel n’affiche pas de pagination. */
-  limit?: number;
-  brand?: string;
-  source?: FicheSourceName;
-  status?: FicheStatus;
-  /** Même règle que l’écran : sous-chaîne du nom ou de la ville, sans trim ni retrait d’accents. */
-  search?: string;
-}
-
-interface ValidationFicheSummary {
-  hotelId: string;
-  name: string;
-  brand: string;
-  city: string;
-  source: FicheSourceName;
-  score: number;
-  attributeCount: number;
-}
-
-interface ValidationListPage {
-  items: ValidationFicheSummary[];
-  nextCursor: string | null;
-}
-```
-
-Le statut affiché ne voyage pas comme vérité métier au chargement : `source.ts` le dérive avec `statusFor(score)`, sauf si un rejet précédent a été persisté. Dans ce cas l’enregistrement doit porter le statut stocké (`echec`) à côté du score, parce qu’un rejet ne recalcule pas le statut depuis le score. La démo n’a pas ce cas au chargement.
-
-### 5.2 Lecture du détail d’enrichissement
-
-Un appel par hôtel, ou le détail inclus dans la liste. Six attributs dans la démo. La source d’un attribut est `Booking.com`, `Expedia` ou `Salesforce`. Ce n’est pas la source de fiche : « Salesforce - contact center » n’apparaît que sur la fiche.
-
-```ts
-type AttributeCode =
-  | "address"
-  | "amenities"
-  | "description"
-  | "classification"
-  | "contact"
-  | "photo";
-
-type AttributeSource = "Booking.com" | "Expedia" | "Salesforce";
-
-interface AttributeEnrichment {
-  code: AttributeCode;
-  /** Libellé français d’origine, celui de la démo. L’UI le traduit via attributes.*. */
-  label: string;
-  /** Valeur PIM actuelle. Texte libre, y compris « Non renseigné », « — », « Téléphone seul ». */
-  current: string;
-  /** Valeur proposée par la source. */
-  proposed: string;
-  score: number;
-  source: AttributeSource;
-}
-
-interface ValidationFicheDetail extends ValidationFicheSummary {
-  attributes: AttributeEnrichment[];
-}
-```
-
-`accepted` n’est pas une donnée serveur aujourd’hui. C’est un drapeau d’affichage, local, perdu au rechargement.
-
-### 5.3 Écriture
-
-Trois commandes. Elles ne sont pas appelées. Valider, rejeter et trancher un attribut restent des mises à jour locales dans `src/domain/rules.ts`.
-
-```ts
-interface ValidateFicheCommand {
-  hotelId: string;
-}
-
-interface ValidateFicheResult {
-  hotelId: string;
-  /** Forcé à 1, y compris si des attributs sont encore neutres ou rejetés. */
-  score: 1;
-  status: "valide";
-}
-
-interface RejectFicheCommand {
-  hotelId: string;
-}
-
-interface RejectFicheResult {
-  hotelId: string;
-  /** Le score numérique précédent, inchangé. */
-  score: number;
-  status: "echec";
-}
-
-interface DecideAttributeCommand {
-  hotelId: string;
-  code: AttributeCode;
-  /** clear revient au neutre, comme le second clic sur le même bouton. */
-  decision: "accept" | "reject" | "clear";
-}
-
-interface DecideAttributeResult {
-  hotelId: string;
-  code: AttributeCode;
-  /** true accepté, false rejeté, null neutre. N’affecte ni le score d’attribut, ni le score de fiche. */
-  accepted: boolean | null;
-}
-```
-
-### 5.4 Projection « page hôtel »
-
-Payload qui alimenterait la page produit publique une fois la fiche validée. Cette page n’existe pas dans cette livraison. Le payload non plus.
-
-La maquette ne dit pas quelle valeur publier quand l’opérateur a rejeté un attribut : le drapeau est visuel, et « Valider la fiche » force quand même le score à 1. Le mapping ci-dessous prend donc la valeur proposée de chaque attribut comme contenu de page. C’est une convention de branchement, pas une règle déjà codée. Si un jour le drapeau `accepted` doit choisir entre `current` et `proposed`, ce choix se fera dans `source.ts` au moment de construire ce payload.
-
-```ts
-type PageLocale = "fr" | "en";
-
-interface HotelPagePayload {
-  /** Absent du jeu de démo. Placeholder tant que l’identifiant Accor n’est pas fourni. */
-  hotelId: string | null;
-  locale: PageLocale;
-  name: string;
-  brand: string;
-  city: string;
-  /** Phrase unique. Pas d’adresse structurée, pas de latitude ni de longitude séparées. */
-  address: string;
-  amenities: string;
-  description: string;
-  classification: string;
-  /** Téléphone et e-mail restent une seule chaîne, comme dans la fiche. */
-  contact: string;
-  /**
-   * Placeholder. La démo stocke une phrase (« Photo façade HD », « Aucune photo exploitable collectée »),
-   * jamais une URL ni un fichier.
-   */
-  coverPhoto: null;
-  coverPhotoCaption: string;
-}
-```
-
-| Champ de page | Champ de la fiche validée |
-| --- | --- |
-| `name` | `name` |
-| `brand` | `brand` |
-| `city` | `city` |
-| `address` | `proposed` de l’attribut Adresse & géolocalisation |
-| `amenities` | `proposed` de Équipements & services |
-| `description` | `proposed` de Description commerciale |
-| `classification` | `proposed` de Classification (catégorie) |
-| `contact` | `proposed` de Coordonnées de contact |
-| `coverPhotoCaption` | `proposed` de Photo de couverture |
-| `coverPhoto` | rien : pas d’image dans la démo |
-| `hotelId` | rien : pas d’identifiant hôtel Accor dans la démo |
-| `locale` | locale de la page (`fr` ou `en`), pas un champ de la fiche |
-
-Les textes de démo sont en français dans les deux locales d’interface. Une page `en` ne traduira pas toute seule « 4 étoiles », « Non renseigné » ou les descriptions. Le score, le statut et les drapeaux d’attribut ne sont pas des champs de page produit.
-
-Exemple de lecture, fiche 1 une fois validée : nom « Novotel Paris Centre Tour Eiffel », marque Novotel, ville « Paris, France », adresse « 61 Quai de Grenelle, 75015 Paris — 48.8496, 2.2865 », équipements la liste proposée, description la phrase Seine / Tour Eiffel, classification « 4 étoiles », contact « +33 1 40 58 20 00 · h0367@accor.com », légende photo « Photo façade HD (vue Seine) », image absente, `hotelId` null.
-
-### 5.5 Où brancher
-
-Uniquement dans `src/data/source.ts`.
-
-- La lecture remplace le corps de `demoSource.load` (ou l’objet `FicheSource` que `loadFiches` délègue). Le mapping vers `Fiche` — statut dérivé, `selected: false`, `accepted: null`, abandon des champs d’annotation — reste dans ce fichier.
-- `brandOptions` et `sourceOptions` restent produits ici, une fois, à partir du jeu chargé.
-- Les composants, `rules.ts`, les messages et les CSS ne connaissent pas l’URL, le curseur, ni `hotelId`.
-- Les écritures, le jour où elles existent, s’exportent aussi depuis `source.ts` (`validateFicheRemote`, `rejectFicheRemote`, `decideAttributeRemote`, noms indicatifs). `ValidationScreen` est aujourd’hui le seul endroit qui appelle `validateFiche`, `rejectFiche` et `toggleAttribute`. Le jour du branchement, ces trois appels pointeront vers `source.ts` au lieu de n’appliquer que la règle locale. On ne fait pas ce déplacement maintenant : il n’y a pas d’API à appeler.
-
-`loadFiches()` reste synchrone tant que la source est le littéral. Une source réseau est asynchrone. Le jour venu, `FicheSource.load` pourra devenir `Promise<Fiche[]>`, et le `useState(() => loadFiches())` de `ValidationScreen` devra attendre ce résultat. C’est le seul point de contact avec le composant, et il n’est pas à faire tant que l’API n’existe pas.
-
----
-
-## 6. Ce qu’il ne faut pas faire tant que les API n’existent pas
-
-- Pas de `fetch`, pas de client HTTP, pas de route `src/app/api`, pas de réponse JSON fictive, pas de délai simulé.
-- Pas d’authentification, de session, de rôle, ni de nom d’opérateur.
-- Pas de page hôtel publique, pas de route produit, pas d’image de couverture inventée.
-- Pas de `localStorage` ni de `sessionStorage` pour les fiches, les filtres ou les choix d’attributs.
-- Pas de persistance du score ou du statut au-delà de la vie de la page.
-- Pas de modification de `docs/01-duplication-spec.md`, de `docs/02-implementation-plan.md`, ni du HTML source pour « préparer » l’API.
