@@ -173,9 +173,17 @@ module "cloud_run_back" {
     { role = "roles/run.developer", member = local.build_sa_member },
   ]
 
+  # Lues par NestJS (noms fixés avec le back, voir pipeline/docs/contrat-back.md)
   env = {
-    PIM_FILES_BUCKET = module.bucket_pim_files.name
-    OTA_FILES_BUCKET = module.bucket_ota_files.name
+    GCP_PROJECT_ID        = var.project_id
+    REGION                = var.region
+    BQ_MATCHING_DATASET   = google_bigquery_dataset.pipeline["matching"].dataset_id
+    BQ_ENHANCED_DATASET   = google_bigquery_dataset.pipeline["enhanced"].dataset_id
+    BQ_VALIDATION_DATASET = google_bigquery_dataset.pipeline["validation"].dataset_id
+    EXPORT_JOB            = module.pipeline_jobs["export"].name
+    EXPORTS_BUCKET        = module.bucket_exports.name
+    PIM_FILES_BUCKET      = module.bucket_pim_files.name
+    OTA_FILES_BUCKET      = module.bucket_ota_files.name
   }
 
   depends_on = [module.apis]
