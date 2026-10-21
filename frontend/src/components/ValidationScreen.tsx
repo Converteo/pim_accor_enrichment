@@ -24,6 +24,7 @@ import type {
 } from "@/domain/types";
 import { BulkBar } from "./BulkBar";
 import { Drawer } from "./Drawer";
+import { ExportBar } from "./ExportBar";
 import { FicheTable } from "./FicheTable";
 import { HotelDetailView } from "./HotelDetailView";
 import { MatchDetailView } from "./MatchDetailView";
@@ -351,6 +352,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             onFilter={onFilter}
             onTab={onTab}
           />
+          <ExportBar />
           {tab === "matches" ? (
             <>
               {matches.list.status === "ready" && matches.list.items.length > 0 ? (
