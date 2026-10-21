@@ -50,6 +50,10 @@
   color: var(--loyalty);
 }
 
+.execution:empty {
+  display: none;
+}
+
 .failed {
   color: var(--offer);
 }

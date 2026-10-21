@@ -355,7 +355,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             onFilter={onFilter}
             onTab={onTab}
           />
-          <ExportBar />
+          <ExportBar pending={stats?.pendingForExport} />
           {tab === "matches" ? (
             <>
               {matches.list.status === "ready" && matches.list.items.length > 0 ? (

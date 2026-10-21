@@ -238,7 +238,8 @@
       "failed": "Export refused or failed."
     },
     "history": "{count, plural, one {History (# export)} other {History (# exports)}}",
-    "record": "{date} · {author} · {hotels, number} hotels · {rows, number} values"
+    "record": "{date} · {author} · {hotels, plural, one {# hotel} other {# hotels}} · {rows, plural, one {# value} other {# values}}",
+    "unauthorized": "Unidentified user: the server refused the action."
   },
   "number": "{value, number}"
 }

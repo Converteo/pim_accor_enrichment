@@ -1,56 +1,110 @@
 import { useFormatter, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
-import { exportFileUrl, fetchExecution, fetchExportStatus, startExport } from "@/data/source";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { ApiError, exportFileUrl, fetchExecution, fetchExportStatus, startExport } from "@/data/source";
 import type { ExportExecution, ExportStatus } from "@/domain/types";
 import { errorText } from "./labels";
 import styles from "./ExportBar.module.css";
 
 const POLL_MS = 3000;
+// Survives a reload of the page while the job runs, so the export is not launched twice.
+const EXECUTION_KEY = "pim-export-execution";
+
+interface ExportBarProps {
+  /** Items still waiting for a decision, from /stats: the banner re-reads its status when it changes. */
+  pending: number | undefined;
+}
+
+type Execution = { id: string } & ExportExecution;
+
+function storedExecution(): string | null {
+  try {
+    return sessionStorage.getItem(EXECUTION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeExecution(id: string | null) {
+  try {
+    if (id) sessionStorage.setItem(EXECUTION_KEY, id);
+    else sessionStorage.removeItem(EXECUTION_KEY);
+  } catch {
+    // Storage unavailable (private mode): only the reload protection is lost.
+  }
+}
 
 /** Export of the PIM enhanced: blocked while values or matches still wait for a decision. */
-export function ExportBar() {
+export function ExportBar({ pending }: ExportBarProps) {
   const t = useTranslations("export");
   const tRoot = useTranslations();
   const format = useFormatter();
+  const id = useId();
   const [status, setStatus] = useState<ExportStatus | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [confirming, setConfirming] = useState(false);
-  const [execution, setExecution] = useState<({ id: string } & ExportExecution) | null>(null);
+  // An empty id means the launch request is in flight.
+  const [execution, setExecution] = useState<Execution | null>(null);
+  const startRef = useRef<HTMLButtonElement>(null);
 
   const refresh = useCallback(() => {
     fetchExportStatus().then(
       (loaded) => {
         setStatus(loaded);
         setError(null);
+        // After a reload, resume following a job launched from this tab.
+        const running = storedExecution();
+        setExecution((current) => current ?? (running ? { id: running, state: "running" } : null));
       },
       setError,
     );
   }, []);
 
-  useEffect(refresh, [refresh]);
+  useEffect(refresh, [refresh, pending]);
+
+  function errorMessage(failure: unknown): string {
+    return failure instanceof ApiError && failure.status === 401 ? t("unauthorized") : errorText(tRoot, failure);
+  }
 
   // Follow the Cloud Run job until it ends, then re-read the history.
   useEffect(() => {
-    if (execution?.state !== "running") return;
+    if (execution?.state !== "running" || !execution.id) return;
     const timer = setTimeout(() => {
       fetchExecution(execution.id).then(
         (next) => {
           setExecution({ id: execution.id, ...next });
-          if (next.state !== "running") refresh();
+          if (next.state !== "running") {
+            storeExecution(null);
+            refresh();
+          }
         },
-        // A failed poll is retried at the next tick.
-        () => setExecution((current) => (current ? { ...current } : current)),
+        (failure: unknown) => {
+          // Network or server hiccup: try again at the next tick. A 4xx (unknown execution…) will not get better.
+          const final = failure instanceof ApiError && failure.status >= 400 && failure.status < 500;
+          if (final) storeExecution(null);
+          setExecution(final ? { id: execution.id, state: "failed", message: errorMessage(failure) } : { ...execution });
+        },
       );
     }, POLL_MS);
     return () => clearTimeout(timer);
+    // errorMessage only reads translations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [execution, refresh]);
+
+  function cancel() {
+    setConfirming(false);
+    startRef.current?.focus();
+  }
 
   function launch() {
     setConfirming(false);
+    setExecution({ id: "", state: "running" });
     startExport().then(
-      ({ executionId }) => setExecution({ id: executionId, state: "running" }),
+      ({ executionId }) => {
+        storeExecution(executionId);
+        setExecution({ id: executionId, state: "running" });
+      },
       (failure: unknown) => {
-        setExecution({ id: "", state: "failed", message: errorText(tRoot, failure) });
+        setExecution({ id: "", state: "failed", message: errorMessage(failure) });
         refresh();
       },
     );
@@ -60,15 +114,15 @@ export function ExportBar() {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
-    <section className={styles.band} aria-labelledby="exportTitle">
+    <section className={styles.band} aria-labelledby={`${id}-title`}>
       <div className={styles.row}>
         <div className={styles.text}>
-          <h2 id="exportTitle" className={styles.title}>
+          <h2 id={`${id}-title`} className={styles.title}>
             {t("title")}
           </h2>
-          <p id="exportStatus" className={styles.status} role="status">
+          <p id={`${id}-status`} className={styles.status} role="status">
             {error
-              ? `${t("statusError")} ${errorText(tRoot, error)}`
+              ? `${t("statusError")} ${errorMessage(error)}`
               : !status
                 ? t("loading")
                 : status.canExport
@@ -79,20 +133,35 @@ export function ExportBar() {
         <div className={styles.actions}>
           {confirming ? (
             <>
-              <span className={styles.confirm}>{t("confirm")}</span>
-              <button type="button" className="btn btn-ghost btn-small" onClick={() => setConfirming(false)}>
+              <span id={`${id}-confirm`} className={styles.confirm}>
+                {t("confirm")}
+              </span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-small"
+                // Replaces the launch button that had the focus.
+                autoFocus
+                aria-describedby={`${id}-confirm`}
+                onClick={cancel}
+              >
                 {t("cancel")}
               </button>
-              <button type="button" className="btn btn-primary btn-small" onClick={launch}>
+              <button
+                type="button"
+                className="btn btn-primary btn-small"
+                aria-describedby={`${id}-confirm`}
+                onClick={launch}
+              >
                 {t("launch")}
               </button>
             </>
           ) : (
             <button
+              ref={startRef}
               type="button"
               className="btn btn-primary btn-small"
-              disabled={!status?.canExport || running}
-              aria-describedby="exportStatus"
+              disabled={!status?.canExport || running || Boolean(error)}
+              aria-describedby={`${id}-status`}
               onClick={() => setConfirming(true)}
             >
               {running ? t("running") : t("start")}
@@ -101,15 +170,14 @@ export function ExportBar() {
         </div>
       </div>
 
-      {execution ? (
-        <p
-          className={execution.state === "failed" ? `${styles.execution} ${styles.failed}` : styles.execution}
-          role={execution.state === "failed" ? "alert" : "status"}
-        >
-          {t(`state.${execution.state}`)}
-          {execution.message ? ` ${execution.message}` : ""}
-        </p>
-      ) : null}
+      {/* Always mounted, so screen readers announce each change of the execution. */}
+      <p
+        className={execution?.state === "failed" ? `${styles.execution} ${styles.failed}` : styles.execution}
+        role="status"
+      >
+        {execution ? t(`state.${execution.state}`) : ""}
+        {execution?.message ? ` ${execution.message}` : ""}
+      </p>
 
       {status && status.history.length > 0 ? (
         <details className={styles.history}>
@@ -130,8 +198,9 @@ export function ExportBar() {
                   })}
                 </span>
                 <span className={styles.files}>
+                  {/* No `download`: the back sends Content-Disposition, and an error stays visible. */}
                   {record.files.map((file) => (
-                    <a key={file} href={exportFileUrl(record.exportId, file)} download>
+                    <a key={file} href={exportFileUrl(record.exportId, file)}>
                       {file}
                     </a>
                   ))}
