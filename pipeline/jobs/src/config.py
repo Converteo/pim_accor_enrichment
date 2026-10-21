@@ -69,6 +69,7 @@ class Settings:
     priorities: tuple[str, ...]
     deposited_at: datetime | None  # deposit that started the run: the PIM is extracted unless it was after it
     force: bool
+    triggered_by: str | None  # e-mail of the reviewer who started the export from the interface (backend)
 
     run_id: str
 
@@ -106,5 +107,6 @@ class Settings:
             priorities=tuple(p.strip() for p in os.environ.get("PRIORITIES", "P1,P2,P3").split(",") if p.strip()),
             deposited_at=_optional_datetime("DEPOSITED_AT"),
             force=os.environ.get("FORCE", "").lower() in ("1", "true", "yes"),
+            triggered_by=os.environ.get("TRIGGERED_BY", "").strip() or None,
             run_id=os.environ.get("CLOUD_RUN_EXECUTION") or uuid.uuid4().hex,
         )

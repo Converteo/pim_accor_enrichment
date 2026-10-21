@@ -18,6 +18,12 @@ Datasets : `cvto_accor_pim_enrichment_<env>_euw1_{matching,enhanced,validation}`
   La clé de tri contient des compteurs (priorité, score moyen, nombre de champs) : une fiche modifiée entre deux pages peut
   revenir dans la page suivante → **le front dédoublonne par `rid`** (par `rid|source|sourceHash` pour `/matches`).
 - 500 `internal_error` : erreur du back lui-même (502 reste réservé aux erreurs BigQuery/GCP).
+- Codes des éléments refusés (`rejected[].code`, message FR prêt à afficher) : `duplicate` (élément répété dans la demande,
+  rien n'est écrit pour lui), `invalid_decision`, `not_found` (valeur ré-enrichie ou page de rapprochement changée :
+  recharger), `invalid_status`, `match_not_approved`, `corrected_value_required`, `invalid_corrected_value`.
+- Autres codes d'erreur : `invalid_request` (400), `invalid_cursor` (400), `author_required` (401), `hotel_not_found`,
+  `field_not_found`, `execution_not_found`, `file_not_found` (404), `export_blocked` (409), `payload_too_large` (413,
+  corps > 2 Mo : découper le lot), `upstream_error` (502).
 
 ## Types
 ```ts

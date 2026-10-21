@@ -14,6 +14,7 @@ import type {
 } from './api.js';
 import type { EnrichmentDecisionRow, EnrichmentState, MatchDecisionRow } from './decisions.js';
 import { ApiError } from './errors.js';
+import type { ExportRecord } from './export.js';
 import { Bq } from './gcp.js';
 
 export interface HotelFilters {
@@ -52,6 +53,9 @@ export abstract class Repository {
   abstract insertMatchDecisions(rows: MatchDecisionRow[], author: string): Promise<void>;
   /** Type et codes autorisés des champs (vue v_field_allowed_values) ; un champ inconnu est absent du résultat. */
   abstract fieldValues(pimFields: string[]): Promise<FieldValues[]>;
+  /** Historique enhanced.exports, du plus récent au plus ancien. */
+  abstract exports(): Promise<ExportRecord[]>;
+  abstract exportById(exportId: string): Promise<ExportRecord | null>;
 }
 
 // Curseur opaque = liste + clé de tri de la dernière ligne renvoyée (pagination par clé : une fiche qui sort de la
@@ -443,5 +447,34 @@ export class BigQueryRepository extends Repository {
       fields.set(r.pim_field, field);
     }
     return [...fields.values()];
+  }
+
+  private async exportRecords(where: string, params: Record<string, unknown>): Promise<ExportRecord[]> {
+    const rows = await this.bq.query<Row>(
+      `SELECT * FROM ${this.bq.table('enhanced', 'exports')} ${where} ORDER BY exported_at DESC LIMIT 100`,
+      params,
+    );
+    return rows.map((r) => ({
+      exportId: r.export_id as string,
+      path: r.path as string,
+      rowCount: num(r.row_count),
+      hotelCount: num(r.hotel_count),
+      // Le job écrit la liste des fichiers séparés par « , » (pipeline/jobs/src/export.py)
+      files: String(r.files ?? '')
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean),
+      triggeredBy: str(r.triggered_by),
+      exportedAt: iso(r.exported_at as { value: string }) as string,
+    }));
+  }
+
+  exports(): Promise<ExportRecord[]> {
+    return this.exportRecords('', {});
+  }
+
+  async exportById(exportId: string): Promise<ExportRecord | null> {
+    const [record] = await this.exportRecords('WHERE export_id = @exportId', { exportId });
+    return record ?? null;
   }
 }
