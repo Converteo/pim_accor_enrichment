@@ -218,9 +218,14 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       : `${t("decide.failed")} ${errorText(t, error)}`;
   }
 
-  function decideValue(value: EnrichmentValue, decision: Decision, comment: string) {
+  function decideValue(value: EnrichmentValue, decision: Decision, comment: string, correctedValue?: string) {
     if (!detail?.data) return;
-    void submit(decisionsFor(detail.rid, [value], decision, comment));
+    void submit(
+      decisionsFor(detail.rid, [value], decision, comment).map((pending) => ({
+        ...pending,
+        item: correctedValue === undefined ? pending.item : { ...pending.item, correctedValue },
+      })),
+    );
   }
 
   function decideFiche(decision: Decision) {
@@ -286,43 +291,43 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     <>
       {/* The drawer is modal: the page behind it leaves the focus order and the accessibility tree. */}
       <div inert={openRid !== null}>
-      <Topbar stats={stats} author={author} />
-      <main className={styles.app}>
-        <Toolbar
-          tab={tab}
-          filters={filters}
-          stats={stats}
-          facets={facets}
-          onFilter={onFilter}
-          onTab={onTab}
-        />
-        {tab === "matches" ? (
-          <p className={styles.empty}>{t("list.soon")}</p>
-        ) : (
-          <>
-            {hotels.status === "ready" && hotels.items.length > 0 ? (
-              <FicheTable
-                rows={hotels.items}
-                selectable={tab === "review"}
-                selected={selected}
-                onToggleRow={onToggleRow}
-                onToggleVisible={onToggleVisible}
-                onOpen={onOpen}
+        <Topbar stats={stats} author={author} />
+        <main className={styles.app}>
+          <Toolbar
+            tab={tab}
+            filters={filters}
+            stats={stats}
+            facets={facets}
+            onFilter={onFilter}
+            onTab={onTab}
+          />
+          {tab === "matches" ? (
+            <p className={styles.empty}>{t("list.soon")}</p>
+          ) : (
+            <>
+              {hotels.status === "ready" && hotels.items.length > 0 ? (
+                <FicheTable
+                  rows={hotels.items}
+                  selectable={tab === "review"}
+                  selected={selected}
+                  onToggleRow={onToggleRow}
+                  onToggleVisible={onToggleVisible}
+                  onOpen={onOpen}
+                />
+              ) : null}
+              <ListFooter
+                status={hotels.status}
+                count={hotels.items.length}
+                empty={t(tab === "pending" ? "list.emptyPending" : "list.empty")}
+                error={hotels.error}
+                hasMore={hotels.hasMore}
+                loadingMore={hotels.loadingMore}
+                onMore={hotels.loadMore}
+                onRetry={hotels.reload}
               />
-            ) : null}
-            <ListFooter
-              status={hotels.status}
-              count={hotels.items.length}
-              empty={t(tab === "pending" ? "list.emptyPending" : "list.empty")}
-              error={hotels.error}
-              hasMore={hotels.hasMore}
-              loadingMore={hotels.loadingMore}
-              onMore={hotels.loadMore}
-              onRetry={hotels.reload}
-            />
-          </>
-        )}
-      </main>
+            </>
+          )}
+        </main>
       </div>
       <Drawer
         open={openRid !== null}
@@ -394,9 +399,11 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             detail={detail.data}
             renderActions={(value) => (
               <ValueDecision
-                label={value.label}
+                value={value}
                 busy={busy}
-                onDecide={(decision, comment) => decideValue(value, decision, comment)}
+                onDecide={(decision, comment, correctedValue) =>
+                  decideValue(value, decision, comment, correctedValue)
+                }
               />
             )}
           />
