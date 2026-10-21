@@ -10,7 +10,7 @@ Datasets : `cvto_accor_pim_enrichment_<env>_euw1_{matching,enhanced,validation}`
 - JSON, `camelCase` dans l'API (le back mappe depuis les colonnes `snake_case`).
 - Statuts : valeurs brutes du pipeline (`needs_review`, `pending_enrichment`, `pending_judgment`, `auto_approved`, `auto_rejected`, `human_approved`, `human_rejected`, `human_corrected`). Le front ne calcule jamais de statut depuis le score.
 - `score` : entier 0-100 (null si non noté).
-- Auteur : en-tête `X-PIM-Author: <email>` posé par le relais Next.js (jamais par le navigateur). Obligatoire sur toutes les écritures (sinon 401). En dev local / sans IAP : `DEV_AUTHOR` côté front.
+- Auteur : en-tête `X-PIM-Author: <email>` posé par le relais Next.js (jamais par le navigateur). Obligatoire sur toutes les écritures : 401 s'il manque ou n'est pas un e-mail, 403 si l'adresse n'est pas `@converteo.com` (`test@converteo.com` accepté). Le back l'enregistre en minuscules. En dev local / sans IAP : `DEV_AUTHOR` côté front.
 - Le back n'est appelable que par le SA du front (jeton d'identité Google, audience = URL du back). Le navigateur appelle uniquement le relais `/api/*` du front, même chemin que le back (préfixe `/api` retiré).
 - Erreurs : `{ "error": { "code": "string", "message": "texte FR" } }` ; 400 validation, 401 auteur manquant, 404, 409 conflit d'état, 502 erreur BigQuery/GCP.
 - Pagination : `?limit=50&cursor=<opaque>` → `{ items, nextCursor }` (`nextCursor` null en fin de liste).
@@ -21,7 +21,7 @@ Datasets : `cvto_accor_pim_enrichment_<env>_euw1_{matching,enhanced,validation}`
 - Codes des éléments refusés (`rejected[].code`, message FR prêt à afficher) : `duplicate` (élément répété dans la demande,
   rien n'est écrit pour lui), `invalid_decision`, `not_found` (valeur ré-enrichie ou page de rapprochement changée :
   recharger), `invalid_status`, `match_not_approved`, `corrected_value_required`, `invalid_corrected_value`.
-- Autres codes d'erreur : `invalid_request` (400), `invalid_cursor` (400), `author_required` (401), `hotel_not_found`,
+- Autres codes d'erreur : `invalid_request` (400), `invalid_cursor` (400), `author_required`, `author_invalid` (401), `author_forbidden` (403), `hotel_not_found`,
   `field_not_found`, `execution_not_found`, `file_not_found` (404), `export_blocked` (409), `payload_too_large` (413,
   corps > 2 Mo : découper le lot), `upstream_error` (502).
 

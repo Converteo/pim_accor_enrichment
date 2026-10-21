@@ -296,3 +296,21 @@ describe('POST /decisions/matches', () => {
     );
   });
 });
+
+describe("routes d'écriture (PIM-38)", () => {
+  let app: INestApplication;
+  let repo: MockRepository;
+  beforeAll(async () => ({ app, repo } = await appWithMockRepository()));
+  afterAll(() => app.close());
+
+  it.each(['/decisions/enrichments', '/decisions/matches', '/export'])(
+    '%s : 401 sans auteur, 403 hors Converteo, sans rien lire ni écrire',
+    async (path) => {
+      await request(app.getHttpServer()).post(path).send({}).expect(401);
+      const res = await request(app.getHttpServer()).post(path).set('X-PIM-Author', 'j.martin@accor.com').send({});
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('author_forbidden');
+      for (const fn of Object.values(repo)) expect(fn).not.toHaveBeenCalled();
+    },
+  );
+});
