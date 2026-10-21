@@ -7,7 +7,30 @@ services:
     container_name: pim-accor-frontend
     environment:
       PORT: "8080"
+      # En local, le front appelle le back en direct, sans jeton d'identité
+      BACKEND_URL: http://backend:8080
+      DEV_AUTHOR: ${DEV_AUTHOR:-test@converteo.com}
+    depends_on:
+      - backend
     ports:
       # Host port configurable: FRONTEND_PORT=xxxx docker compose up -d
       - "${FRONTEND_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: pim-accor-backend:local
+    container_name: pim-accor-backend
+    # Datasets, job et bucket de dev ; GOOGLE_IMPERSONATE_SERVICE_ACCOUNT (voir backend/README.md)
+    env_file: ./backend/.env
+    environment:
+      PORT: "8080"
+      GOOGLE_APPLICATION_CREDENTIALS: /gcloud/application_default_credentials.json
+    volumes:
+      # ADC du développeur (gcloud auth application-default login), en lecture seule
+      - ${HOME}/.config/gcloud:/gcloud:ro
+    ports:
+      - "${BACKEND_PORT:-3101}:8080"
     restart: unless-stopped

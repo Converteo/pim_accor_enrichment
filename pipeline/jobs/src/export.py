@@ -98,7 +98,7 @@ def run(settings: Settings) -> int:
         bucket.blob(f"{prefix}/{name}").upload_from_string(content.encode("utf-8"), content_type="text/csv")
     bq.load(client, settings.table("enhanced", "exports"), [{
         "export_id": uuid.uuid4().hex, "path": f"gs://{settings.output_bucket}/{prefix}/", "row_count": len(values),
-        "hotel_count": len({v["rid"] for v in values}), "files": ", ".join(sorted(files)), "triggered_by": settings.run_id, "exported_at": now,
+        "hotel_count": len({v["rid"] for v in values}), "files": ", ".join(sorted(files)), "triggered_by": settings.triggered_by or settings.run_id, "exported_at": now,
     }], bq.schema("exports"))
     logger.info("Exported %d values of %d hotels to gs://%s/%s/", len(values), len({v['rid'] for v in values}), settings.output_bucket, prefix)
     return 0

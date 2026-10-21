@@ -39,9 +39,23 @@ steps:
       - --quiet
 
   # ---------- Backend (seulement si backend/Dockerfile existe) ----------
+  - id: back-tests
+    name: node:24-alpine
+    waitFor: ["-"] # démarre en parallèle du frontend
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        set -eu
+        if [ -f backend/Dockerfile ]; then
+          cd backend && npm ci && npm run lint && npm test
+        else
+          echo "Pas de backend/Dockerfile : tests backend ignorés."
+        fi
+
   - id: back-build-push
     name: gcr.io/cloud-builders/docker
-    waitFor: ["-"] # démarre en parallèle du frontend
+    waitFor: ["back-tests"]
     entrypoint: bash
     args:
       - -c
