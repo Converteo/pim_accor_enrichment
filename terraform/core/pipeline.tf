@@ -409,8 +409,12 @@ module "pipeline_jobs" {
 
   iam_members = concat(
     [{ role = "roles/run.developer", member = local.build_sa_member }],
-    # Le backend lance l'export depuis l'interface (surcharge TRIGGERED_BY = auteur) et suit l'exécution
-    each.key == "export" ? [{ role = "roles/run.jobsExecutorWithOverrides", member = module.iam.members["back"] }] : [],
+    # Le backend lance l'export depuis l'interface (surcharge TRIGGERED_BY = auteur) et suit ses exécutions :
+    # jobsExecutorWithOverrides n'a ni executions.get ni executions.list, d'où run.viewer
+    each.key == "export" ? [
+      { role = "roles/run.jobsExecutorWithOverrides", member = module.iam.members["back"] },
+      { role = "roles/run.viewer", member = module.iam.members["back"] },
+    ] : [],
   )
 
   depends_on = [module.apis, module.iam_pipeline]

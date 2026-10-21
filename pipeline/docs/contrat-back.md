@@ -11,7 +11,7 @@ Datasets (un jeu par environnement, `<base>` = `cvto_accor_pim_enrichment_<env>_
 | `<base>_enhanced` | lecture | champs à enrichir (`enrichment_candidates`), réponses de l'agent (`enrichment_proposals`), vues `v_enrichments`, `v_approved_enrichments` et `v_field_allowed_values` (codes autorisés par champ, vue autorisée sur `raw`), historique `exports` |
 | `<base>_validation` | lecture et écriture | décisions humaines (`match_decisions`, `enrichment_decisions`) |
 
-Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.jobsExecutorWithOverrides` sur le job d'export (lancement avec surcharge d'env, suivi de l'exécution) et la lecture du bucket des exports.
+Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.jobsExecutorWithOverrides` et `run.viewer` sur le job d'export (lancement avec surcharge d'env, liste et état des exécutions) et la lecture du bucket des exports.
 Les schémas des tables sont dans `pipeline/jobs/src/schemas/`, les vues dans `pipeline/jobs/src/views/`.
 
 ## 1. Rapprochements (bloquant)
