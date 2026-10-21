@@ -54,7 +54,8 @@ URLs : `terraform output front_url` dans le workspace voulu.
 Sécurité :
 - front public (`front_public = true`) ; back privé : seul le SA front a `roles/run.invoker`
   (l'URL du back est injectée dans le front via `BACKEND_URL`) ;
-- SA back : `roles/storage.objectAdmin` sur les 2 buckets de fichiers (noms injectés : `PIM_FILES_BUCKET`, `OTA_FILES_BUCKET`) ;
+- SA back : aucun droit sur les buckets de fichiers PIM et OTA (pas de dépôt depuis l'interface), lecture du bucket exports ;
+  variables posées par Terraform : `GCP_PROJECT_ID`, `REGION`, `BQ_{MATCHING,ENHANCED,VALIDATION}_DATASET`, `EXPORT_JOB`, `EXPORTS_BUCKET` ;
 - buckets : accès uniforme, accès public bloqué, versioning, anciennes versions supprimées après 30 jours.
 
 ## Conventions de nommage

@@ -66,7 +66,7 @@ module "iam" {
     back = {
       account_id   = "sa-${local.env}-backend"
       display_name = "Cloud Run backend (${local.env})"
-      description  = "Identité d'exécution du Cloud Run backend (lecture/écriture des buckets PIM et OTA)."
+      description  = "Identité d'exécution du Cloud Run backend (lecture des vues, écriture des décisions, lancement de l'export)."
     }
     build = {
       account_id   = "sa-${local.env}-cloudbuild"
@@ -129,10 +129,6 @@ module "bucket_pim_files" {
   versioning                = true
   noncurrent_retention_days = var.files_noncurrent_retention_days
 
-  iam_members = [
-    { role = "roles/storage.objectAdmin", member = module.iam.members["back"] },
-  ]
-
   depends_on = [module.apis]
 }
 
@@ -144,10 +140,6 @@ module "bucket_ota_files" {
   location                  = var.region
   versioning                = true
   noncurrent_retention_days = var.files_noncurrent_retention_days
-
-  iam_members = [
-    { role = "roles/storage.objectAdmin", member = module.iam.members["back"] },
-  ]
 
   depends_on = [module.apis]
 }
@@ -182,8 +174,6 @@ module "cloud_run_back" {
     BQ_VALIDATION_DATASET = google_bigquery_dataset.pipeline["validation"].dataset_id
     EXPORT_JOB            = module.pipeline_jobs["export"].name
     EXPORTS_BUCKET        = module.bucket_exports.name
-    PIM_FILES_BUCKET      = module.bucket_pim_files.name
-    OTA_FILES_BUCKET      = module.bucket_ota_files.name
   }
 
   depends_on = [module.apis]
