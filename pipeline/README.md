@@ -64,7 +64,7 @@ Chaque réglage ajoute une ligne à `validation.auto_validation_settings` ; les 
 la dernière de chaque étape **à la lecture** : le changement vaut tout de suite, sans relancer le pipeline, et une décision
 humaine l'emporte toujours. Tant que rien n'est réglé, les vues prennent les valeurs Terraform `pipeline.judge_threshold_high`
 / `judge_threshold_low` (80 / 30) pour les rapprochements et `pipeline.enrich_auto_approve_score` / `enrich_auto_reject_score`
-(désactivés) pour les valeurs. Une valeur n'est jamais validée automatiquement avec une alerte ou si elle est déduite
+(85 / 50) pour les valeurs. Une valeur n'est jamais validée automatiquement avec une alerte ou si elle est déduite
 (`inferred`) ; sous le seuil de rejet, elle devient `auto_rejected`, motif `low_score`.
 
 ## Organisation

@@ -6,11 +6,12 @@ import { CONFIG, type Config } from './config.js';
 import { ApiError, parse } from './errors.js';
 import { Repository } from './repository.js';
 
-const threshold = z.number().int().min(0).max(100).nullable();
+// Les deux seuils sont toujours activés (null n'existe que dans d'anciens réglages)
+const threshold = z.number().int().min(0).max(100);
 
 export const autoValidationBody = z
   .object({ approveThreshold: threshold, rejectThreshold: threshold, comment: z.string().trim().max(2000).nullish() })
-  .refine((b) => b.approveThreshold === null || b.rejectThreshold === null || b.rejectThreshold <= b.approveThreshold, {
+  .refine((b) => b.rejectThreshold <= b.approveThreshold, {
     message: 'le seuil de rejet doit être inférieur ou égal au seuil de validation',
     path: ['rejectThreshold'],
   });

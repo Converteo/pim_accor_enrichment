@@ -270,21 +270,19 @@
   "settings": {
     "title": "Automatic validation thresholds",
     "eyebrow": "Pipeline automation",
-    "intro": "Score at or above the approval threshold: approved automatically. Score below the rejection threshold: rejected automatically. In between: to validate in the app. Changes apply at once, without running the pipeline again; a human decision always wins.",
+    "intro": "Score ≥ approval threshold: auto-approved. Score < rejection threshold: auto-rejected. In between: to validate. Applies at once; a human decision always wins.",
     "steps": {
       "match": "① Matches",
       "enrichment": "② Attributes"
     },
     "rules": {
-      "match": "Approved automatically only if the judge agent says “same hotel” and the automatic check did not reject it. A page in another country is always rejected.",
-      "enrichment": "Approved automatically only without a warning, and never for an inferred value. Rule-based rejections (not in the sources, already in the PIM…) do not depend on the thresholds. Only attributes whose match is approved count."
+      "match": "Auto-approval if “same hotel”.",
+      "enrichment": "Auto-approval except warnings and inferred values."
     },
     "approve": "Auto-approve if score ≥",
     "reject": "Auto-reject if score <",
-    "enabled": "On",
     "off": "off",
     "current": "In force: approval {approve} · rejection {reject}",
-    "isDefault": "deployment defaults",
     "now": "Today",
     "simulated": "With these thresholds",
     "autoApproved": "Auto-approved",
@@ -298,11 +296,9 @@
     "unchanged": "Nothing to save.",
     "readOnly": "Read only: only designated owners can change the thresholds.",
     "invalid": "The rejection threshold must be lower than or equal to the approval threshold.",
-    "history": "History",
-    "noHistory": "No change: deployment defaults.",
-    "change": "{date} · {author} · approval {approve} · rejection {reject}",
     "loading": "Loading thresholds…",
-    "error": "Could not load the thresholds."
+    "error": "Could not load the thresholds.",
+    "lastChange": "Changed by {author} on {date}"
   },
   "number": "{value, number}"
 }

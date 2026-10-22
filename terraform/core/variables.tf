@@ -85,11 +85,10 @@ variable "environments" {
       llm_concurrency = optional(number, 6)
       # Seuils de validation automatique par défaut (score 0-100), tant qu'ils n'ont pas été réglés dans l'interface
       # (table validation.auto_validation_settings, appliquée à la lecture par v_matches et v_enrichments).
-      judge_threshold_high = optional(number, 80) # rapprochement validé automatiquement à partir de ce score
-      judge_threshold_low  = optional(number, 30) # en dessous : rejeté ; entre les deux : à valider dans l'interface
-      # null = pas de validation ni de rejet automatique des valeurs proposées : tout passe par l'interface
-      enrich_auto_approve_score = optional(number)
-      enrich_auto_reject_score  = optional(number)
+      judge_threshold_high      = optional(number, 80)                 # rapprochement validé automatiquement à partir de ce score
+      judge_threshold_low       = optional(number, 30)                 # en dessous : rejeté ; entre les deux : à valider dans l'interface
+      enrich_auto_approve_score = optional(number, 85)                 # valeur proposée validée automatiquement à partir de ce score
+      enrich_auto_reject_score  = optional(number, 50)                 # en dessous : rejetée (motif low_score)
       scope_status              = optional(string, "Open,Pre-opening") # statuts d'hôtel du PIM traités
       scheduler_paused          = optional(bool, true)
     }), {})

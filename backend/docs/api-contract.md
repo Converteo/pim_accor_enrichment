@@ -84,7 +84,7 @@ interface AutoValidationChange { approveThreshold: number|null; rejectThreshold:
 interface ScoreBucket { score: number|null; approvable: number; total: number; }  // éléments sans décision humaine auxquels les seuils s'appliquent
 interface AutoValidationStepState {
   step: AutoValidationStep;
-  approveThreshold: number|null; rejectThreshold: number|null;   // en vigueur ; null = désactivé
+  approveThreshold: number|null; rejectThreshold: number|null;   // en vigueur (null seulement dans d'anciens réglages)
   isDefault: boolean;                                             // aucun réglage : valeurs par défaut de Terraform
   distribution: ScoreBucket[];
   history: AutoValidationChange[];                                // du plus récent au plus ancien
@@ -112,7 +112,7 @@ interface FieldValues { pimField: string; dataType: string; multivalue: boolean;
 | GET | `/export/executions/:id` | `{state: 'running'|'succeeded'|'failed', message?}` | `succeeded` sans nouvelle ligne dans `history` = le job n'avait rien à exporter (aucune valeur validée) ou a refusé (attente apparue entre-temps) |
 | GET | `/exports/:exportId/files/:name` | flux du fichier (Content-Disposition) | lecture du bucket exports |
 | GET | `/settings/auto-validation` | `AutoValidation` | seuils en vigueur des deux étapes, répartition des scores (simulation côté front), historique ; `canEdit` d'après `X-PIM-Author` et `SETTINGS_EDITORS` |
-| POST | `/settings/auto-validation/:step` | `AutoValidation` | `step` = `match` ou `enrichment` ; corps `{approveThreshold: int 0-100|null, rejectThreshold: int 0-100|null, comment?}`, rejet ≤ validation ; 403 `settings_forbidden` hors `SETTINGS_EDITORS` ; un INSERT dans `validation.auto_validation_settings`, appliqué tout de suite par les vues |
+| POST | `/settings/auto-validation/:step` | `AutoValidation` | `step` = `match` ou `enrichment` ; corps `{approveThreshold: int 0-100, rejectThreshold: int 0-100, comment?}` (toujours activés), rejet ≤ validation ; 403 `settings_forbidden` hors `SETTINGS_EDITORS` ; un INSERT dans `validation.auto_validation_settings`, appliqué tout de suite par les vues |
 
 ## Modifications proposées
 - 22/10 [pipeline] intégrée ci-dessus : seuils de validation automatique réglables dans l'interface (`/settings/auto-validation`), `GET /matches?status=pending_judgment` et `Stats.matchesPending` pour l'onglet « En cours de traitement » ; onglet « Validés automatiquement » (`GET /matches?status=auto_approved`, `GET /enrichments/auto-approved`, `Stats.matchesAutoApproved` et `valuesAutoApproved`), en lecture seule.
