@@ -1,5 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type {
+  AutoApprovedValue,
   AutoValidationChange,
   AutoValidationStep,
   Decision,
@@ -31,8 +32,10 @@ export interface HotelFilters {
   cursor?: string;
 }
 
+export type AutoApprovedFilters = Omit<HotelFilters, 'view'>;
+
 export interface MatchFilters {
-  status: 'needs_review' | 'pending_judgment';
+  status: 'needs_review' | 'pending_judgment' | 'auto_approved';
   source?: string;
   limit: number;
   cursor?: string;
@@ -49,6 +52,8 @@ export abstract class Repository {
   /** null si le RID est inconnu. */
   abstract hotel(rid: string): Promise<HotelDetail | null>;
   abstract matches(filters: MatchFilters): Promise<Page<MatchItem>>;
+  /** Valeurs auto_approved sur un rapprochement validé, du score le plus bas au plus haut. */
+  abstract autoApprovedValues(filters: AutoApprovedFilters): Promise<Page<AutoApprovedValue>>;
   abstract enrichmentStates(enrichmentIds: string[]): Promise<EnrichmentState[]>;
   /** Un seul INSERT multi-lignes ; author et decided_at (UTC) posés ici, jamais par le client. */
   abstract insertEnrichmentDecisions(rows: EnrichmentDecisionRow[], author: string): Promise<void>;
@@ -308,17 +313,19 @@ export class BigQueryRepository extends Repository {
           COUNT(DISTINCT IF(final_status = 'pending_enrichment' AND has_approved, rid, NULL)) AS hotelsPending,
           COUNTIF(final_status = 'needs_review' AND ok) AS valuesToReview,
           COUNTIF(final_status = 'pending_enrichment') AS valuesPending,
-          COUNTIF(final_status IN ('human_approved', 'auto_approved', 'human_corrected') AND ok) AS valuesApproved
+          COUNTIF(final_status IN ('human_approved', 'auto_approved', 'human_corrected') AND ok) AS valuesApproved,
+          COUNTIF(final_status = 'auto_approved' AND ok) AS valuesAutoApproved
         FROM e
       ),
       mcounts AS (
         SELECT COUNTIF(final_status = 'needs_review') AS matchesToReview,
           COUNTIF(final_status = 'pending_judgment') AS matchesPending,
+          COUNTIF(final_status = 'auto_approved') AS matchesAutoApproved,
           COUNTIF(final_status IN ('needs_review', 'pending_judgment')) AS matchesWaiting
         FROM m
       )
       -- pendingForExport : même compte que le job d'export (contrat-back.md § 3)
-      SELECT counts.*, matchesToReview, matchesPending, matchesWaiting + valuesToReview + valuesPending AS pendingForExport
+      SELECT counts.*, matchesToReview, matchesPending, matchesAutoApproved, matchesWaiting + valuesToReview + valuesPending AS pendingForExport
       FROM counts CROSS JOIN mcounts`);
     const keys = [
       'hotelsToReview',
@@ -326,6 +333,8 @@ export class BigQueryRepository extends Repository {
       'valuesToReview',
       'matchesToReview',
       'matchesPending',
+      'matchesAutoApproved',
+      'valuesAutoApproved',
       'valuesPending',
       'valuesApproved',
       'pendingForExport',
@@ -376,11 +385,17 @@ export class BigQueryRepository extends Repository {
 
   async matches(f: MatchFilters): Promise<Page<MatchItem>> {
     const { matches } = this.t;
-    // Un curseur par liste : celui des rapprochements à valider n'est pas valable sur ceux en attente de jugement
-    const list = f.status === 'pending_judgment' ? 'matches-pending' : 'matches';
+    // Un curseur par liste. Validés automatiquement : score croissant, les cas limites (juste au-dessus du seuil) d'abord
+    const list = { needs_review: 'matches', pending_judgment: 'matches-pending', auto_approved: 'matches-auto' }[
+      f.status
+    ];
+    const order =
+      f.status === 'auto_approved'
+        ? `FORMAT('%03d|%s|%s|%s', IFNULL(score, 0), source, rid, source_hash)`
+        : `FORMAT('%s|%03d|%s|%s', source, 100 - IFNULL(score, 0), rid, source_hash)`;
     const rows = await this.bq.query<Row>(
       `SELECT * FROM (
-        SELECT *, FORMAT('%s|%03d|%s|%s', source, 100 - IFNULL(score, 0), rid, source_hash) AS sort_key
+        SELECT *, ${order} AS sort_key
         FROM ${matches}
         WHERE final_status = @status AND (@source IS NULL OR source = @source)
       )
@@ -389,6 +404,55 @@ export class BigQueryRepository extends Repository {
       { source: 'STRING' },
     );
     return page(list, rows, f.limit, matchItem);
+  }
+
+  async autoApprovedValues(f: AutoApprovedFilters): Promise<Page<AutoApprovedValue>> {
+    const { approved, enrichments } = this.t;
+    const rows = await this.bq.query<Row>(
+      `
+      WITH am AS (SELECT rid, source, pim_name, pim_brand, pim_city, pim_country FROM ${approved}),
+      identity AS (
+        SELECT rid, ANY_VALUE(pim_name) AS name, ANY_VALUE(pim_brand) AS brand, ANY_VALUE(pim_city) AS city,
+          ANY_VALUE(pim_country) AS country
+        FROM am GROUP BY rid
+      )
+      SELECT * FROM (
+        SELECT e.*, i.name, i.brand, i.city, i.country,
+          FORMAT('%03d|%s|%s|%s', IFNULL(e.score, 0), e.rid, e.pim_field, IFNULL(e.entity_id, '')) AS sort_key
+        FROM ${enrichments} e
+        JOIN identity i USING (rid)
+        WHERE e.final_status = 'auto_approved'
+          AND EXISTS (SELECT 1 FROM am WHERE am.rid = e.rid AND am.source = e.source)
+          AND (@source IS NULL OR e.source = @source)
+          AND (@family IS NULL OR e.family = @family)
+          AND (@priority IS NULL OR e.priority = @priority)
+          AND (@brand IS NULL OR i.brand = @brand)
+          AND (@search IS NULL
+            OR STRPOS(LOWER(CONCAT(IFNULL(i.name, ''), ' ', IFNULL(i.city, ''), ' ', e.rid)), LOWER(@search)) > 0)
+      )
+      WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
+      {
+        brand: f.brand ?? null,
+        source: f.source ?? null,
+        family: f.family ?? null,
+        priority: f.priority ?? null,
+        search: f.search ?? null,
+        cursor: decodeCursor('values-auto', f.cursor),
+        limit: f.limit + 1,
+      },
+      HOTEL_FILTER_TYPES,
+    );
+    return page('values-auto', rows, f.limit, (r: Row) => ({
+      hotel: {
+        rid: r.rid as string,
+        name: (r.name as string | null) ?? (r.rid as string),
+        brand: str(r.brand),
+        city: str(r.city),
+        country: str(r.country),
+      },
+      value: enrichmentValue(r),
+      approveThreshold: num(r.approve_threshold),
+    }));
   }
 
   async enrichmentStates(enrichmentIds: string[]): Promise<EnrichmentState[]> {

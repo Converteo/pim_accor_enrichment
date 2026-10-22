@@ -78,6 +78,9 @@ describe('GET /hotels/facets et /stats', () => {
       hotelsPending: 0,
       valuesToReview: 2,
       matchesToReview: 3,
+      matchesPending: 0,
+      matchesAutoApproved: 4,
+      valuesAutoApproved: 0,
       valuesPending: 0,
       valuesApproved: 0,
       pendingForExport: 5,
@@ -107,6 +110,39 @@ describe('GET /matches', () => {
     repo.matches.mockResolvedValue({ items: [], nextCursor: null });
     await request(app.getHttpServer()).get('/matches?source=expedia&limit=5&cursor=x').expect(200);
     expect(repo.matches).toHaveBeenCalledWith({ status: 'needs_review', source: 'expedia', limit: 5, cursor: 'x' });
+  });
+
+  it.each(['pending_judgment', 'auto_approved'])('accepte status=%s', async (status) => {
+    repo.matches.mockResolvedValue({ items: [], nextCursor: null });
+    await request(app.getHttpServer()).get(`/matches?status=${status}`).expect(200);
+    expect(repo.matches).toHaveBeenCalledWith({ status, limit: 50 });
+  });
+
+  it('refuse un statut sans liste (400)', async () => {
+    const res = await request(app.getHttpServer()).get('/matches?status=human_approved').expect(400);
+    expect(res.body.error.code).toBe('invalid_request');
+  });
+});
+
+describe('GET /enrichments/auto-approved', () => {
+  it('transmet les filtres des fiches, sans view', async () => {
+    repo.autoApprovedValues.mockResolvedValue({ items: [], nextCursor: null });
+    await request(app.getHttpServer())
+      .get('/enrichments/auto-approved?family=pool&priority=P1&source=expedia&brand=Ibis&search=lyon&limit=20')
+      .expect(200, { items: [], nextCursor: null });
+    expect(repo.autoApprovedValues).toHaveBeenCalledWith({
+      family: 'pool',
+      priority: 'P1',
+      source: 'expedia',
+      brand: 'Ibis',
+      search: 'lyon',
+      limit: 20,
+    });
+  });
+
+  it('refuse une famille inconnue (400)', async () => {
+    await request(app.getHttpServer()).get('/enrichments/auto-approved?family=spa').expect(400);
+    expect(repo.autoApprovedValues).not.toHaveBeenCalled();
   });
 });
 

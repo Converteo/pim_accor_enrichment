@@ -21,6 +21,8 @@ const hotelQuery = z.object({
   cursor: text,
 });
 
+const autoApprovedQuery = hotelQuery.omit({ view: true });
+
 @Controller()
 export class HotelsController {
   constructor(@Inject(Repository) private readonly repo: Repository) {}
@@ -33,6 +35,12 @@ export class HotelsController {
   @Get('hotels')
   hotels(@Query() query: unknown) {
     return this.repo.hotels(parse(hotelQuery, query));
+  }
+
+  /** Valeurs validées automatiquement, pour information (lecture seule). */
+  @Get('enrichments/auto-approved')
+  autoApproved(@Query() query: unknown) {
+    return this.repo.autoApprovedValues(parse(autoApprovedQuery, query));
   }
 
   @Get('hotels/facets')

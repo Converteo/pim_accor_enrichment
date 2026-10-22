@@ -27,6 +27,7 @@ export async function appWithMockRepository(
     stats: vi.fn(),
     hotel: vi.fn(),
     matches: vi.fn(),
+    autoApprovedValues: vi.fn(),
     enrichmentStates: vi.fn(),
     insertEnrichmentDecisions: vi.fn(),
     matchStatuses: vi.fn(),

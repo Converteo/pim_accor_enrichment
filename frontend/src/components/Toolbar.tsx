@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 import type { ChangeEvent, ReactNode } from "react";
 import {
   FAMILY_ORDER,
+  INFO_TABS,
   PRIORITY_ORDER,
   TAB_ORDER,
   type Facets,
@@ -42,6 +43,8 @@ function tabCount(tab: TabKey, stats: Stats): number {
       return stats.hotelsToReview;
     case "pending":
       return stats.matchesPending + stats.hotelsPending;
+    case "auto":
+      return stats.matchesAutoApproved + stats.valuesAutoApproved;
   }
 }
 
@@ -190,7 +193,9 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
               key={key}
               type="button"
               aria-pressed={active}
-              className={active ? `${styles.tab} ${styles.active}` : styles.tab}
+              className={[styles.tab, active ? styles.active : "", INFO_TABS.includes(key) ? styles.info : ""]
+                .filter(Boolean)
+                .join(" ")}
               onClick={() => onTab(key)}
             >
               {t(`tabs.${key}`)}{" "}

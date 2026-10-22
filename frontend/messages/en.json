@@ -25,7 +25,8 @@
   "tabs": {
     "matches": "① Matches to validate",
     "review": "② Attributes to validate",
-    "pending": "In progress"
+    "pending": "In progress",
+    "auto": "Auto-approved"
   },
   "pendingTab": {
     "matches": "Matches waiting for the judge",
@@ -33,6 +34,20 @@
     "matchesEmpty": "No match waiting for the judge.",
     "values": "Attributes being enriched",
     "valuesHint": "These records have an approved match: the enrichment agent will process them on its next run."
+  },
+  "autoTab": {
+    "matches": "Matches approved automatically",
+    "matchesHint": "Judge agent score at or above the approval threshold in force. For information: lowest score first, borderline cases on top.",
+    "matchesEmpty": "No match approved automatically for this filter.",
+    "values": "Attributes approved automatically",
+    "valuesHint": "Score at or above the approval threshold, no warning, not inferred. They go to the export. For information: borderline cases first.",
+    "valuesEmpty": "No attribute approved automatically for these filters: the attributes approval threshold may be off (“Automation thresholds”).",
+    "valuesShown": "{count, plural, one {# attribute shown} other {# attributes shown}}",
+    "attribute": "Attribute",
+    "value": "Approved value",
+    "excerpt": "Source excerpt",
+    "score": "Score",
+    "threshold": "threshold {value}"
   },
   "search": {
     "placeholder": "Search for a hotel or city…"

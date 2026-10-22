@@ -105,9 +105,20 @@ export interface Stats {
   valuesToReview: number;
   matchesToReview: number;
   matchesPending: number;
+  /** Validated by the thresholds, for information (« Validés automatiquement » tab). */
+  matchesAutoApproved: number;
+  valuesAutoApproved: number;
   valuesPending: number;
   valuesApproved: number;
   pendingForExport: number;
+}
+
+/** Valeur validée automatiquement, avec sa fiche (onglet « Validés automatiquement », lecture seule). */
+export interface AutoApprovedValue {
+  hotel: Pick<HotelSummary, 'rid' | 'name' | 'brand' | 'city' | 'country'>;
+  value: EnrichmentValue;
+  /** Seuil de validation qui l'a fait passer. */
+  approveThreshold: number | null;
 }
 
 export const AUTO_VALIDATION_STEPS = ['match', 'enrichment'] as const;

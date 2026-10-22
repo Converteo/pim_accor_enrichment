@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   ApiError,
   decideEnrichments,
+  fetchAutoApprovedValues,
   fetchFacets,
   fetchHotel,
   fetchHotels,
@@ -14,6 +15,7 @@ import {
 } from "@/data/source";
 import { applyDecisions, cityLine, formatScore, matchKey, withReviewCount } from "@/domain/rules";
 import type {
+  AutoApprovedValue,
   EnrichmentDecisionItem,
   EnrichmentValue,
   Facets,
@@ -26,6 +28,7 @@ import type {
   ValueDecision as Decision,
 } from "@/domain/types";
 import { AutoValidationPanel } from "./AutoValidationPanel";
+import { AutoValueTable } from "./AutoValueTable";
 import { BulkBar } from "./BulkBar";
 import { Drawer } from "./Drawer";
 import { ExportBar } from "./ExportBar";
@@ -159,6 +162,22 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     matchKey,
   );
 
+  // « Validés automatiquement » tab (read only), read only when the tab is shown.
+  const autoMatches = usePagedList(
+    JSON.stringify(["auto_approved", tab === "auto", query.source]),
+    (cursor): Promise<Page<MatchItem>> =>
+      tab === "auto"
+        ? fetchMatches(query.source, cursor, "auto_approved")
+        : Promise.resolve({ items: [], nextCursor: null }),
+    matchKey,
+  );
+  const autoValues = usePagedList(
+    JSON.stringify(["auto_values", tab === "auto", query]),
+    (cursor): Promise<Page<AutoApprovedValue>> =>
+      tab === "auto" ? fetchAutoApprovedValues(query, cursor) : Promise.resolve({ items: [], nextCursor: null }),
+    ({ hotel, value }) => `${hotel.rid}|${value.enrichmentId ?? value.pimField}`,
+  );
+
   useEffect(() => {
     // Indicators and facets are secondary: the list shows its own error if the back is down.
     fetchStats().then(
@@ -178,6 +197,8 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     hotels.reload();
     matches.list.reload();
     pendingMatches.reload();
+    autoMatches.reload();
+    autoValues.reload();
   }
 
   // A selection only makes sense on the list it was made on.
@@ -192,7 +213,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     setTab(next);
     setSelected(new Set());
     matches.setSelected(new Set());
-    if (next !== "matches") setHotelView(next);
+    if (next === "review" || next === "pending") setHotelView(next);
   }
 
   function onToggleRow(rid: string, checked: boolean) {
@@ -421,6 +442,39 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
                 loadingMore={matches.list.loadingMore}
                 onMore={matches.list.loadMore}
                 onRetry={matches.list.reload}
+              />
+            </>
+          ) : tab === "auto" ? (
+            <>
+              <SectionTitle title={t("autoTab.matches")} hint={t("autoTab.matchesHint")} />
+              {autoMatches.status === "ready" && autoMatches.items.length > 0 ? (
+                <MatchTable rows={autoMatches.items} readOnly />
+              ) : null}
+              <ListFooter
+                status={autoMatches.status}
+                count={autoMatches.items.length}
+                shown={t("matches.shown", { count: autoMatches.items.length })}
+                empty={t("autoTab.matchesEmpty")}
+                error={autoMatches.error}
+                hasMore={autoMatches.hasMore}
+                loadingMore={autoMatches.loadingMore}
+                onMore={autoMatches.loadMore}
+                onRetry={autoMatches.reload}
+              />
+              <SectionTitle title={t("autoTab.values")} hint={t("autoTab.valuesHint")} />
+              {autoValues.status === "ready" && autoValues.items.length > 0 ? (
+                <AutoValueTable rows={autoValues.items} />
+              ) : null}
+              <ListFooter
+                status={autoValues.status}
+                count={autoValues.items.length}
+                shown={t("autoTab.valuesShown", { count: autoValues.items.length })}
+                empty={t("autoTab.valuesEmpty")}
+                error={autoValues.error}
+                hasMore={autoValues.hasMore}
+                loadingMore={autoValues.loadingMore}
+                onMore={autoValues.loadMore}
+                onRetry={autoValues.reload}
               />
             </>
           ) : (

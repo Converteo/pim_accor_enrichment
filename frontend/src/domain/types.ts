@@ -121,9 +121,19 @@ export interface Stats {
   matchesToReview: number;
   /** Matches waiting for the judge agent (pending_judgment). */
   matchesPending: number;
+  /** Validated by the thresholds, for information (« Validés automatiquement » tab). */
+  matchesAutoApproved: number;
+  valuesAutoApproved: number;
   valuesPending: number;
   valuesApproved: number;
   pendingForExport: number;
+}
+
+/** Value validated by the threshold, with its fiche (read only). */
+export interface AutoApprovedValue {
+  hotel: Pick<HotelSummary, "rid" | "name" | "brand" | "city" | "country">;
+  value: EnrichmentValue;
+  approveThreshold: number | null;
 }
 
 export type AutoValidationStep = "match" | "enrichment";
@@ -233,10 +243,13 @@ export interface ExportExecution {
 
 // Screen state (front only)
 
-export type TabKey = "review" | "matches" | "pending";
+export type TabKey = "review" | "matches" | "pending" | "auto";
 
 /** Order of the reviewer's work: matches first (their values appear once approved), then attributes, then what waits for the pipeline. */
-export const TAB_ORDER: readonly TabKey[] = ["matches", "review", "pending"];
+export const TAB_ORDER: readonly TabKey[] = ["matches", "review", "pending", "auto"];
+
+/** Tabs with nothing to decide, shown in a lighter style. */
+export const INFO_TABS: readonly TabKey[] = ["pending", "auto"];
 
 export const FAMILY_ORDER: readonly Family[] = [
   "general",

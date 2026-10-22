@@ -25,7 +25,8 @@
   "tabs": {
     "matches": "① Rapprochements à valider",
     "review": "② Attributs à valider",
-    "pending": "En cours de traitement"
+    "pending": "En cours de traitement",
+    "auto": "Validés automatiquement"
   },
   "pendingTab": {
     "matches": "Rapprochements en attente de jugement",
@@ -33,6 +34,20 @@
     "matchesEmpty": "Aucun rapprochement en attente de jugement.",
     "values": "Attributs en cours d’enrichissement",
     "valuesHint": "Ces fiches ont un rapprochement validé : l’agent d’enrichissement les traitera à son prochain passage."
+  },
+  "autoTab": {
+    "matches": "Rapprochements validés automatiquement",
+    "matchesHint": "Score de l’agent juge au moins égal au seuil de validation en vigueur. Pour information : du score le plus bas au plus haut, les cas limites d’abord.",
+    "matchesEmpty": "Aucun rapprochement validé automatiquement pour ce filtre.",
+    "values": "Attributs validés automatiquement",
+    "valuesHint": "Score au moins égal au seuil de validation, sans alerte, valeur non déduite. Ils partiront à l’export. Pour information : les cas limites d’abord.",
+    "valuesEmpty": "Aucun attribut validé automatiquement pour ces filtres : le seuil de validation des attributs est peut-être désactivé (« Seuils d’automatisation »).",
+    "valuesShown": "{count, plural, one {# attribut affiché} other {# attributs affichés}}",
+    "attribute": "Attribut",
+    "value": "Valeur validée",
+    "excerpt": "Extrait de la source",
+    "score": "Score",
+    "threshold": "seuil {value}"
   },
   "search": {
     "placeholder": "Rechercher un hôtel, une ville…"
