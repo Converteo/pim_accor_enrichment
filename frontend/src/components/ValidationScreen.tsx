@@ -52,6 +52,7 @@ const EMPTY_FILTERS: Filters = {
   family: "",
   priority: "",
   verdict: "",
+  outdated: "",
 };
 
 /** One value decided by the reviewer, with the fiche it belongs to. */
@@ -363,7 +364,15 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         setDetail((current) => (current?.rid === rid ? { rid, data, error: null } : current));
         // The fiche is the freshest source for its row's counter.
         hotels.setItems((list) =>
-          list.map((hotel) => (hotel.rid === rid ? { ...hotel, toReviewCount: data.toReview.length } : hotel)),
+          list.map((hotel) =>
+            hotel.rid === rid
+              ? {
+                  ...hotel,
+                  toReviewCount: data.toReview.length,
+                  outdatedCount: data.toReview.filter((value) => value.outdated !== null).length,
+                }
+              : hotel,
+          ),
         );
       },
       (error: unknown) => setDetail((current) => (current?.rid === rid ? { ...current, error } : current)),

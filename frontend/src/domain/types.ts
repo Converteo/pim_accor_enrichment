@@ -36,6 +36,8 @@ export interface HotelSummary {
   country: string | null;
   sources: string[];
   toReviewCount: number;
+  /** Values to review flagged « non prioritaire, à vérifier » (outdated), among toReviewCount. */
+  outdatedCount: number;
   /** 0-100 */
   avgScore: number | null;
   pendingCount: number;
@@ -71,6 +73,8 @@ export interface EnrichmentValue {
   score: number | null;
   confidence: string | null;
   warning: string | null;
+  /** Short French reason when the value is « non prioritaire, à vérifier » (e.g. source page under a former name). */
+  outdated: string | null;
   status: ValueStatus;
   reason: string | null;
   reasonDetail: string | null;
@@ -273,6 +277,8 @@ export interface Filters {
   priority: "" | Priority;
   /** Judge agent's verdict: matches only. */
   verdict: string;
+  /** Values flagged « non prioritaire » (outdated): fiches to review only. */
+  outdated: "" | "hide" | "only";
 }
 
 /** The filters /matches understands. */

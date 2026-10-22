@@ -109,6 +109,16 @@
   margin-bottom: 12px;
 }
 
+.outdated {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .warning {
   margin: 0 0 12px;
   padding: 8px 12px;

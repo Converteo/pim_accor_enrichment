@@ -65,7 +65,11 @@
     "familyLabel": "Famille",
     "priorityLabel": "Priorité",
     "verdictLabel": "Avis du juge",
-    "allVerdicts": "Tous les avis"
+    "allVerdicts": "Tous les avis",
+    "outdatedLabel": "Non prioritaires",
+    "outdatedAll": "Toutes les valeurs",
+    "outdatedHide": "Masquer",
+    "outdatedOnly": "Seulement elles"
   },
   "families": {
     "general": "Accueil et services",
@@ -94,7 +98,8 @@
     "pending": "{count, plural, one {# champ en cours} other {# champs en cours}}",
     "conflicts": "{count, plural, one {# conflit PIM} other {# conflits PIM}}",
     "select": "Sélectionner {name}",
-    "selectAll": "Tout sélectionner"
+    "selectAll": "Tout sélectionner",
+    "outdated": "{count, plural, one {# non prioritaire} other {# non prioritaires}}"
   },
   "list": {
     "loading": "Chargement…",
@@ -145,7 +150,8 @@
     },
     "yes": "Oui",
     "no": "Non",
-    "newEntity": "{name} (nouveau)"
+    "newEntity": "{name} (nouveau)",
+    "outdated": "Non prioritaire : à vérifier. {reason}"
   },
   "detail": {
     "nothingToReview": "Toutes les valeurs de cette fiche ont été décidées.",
@@ -156,7 +162,9 @@
     "sourceSays": "La source indique « {value} » ({source})",
     "history": "Décisions déjà prises",
     "decidedBy": "{author}, le {date}",
-    "pimHas": "Le PIM contient « {value} »"
+    "pimHas": "Le PIM contient « {value} »",
+    "outdated": "Non prioritaires : à vérifier",
+    "outdatedHint": "Leur source ne décrit peut-être plus l’hôtel actuel (par exemple une page sous un ancien nom) : à vérifier après les autres valeurs."
   },
   "decision": {
     "human_approved": "Validée",

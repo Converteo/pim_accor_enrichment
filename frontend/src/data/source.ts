@@ -80,15 +80,16 @@ export function fetchHotels(
   filters: Filters,
   cursor: string | null,
 ): Promise<Page<HotelSummary>> {
-  // The verdict only filters matches.
+  // The verdict only filters matches, `outdated` only the fiches to review.
+  const outdated = view === "review" ? filters.outdated : undefined;
   return call(
-    `/hotels${query({ view, ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`,
+    `/hotels${query({ view, ...filters, verdict: undefined, outdated, limit: PAGE_SIZE, cursor })}`,
   );
 }
 
 /** Values validated by the threshold, lowest score first (read only). */
 export function fetchAutoApprovedValues(filters: Filters, cursor: string | null): Promise<Page<AutoApprovedValue>> {
-  return call(`/enrichments/auto-approved${query({ ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`);
+  return call(`/enrichments/auto-approved${query({ ...filters, verdict: undefined, outdated: undefined, limit: PAGE_SIZE, cursor })}`);
 }
 
 export function fetchHotel(rid: string): Promise<HotelDetail> {

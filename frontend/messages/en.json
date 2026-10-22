@@ -65,7 +65,11 @@
     "familyLabel": "Family",
     "priorityLabel": "Priority",
     "verdictLabel": "Judge's verdict",
-    "allVerdicts": "All verdicts"
+    "allVerdicts": "All verdicts",
+    "outdatedLabel": "Low priority",
+    "outdatedAll": "All values",
+    "outdatedHide": "Hide",
+    "outdatedOnly": "Only these"
   },
   "families": {
     "general": "Welcome and services",
@@ -94,7 +98,8 @@
     "pending": "{count, plural, one {# field in progress} other {# fields in progress}}",
     "conflicts": "{count, plural, one {# PIM conflict} other {# PIM conflicts}}",
     "select": "Select {name}",
-    "selectAll": "Select all"
+    "selectAll": "Select all",
+    "outdated": "{count, plural, one {# low priority} other {# low priority}}"
   },
   "list": {
     "loading": "Loading…",
@@ -145,7 +150,8 @@
     },
     "yes": "Yes",
     "no": "No",
-    "newEntity": "{name} (new)"
+    "newEntity": "{name} (new)",
+    "outdated": "Low priority: to check. {reason}"
   },
   "detail": {
     "nothingToReview": "Every value of this record has been decided.",
@@ -156,7 +162,9 @@
     "sourceSays": "The source says “{value}” ({source})",
     "history": "Decisions already made",
     "decidedBy": "{author}, {date}",
-    "pimHas": "The PIM has “{value}”"
+    "pimHas": "The PIM has “{value}”",
+    "outdated": "Low priority: to check",
+    "outdatedHint": "Their source may no longer describe the current hotel (for example a page under a former name): check them after the other values."
   },
   "decision": {
     "human_approved": "Approved",

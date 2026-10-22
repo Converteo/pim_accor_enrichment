@@ -69,6 +69,8 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
   // and matches waiting for the judge have no verdict yet.
   const hotelFilters = tab !== "matches";
   const verdictFilter = tab === "matches" || tab === "auto";
+  // /hotels only flags the values of the fiches to review.
+  const outdatedFilter = tab === "review";
 
   function select(key: keyof Filters) {
     return (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) =>
@@ -200,6 +202,27 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
                   {priority}
                 </option>
               ))}
+            </select>
+          </Segment>
+        ) : null}
+        {outdatedFilter ? (
+          <Segment
+            label={t("filters.outdatedLabel")}
+            icon={
+              <>
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 7.5v5M12 16.2v.3" />
+              </>
+            }
+          >
+            <select
+              className={`${styles.control} ${styles.select}`}
+              value={filters.outdated}
+              onChange={select("outdated")}
+            >
+              <option value="">{t("filters.outdatedAll")}</option>
+              <option value="hide">{t("filters.outdatedHide")}</option>
+              <option value="only">{t("filters.outdatedOnly")}</option>
             </select>
           </Segment>
         ) : null}
