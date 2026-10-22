@@ -5,7 +5,7 @@
 -- the thresholds in force, at read time (latest 'enrichment' row of validation.auto_validation_settings, else the
 -- Terraform defaults): changing a threshold in the app applies at once, without enriching again.
 --   auto_rejected  score < reject_threshold (reason low_score)
---   auto_approved  score >= approve_threshold, no warning, method not inferred
+--   auto_approved  score >= approve_threshold, no warning
 --   needs_review   otherwise
 WITH enrichment AS (
   SELECT * FROM `${enhanced}.enrichment_proposals`
@@ -43,11 +43,11 @@ setting AS (
 scored AS (
   SELECT e.*, s.approve_threshold, s.reject_threshold,
     e.status = 'needs_review' AS auto_eligible,
-    e.warning IS NULL AND IFNULL(e.method, '') != 'inferred' AS auto_approvable,
+    e.warning IS NULL AS auto_approvable,
     CASE
       WHEN e.status != 'needs_review' THEN e.status
       WHEN e.score < s.reject_threshold THEN 'auto_rejected'
-      WHEN e.score >= s.approve_threshold AND e.warning IS NULL AND IFNULL(e.method, '') != 'inferred' THEN 'auto_approved'
+      WHEN e.score >= s.approve_threshold AND e.warning IS NULL THEN 'auto_approved'
       ELSE 'needs_review'
     END AS auto_status
   FROM enrichment e CROSS JOIN setting s
