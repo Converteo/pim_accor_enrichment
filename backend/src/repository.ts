@@ -37,6 +37,8 @@ export type AutoApprovedFilters = Omit<HotelFilters, 'view'>;
 export interface MatchFilters {
   status: 'needs_review' | 'pending_judgment' | 'auto_approved';
   source?: string;
+  brand?: string;
+  verdict?: string;
   limit: number;
   cursor?: string;
 }
@@ -178,6 +180,7 @@ function matchItem(r: Row): MatchItem {
     confidence: str(r.confidence),
     judgeReason: str(r.judge_reason),
     justification: str(r.justification),
+    verdict: str(r.verdict),
     status: r.final_status as MatchItem['status'],
     lastDecision: decision(r),
   };
@@ -290,8 +293,9 @@ export class BigQueryRepository extends Repository {
     const [row] = await this.bq.query<Facets>(`
       SELECT
         ARRAY(SELECT DISTINCT pim_brand FROM ${approved} WHERE pim_brand IS NOT NULL ORDER BY 1) AS brands,
-        ARRAY(SELECT DISTINCT source FROM ${matches} ORDER BY 1) AS sources`);
-    return row ?? { brands: [], sources: [] };
+        ARRAY(SELECT DISTINCT source FROM ${matches} ORDER BY 1) AS sources,
+        ARRAY(SELECT DISTINCT verdict FROM ${matches} WHERE verdict IS NOT NULL ORDER BY 1) AS verdicts`);
+    return row ?? { brands: [], sources: [], verdicts: [] };
   }
 
   async stats(): Promise<Stats> {
@@ -398,10 +402,18 @@ export class BigQueryRepository extends Repository {
         SELECT *, ${order} AS sort_key
         FROM ${matches}
         WHERE final_status = @status AND (@source IS NULL OR source = @source)
+          AND (@brand IS NULL OR pim_brand = @brand) AND (@verdict IS NULL OR verdict = @verdict)
       )
       WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
-      { status: f.status, source: f.source ?? null, cursor: decodeCursor(list, f.cursor), limit: f.limit + 1 },
-      { source: 'STRING' },
+      {
+        status: f.status,
+        source: f.source ?? null,
+        brand: f.brand ?? null,
+        verdict: f.verdict ?? null,
+        cursor: decodeCursor(list, f.cursor),
+        limit: f.limit + 1,
+      },
+      { source: 'STRING', brand: 'STRING', verdict: 'STRING' },
     );
     return page(list, rows, f.limit, matchItem);
   }

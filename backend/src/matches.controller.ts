@@ -7,6 +7,8 @@ import { Repository } from './repository.js';
 const matchQuery = z.object({
   status: z.enum(['needs_review', 'pending_judgment', 'auto_approved']).default('needs_review'),
   source: optional(z.string().trim()),
+  brand: optional(z.string().trim()),
+  verdict: optional(z.string().trim()),
   limit,
   cursor: optional(z.string()),
 });

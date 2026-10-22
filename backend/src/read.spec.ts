@@ -65,10 +65,9 @@ describe('GET /hotels', () => {
 
 describe('GET /hotels/facets et /stats', () => {
   it('/hotels/facets ne passe pas pour un RID', async () => {
-    repo.facets.mockResolvedValue({ brands: ['Novotel'], sources: ['expedia'] });
-    await request(app.getHttpServer())
-      .get('/hotels/facets')
-      .expect(200, { brands: ['Novotel'], sources: ['expedia'] });
+    const facets = { brands: ['Novotel'], sources: ['expedia'], verdicts: ['same_hotel'] };
+    repo.facets.mockResolvedValue(facets);
+    await request(app.getHttpServer()).get('/hotels/facets').expect(200, facets);
     expect(repo.hotel).not.toHaveBeenCalled();
   });
 
@@ -111,6 +110,17 @@ describe('GET /matches', () => {
     await request(app.getHttpServer()).get('/matches?source=expedia&limit=5&cursor=x').expect(200);
     expect(repo.matches).toHaveBeenCalledWith({ status: 'needs_review', source: 'expedia', limit: 5, cursor: 'x' });
   });
+
+  it.each(['needs_review', 'pending_judgment', 'auto_approved'])(
+    'filtre marque et avis du juge pour status=%s',
+    async (status) => {
+      repo.matches.mockResolvedValue({ items: [], nextCursor: null });
+      await request(app.getHttpServer())
+        .get(`/matches?status=${status}&brand=Ibis&verdict=undetermined&source=`)
+        .expect(200);
+      expect(repo.matches).toHaveBeenCalledWith({ status, brand: 'Ibis', verdict: 'undetermined', limit: 50 });
+    },
+  );
 
   it.each(['pending_judgment', 'auto_approved'])('accepte status=%s', async (status) => {
     repo.matches.mockResolvedValue({ items: [], nextCursor: null });

@@ -95,6 +95,8 @@ export interface MatchItem {
   confidence: string | null;
   judgeReason: string | null;
   justification: string | null;
+  /** Avis brut du juge : same_hotel, different_hotel, undetermined ; null tant qu'il n'a pas jugé. */
+  verdict: string | null;
   status: MatchStatus;
   lastDecision: Decision | null;
 }
@@ -161,6 +163,8 @@ export interface AutoValidation {
 export interface Facets {
   brands: string[];
   sources: string[];
+  /** Avis du juge présents dans v_matches (filtre verdict de GET /matches). */
+  verdicts: string[];
 }
 
 export interface FieldValues {

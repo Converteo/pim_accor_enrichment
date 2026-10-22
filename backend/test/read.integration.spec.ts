@@ -68,6 +68,20 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     expect(await repo.matchStatuses([key, 'x|y|z'])).toEqual(new Map([[key, 'needs_review']]));
     const f = await repo.facets();
     expect(f.sources.length).toBeGreaterThan(0);
+    expect(f.verdicts).toContain('same_hotel');
+  });
+
+  it('matches : filtres marque et avis du juge sur les validés automatiquement', async () => {
+    const [first] = (await repo.matches({ status: 'auto_approved', limit: 1 })).items;
+    const m = await repo.matches({
+      status: 'auto_approved',
+      brand: first!.pim.brand!,
+      verdict: 'same_hotel',
+      limit: 20,
+    });
+    expect(m.items.length).toBeGreaterThan(0);
+    expect(m.items.every((x) => x.pim.brand === first!.pim.brand && x.verdict === 'same_hotel')).toBe(true);
+    expect((await repo.matches({ status: 'auto_approved', verdict: 'undetermined', limit: 1 })).items).toEqual([]);
   });
 
   it('fieldValues : types et codes depuis v_field_allowed_values', async () => {
