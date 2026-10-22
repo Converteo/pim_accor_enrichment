@@ -8,6 +8,8 @@ import {
   type HotelSummary,
   type MatchItem,
   type MatchStatus,
+  type ScoreBucket,
+  type Thresholds,
   type ValueStatus,
 } from "./types";
 
@@ -54,7 +56,7 @@ export function groupByFamily(values: readonly EnrichmentValue[]): FamilyGroup[]
   })).filter((group) => group.values.length > 0);
 }
 
-/** Optimistic update: decided values leave « à relire » for the history, before the back confirms. */
+/** Optimistic update: decided values leave « à valider » for the history, before the back confirms. */
 export function applyDecisions(
   detail: HotelDetail,
   items: readonly EnrichmentDecisionItem[],
@@ -139,4 +141,38 @@ export function joinCodes(keys: readonly string[]): string {
 
 export function cityLine(place: { city: string | null; country: string | null }): string {
   return [place.city, place.country].filter(Boolean).join(", ");
+}
+
+// Automatic validation thresholds: same rule as the views v_matches and v_enrichments (pipeline/jobs/src/views).
+
+export interface Outcome {
+  autoApproved: number;
+  autoRejected: number;
+  toValidate: number;
+}
+
+/** What the items without a human decision would become with these thresholds (null = off). */
+export function simulate(distribution: readonly ScoreBucket[], thresholds: Thresholds): Outcome {
+  const { approveThreshold: approve, rejectThreshold: reject } = thresholds;
+  const outcome: Outcome = { autoApproved: 0, autoRejected: 0, toValidate: 0 };
+  for (const bucket of distribution) {
+    if (bucket.score !== null && reject !== null && bucket.score < reject) {
+      outcome.autoRejected += bucket.total;
+      continue;
+    }
+    const approved = bucket.score !== null && approve !== null && bucket.score >= approve ? bucket.approvable : 0;
+    outcome.autoApproved += approved;
+    outcome.toValidate += bucket.total - approved;
+  }
+  return outcome;
+}
+
+/** A threshold typed in the panel: an integer from 0 to 100, or null when off. */
+export function parseThreshold(text: string): number | undefined {
+  const value = Number(text);
+  return text.trim() !== "" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : undefined;
+}
+
+export function thresholdsValid({ approveThreshold, rejectThreshold }: Thresholds): boolean {
+  return approveThreshold === null || rejectThreshold === null || rejectThreshold <= approveThreshold;
 }

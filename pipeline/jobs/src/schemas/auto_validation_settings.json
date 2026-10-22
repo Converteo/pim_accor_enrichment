@@ -1,0 +1,35 @@
+[
+  {
+    "name": "step",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "match | enrichment"
+  },
+  {
+    "name": "approve_threshold",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Score (0-100) from which an item is auto_approved; null = no automatic approval"
+  },
+  {
+    "name": "reject_threshold",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Score (0-100) under which an item is auto_rejected; null = no automatic rejection"
+  },
+  {
+    "name": "comment",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "author",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "set_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

@@ -14,11 +14,6 @@ def _required(name: str) -> str:
     return value
 
 
-def _optional_int(name: str) -> int | None:
-    value = os.environ.get(name, "").strip()
-    return int(value) if value else None
-
-
 def _optional_datetime(name: str) -> datetime | None:
     """ISO 8601 date-time (UTC when no offset is given), None when empty."""
     value = os.environ.get(name, "").strip()
@@ -58,7 +53,6 @@ class Settings:
     judge_threshold_low: int
     judge_batch_size: int
     enrich_batch_size: int
-    enrich_auto_validate_score: int | None
     llm_concurrency: int
     max_output_tokens: int
     lease_seconds: int
@@ -98,7 +92,6 @@ class Settings:
             judge_threshold_low=int(os.environ.get("JUDGE_THRESHOLD_LOW", "30")),
             judge_batch_size=int(os.environ.get("JUDGE_BATCH_SIZE", "50")),
             enrich_batch_size=int(os.environ.get("ENRICH_BATCH_SIZE", "20")),
-            enrich_auto_validate_score=_optional_int("ENRICH_AUTO_VALIDATE_SCORE"),
             llm_concurrency=int(os.environ.get("LLM_CONCURRENCY", "4")),
             max_output_tokens=int(os.environ.get("MAX_OUTPUT_TOKENS", "32768")),
             lease_seconds=int(os.environ.get("LEASE_SECONDS", "3600")),

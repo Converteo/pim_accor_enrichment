@@ -179,6 +179,7 @@ module "cloud_run_back" {
     BQ_VALIDATION_DATASET = google_bigquery_dataset.pipeline["validation"].dataset_id
     EXPORT_JOB            = module.pipeline_jobs["export"].name
     EXPORTS_BUCKET        = module.bucket_exports.name
+    SETTINGS_EDITORS      = join(",", local.cfg.settings_editors)
   }
 
   depends_on = [module.apis]

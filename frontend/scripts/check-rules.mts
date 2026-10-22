@@ -7,7 +7,10 @@ import {
   isTime,
   joinCodes,
   matchKey,
+  parseThreshold,
+  simulate,
   splitCodes,
+  thresholdsValid,
   statusTone,
   withReviewCount,
 } from "../src/domain/rules";
@@ -137,5 +140,43 @@ assert(isTime("07:30") && !isTime("7:30") && !isTime("24:00") && !isTime(null), 
 assert(joinCodes(splitCodes("Hammam|Sauna")) === "Hammam|Sauna", "codes round trip");
 assert(splitCodes("").length === 0 && splitCodes(null).length === 0, "no codes");
 assert(matchKey({ rid: "B6F6", source: "expedia", sourceHash: "9c1e" }) === "B6F6|expedia|9c1e", "match key");
+
+// Automatic validation thresholds.
+const distribution = [
+  { score: 20, approvable: 1, total: 2 },
+  { score: 60, approvable: 3, total: 5 },
+  { score: 90, approvable: 4, total: 6 },
+  { score: null, approvable: 1, total: 1 },
+];
+const same = (a: object, b: object) => JSON.stringify(a) === JSON.stringify(b);
+assert(
+  same(simulate(distribution, { approveThreshold: null, rejectThreshold: null }), {
+    autoApproved: 0,
+    autoRejected: 0,
+    toValidate: 14,
+  }),
+  "thresholds off",
+);
+assert(
+  same(simulate(distribution, { approveThreshold: 80, rejectThreshold: 30 }), {
+    autoApproved: 4,
+    autoRejected: 2,
+    toValidate: 8,
+  }),
+  "approve only approvable items, reject every item under the threshold",
+);
+assert(
+  same(simulate(distribution, { approveThreshold: 60, rejectThreshold: 60 }), {
+    autoApproved: 7,
+    autoRejected: 2,
+    toValidate: 5,
+  }),
+  "approve threshold inclusive, reject threshold exclusive",
+);
+assert(parseThreshold("80") === 80 && parseThreshold("0") === 0, "threshold parsed");
+assert([" ", "101", "-1", "7.5", "abc"].every((text) => parseThreshold(text) === undefined), "invalid thresholds");
+assert(thresholdsValid({ approveThreshold: 80, rejectThreshold: 30 }), "reject under approve");
+assert(!thresholdsValid({ approveThreshold: 50, rejectThreshold: 60 }), "reject over approve");
+assert(thresholdsValid({ approveThreshold: null, rejectThreshold: 60 }), "approve off");
 
 console.log("check-rules: ok");

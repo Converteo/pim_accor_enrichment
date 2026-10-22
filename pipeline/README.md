@@ -49,15 +49,23 @@ rapprochement vient d'être validé dans l'interface.
 
 | Rapprochement (RID × source) | Origine | Passe à l'enrichissement |
 | --- | --- | --- |
-| `auto_approved` | agent juge : score ≥ seuil haut (80), verdict `same_hotel`, pas d'indicateur bloquant | oui |
+| `auto_approved` | agent juge : score ≥ seuil de validation (80 par défaut), verdict `same_hotel`, pas d'indicateur bloquant | oui |
 | `needs_review` | agent juge : entre les deux seuils | non, attend une décision dans l'interface |
-| `auto_rejected` | agent juge : score < seuil bas (30), ou page dans un autre pays | non |
+| `auto_rejected` | agent juge : score < seuil de rejet (30 par défaut), ou page dans un autre pays | non |
 | `human_approved` / `human_rejected` | décision dans l'interface ; l'emporte toujours sur l'agent | oui / non |
 
 Un hôtel est enrichi avec ses seules sources validées. Les valeurs suivent la même convention que les rapprochements :
 `pending_enrichment` (cible pas encore enrichie, table `enrichment_candidates`), `needs_review` (proposée par l'agent), `auto_rejected` avec un motif (`reason`), puis `human_approved`, `human_rejected`
-ou `human_corrected` dans l'interface ; la validation automatique (`pipeline.enrich_auto_validate_score`) est
-désactivée par défaut. L'agent n'écrase jamais une valeur du PIM : un désaccord devient `auto_rejected`, motif `pim_conflict`.
+ou `human_corrected` dans l'interface. L'agent n'écrase jamais une valeur du PIM : un désaccord devient `auto_rejected`, motif `pim_conflict`.
+
+**Seuils de validation automatique.** Quatre seuils, deux par étape, se règlent dans l'interface (bouton « Seuils
+d'automatisation ») : validation automatique si score ≥ seuil, rejet automatique si score < seuil, à valider entre les deux.
+Chaque réglage ajoute une ligne à `validation.auto_validation_settings` ; les vues `v_matches` et `v_enrichments` appliquent
+la dernière de chaque étape **à la lecture** : le changement vaut tout de suite, sans relancer le pipeline, et une décision
+humaine l'emporte toujours. Tant que rien n'est réglé, les vues prennent les valeurs Terraform `pipeline.judge_threshold_high`
+/ `judge_threshold_low` (80 / 30) pour les rapprochements et `pipeline.enrich_auto_approve_score` / `enrich_auto_reject_score`
+(désactivés) pour les valeurs. Une valeur n'est jamais validée automatiquement avec une alerte ou si elle est déduite
+(`inferred`) ; sous le seuil de rejet, elle devient `auto_rejected`, motif `low_score`.
 
 ## Organisation
 

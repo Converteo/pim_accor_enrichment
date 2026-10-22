@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 import type { ChangeEvent, ReactNode } from "react";
 import {
   FAMILY_ORDER,
+  INFO_TABS,
   PRIORITY_ORDER,
   TAB_ORDER,
   type Facets,
@@ -33,11 +34,19 @@ const iconProps = {
   "aria-hidden": true,
 } as const;
 
-const TAB_COUNT = {
-  review: "hotelsToReview",
-  matches: "matchesToReview",
-  pending: "hotelsPending",
-} as const satisfies Record<TabKey, keyof Stats>;
+/** « En cours » holds the matches waiting for the judge and the fiches waiting for the enrichment agent. */
+function tabCount(tab: TabKey, stats: Stats): number {
+  switch (tab) {
+    case "matches":
+      return stats.matchesToReview;
+    case "review":
+      return stats.hotelsToReview;
+    case "pending":
+      return stats.matchesPending + stats.hotelsPending;
+    case "auto":
+      return stats.matchesAutoApproved + stats.valuesAutoApproved;
+  }
+}
 
 function Segment({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
   return (
@@ -184,12 +193,14 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
               key={key}
               type="button"
               aria-pressed={active}
-              className={active ? `${styles.tab} ${styles.active}` : styles.tab}
+              className={[styles.tab, active ? styles.active : "", INFO_TABS.includes(key) ? styles.info : ""]
+                .filter(Boolean)
+                .join(" ")}
               onClick={() => onTab(key)}
             >
               {t(`tabs.${key}`)}{" "}
               <span className={styles.count}>
-                {stats ? t("number", { value: stats[TAB_COUNT[key]] }) : "—"}
+                {stats ? t("number", { value: tabCount(key, stats) }) : "—"}
               </span>
             </button>
           );

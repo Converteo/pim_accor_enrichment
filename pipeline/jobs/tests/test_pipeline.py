@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import enrichment_core as core  # noqa: E402
 import matching_rules as mr  # noqa: E402
-from decisions import AUTO_APPROVED, AUTO_REJECTED, NEEDS_REVIEW, confidence, enrichment_status, match_status  # noqa: E402
+from decisions import AUTO_APPROVED, AUTO_REJECTED, NEEDS_REVIEW, confidence, match_status  # noqa: E402
 from export import flat_files  # noqa: E402
 from prompts import assemble  # noqa: E402
 from schemas_llm import EnrichResponse, HotelEnrichi, NonTraitee, Valeur  # noqa: E402
@@ -93,11 +93,8 @@ def test_match_status(pre, reason, verdict, score, expected):
     assert match_status(pre, reason, verdict, score, high=80, low=30) == expected
 
 
-def test_confidence_and_auto_approval_off_by_default():
+def test_confidence():
     assert [confidence(s) for s in (95, 60, 10)] == ["high", "medium", "low"]
-    assert enrichment_status(NEEDS_REVIEW, 99, None, None) == NEEDS_REVIEW
-    assert enrichment_status(NEEDS_REVIEW, 95, None, 90) == AUTO_APPROVED
-    assert enrichment_status(NEEDS_REVIEW, 95, "doute", 90) == NEEDS_REVIEW
 
 
 # ------------------------------------------------------------------ brick 3: enrichment
@@ -176,7 +173,7 @@ def test_rows_apply_value_to_all_entities_in_doubt_and_mark_missing():
         agent_value("ParkingCharged", "p1", "False", "Free private parking", "parking"),
         agent_value("ProductCheckIn", None, "15:00", "From 15:00", "check_in"),
     ])
-    rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {}, CONTEXT, None)
+    rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {}, CONTEXT)
     by_key = {(r["pim_field"], r["entity_id"]): r for r in rows}
     assert by_key[("ParkingCharged", "p2")]["value"] == "False" and "dans le doute" in by_key[("ParkingCharged", "p2")]["warning"]
     assert by_key[("ProductCheckIn", None)]["status"] == "needs_review" and by_key[("ProductCheckIn", None)]["excerpt_found"]
@@ -191,7 +188,7 @@ def test_rows_cap_score_when_excerpt_not_found_and_number_new_entities():
         agent_value("PoolType", "nouvelle_1", "Outdoor", "outdoor", "piscine_1"),
         agent_value("PoolType", "nouvelle_2", "Indoor", "indoor pool", "piscine_2", score=90),
     ])
-    rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {("PoolType", "Outdoor"): "Outdoor"}, CONTEXT, None)
+    rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {("PoolType", "Outdoor"): "Outdoor"}, CONTEXT)
     by_id = {r["entity_id"]: r for r in rows}
     assert set(by_id) == {"new_1", "new_2"}   # the agent's nouvelle_1, nouvelle_2
     assert by_id["new_1"]["score"] == 95 and by_id["new_1"]["value_label"] == "Outdoor"
@@ -202,7 +199,7 @@ def test_value_without_excerpt_is_rejected_not_proposed():
     # Seen on the first dev run: "wheelchair accessible = False" proposed with no excerpt ("absent des sources")
     targets = [{"pim_field": "PoolType", "entity": "Pool", "entity_id": core.NEW_ENTITY, "pim_value": None}]
     answer = HotelEnrichi(rid="0952", valeurs=[agent_value("PoolType", "nouvelle_1", "Outdoor", "", "piscine_1")])
-    rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {}, CONTEXT, None)
+    rows = core.rows_for_hotel(HOTEL, targets, answer, [], FIELDS, ALLOWED, {}, CONTEXT)
     assert [(r["status"], r["reason"], r["reason_detail"]) for r in rows] == [
         ("auto_rejected", "no_excerpt", "pas d'extrait de la source")]
 
@@ -212,7 +209,7 @@ def test_rejected_value_and_skipped_reason():
                {"pim_field": "ProductCheckIn", "entity": "Product", "entity_id": None, "pim_value": None}]
     answer = HotelEnrichi(rid="0952", valeurs=[agent_value("ProductStaffLanguages", None, "XX", "German", "languages_spoken")])
     skipped = [NonTraitee(rid="0952", champ_pim="ProductCheckIn", id_entite=None, motif="absent des sources")]
-    rows = {r["pim_field"]: r for r in core.rows_for_hotel(HOTEL, targets, answer, skipped, FIELDS, ALLOWED, {}, CONTEXT, None)}
+    rows = {r["pim_field"]: r for r in core.rows_for_hotel(HOTEL, targets, answer, skipped, FIELDS, ALLOWED, {}, CONTEXT)}
     assert (rows["ProductStaffLanguages"]["status"], rows["ProductStaffLanguages"]["reason"]) == ("auto_rejected", "not_in_pim_list")
     assert (rows["ProductCheckIn"]["reason"], rows["ProductCheckIn"]["reason_detail"]) == ("not_in_sources", "absent des sources")
 

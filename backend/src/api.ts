@@ -104,9 +104,58 @@ export interface Stats {
   hotelsPending: number;
   valuesToReview: number;
   matchesToReview: number;
+  matchesPending: number;
+  /** Validated by the thresholds, for information (« Validés automatiquement » tab). */
+  matchesAutoApproved: number;
+  valuesAutoApproved: number;
   valuesPending: number;
   valuesApproved: number;
   pendingForExport: number;
+}
+
+/** Valeur validée automatiquement, avec sa fiche (onglet « Validés automatiquement », lecture seule). */
+export interface AutoApprovedValue {
+  hotel: Pick<HotelSummary, 'rid' | 'name' | 'brand' | 'city' | 'country'>;
+  value: EnrichmentValue;
+  /** Seuil de validation qui l'a fait passer. */
+  approveThreshold: number | null;
+}
+
+export const AUTO_VALIDATION_STEPS = ['match', 'enrichment'] as const;
+export type AutoValidationStep = (typeof AUTO_VALIDATION_STEPS)[number];
+
+/** Une ligne de validation.auto_validation_settings. */
+export interface AutoValidationChange {
+  approveThreshold: number | null;
+  rejectThreshold: number | null;
+  comment: string | null;
+  author: string;
+  setAt: string;
+}
+
+/** Éléments sans décision humaine auxquels les seuils s'appliquent, par score. */
+export interface ScoreBucket {
+  score: number | null;
+  /** Pourraient être validés automatiquement (règles hors score respectées). */
+  approvable: number;
+  total: number;
+}
+
+export interface AutoValidationStepState {
+  step: AutoValidationStep;
+  /** Seuils en vigueur ; null = désactivé. */
+  approveThreshold: number | null;
+  rejectThreshold: number | null;
+  /** Aucun réglage enregistré : valeurs par défaut de Terraform. */
+  isDefault: boolean;
+  distribution: ScoreBucket[];
+  /** Du plus récent au plus ancien. */
+  history: AutoValidationChange[];
+}
+
+export interface AutoValidation {
+  canEdit: boolean;
+  steps: AutoValidationStepState[];
 }
 
 export interface Facets {

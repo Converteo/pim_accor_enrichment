@@ -6,25 +6,48 @@
     "title": "Validation des enrichissements",
     "subtitle": "PIM Accor · Fiches établissement",
     "language": "Langue",
-    "noUser": "Utilisateur non identifié"
+    "noUser": "Utilisateur non identifié",
+    "settings": "Seuils d’automatisation"
   },
   "kpi": {
-    "hotelsToReview": "Fiches à relire",
-    "valuesToReview": "Valeurs à relire",
     "matchesToReview": "Rapprochements à valider",
-    "valuesPending": "Champs en cours d’enrichissement",
-    "valuesApproved": "Valeurs prêtes à l’export"
+    "hotelsToReview": "Fiches à valider",
+    "valuesToReview": "Attributs à valider",
+    "valuesPending": "Attributs en cours d’enrichissement",
+    "valuesApproved": "Attributs prêts à l’export"
   },
   "legend": {
     "item": "{label} ({count})",
-    "review": "À relire",
+    "review": "Attributs à valider",
     "pending": "En cours d’enrichissement",
-    "approved": "Validées"
+    "approved": "Validés"
   },
   "tabs": {
-    "review": "À relire",
-    "matches": "Rapprochements à valider",
-    "pending": "En cours"
+    "matches": "① Rapprochements à valider",
+    "review": "② Attributs à valider",
+    "pending": "En cours de traitement",
+    "auto": "Validés automatiquement"
+  },
+  "pendingTab": {
+    "matches": "Rapprochements en attente de jugement",
+    "matchesHint": "L’agent juge les évaluera à son prochain passage ; ils bloquent l’export d’ici là.",
+    "matchesEmpty": "Aucun rapprochement en attente de jugement.",
+    "values": "Attributs en cours d’enrichissement",
+    "valuesHint": "Ces fiches ont un rapprochement validé : l’agent d’enrichissement les traitera à son prochain passage."
+  },
+  "autoTab": {
+    "matches": "Rapprochements validés automatiquement",
+    "matchesHint": "Score de l’agent juge au moins égal au seuil de validation en vigueur. Pour information : du score le plus bas au plus haut, les cas limites d’abord.",
+    "matchesEmpty": "Aucun rapprochement validé automatiquement pour ce filtre.",
+    "values": "Attributs validés automatiquement",
+    "valuesHint": "Score au moins égal au seuil de validation, sans alerte, valeur non déduite. Ils partiront à l’export. Pour information : les cas limites d’abord.",
+    "valuesEmpty": "Aucun attribut validé automatiquement pour ces filtres : le seuil de validation des attributs est peut-être désactivé (« Seuils d’automatisation »).",
+    "valuesShown": "{count, plural, one {# attribut affiché} other {# attributs affichés}}",
+    "attribute": "Attribut",
+    "value": "Valeur validée",
+    "excerpt": "Extrait de la source",
+    "score": "Score",
+    "threshold": "seuil {value}"
   },
   "search": {
     "placeholder": "Rechercher un hôtel, une ville…"
@@ -56,7 +79,7 @@
   "columns": {
     "property": "Fiche établissement",
     "sources": "Sources",
-    "toReview": "À relire",
+    "toReview": "Attributs à valider",
     "score": "Score moyen",
     "info": "Informations",
     "actions": "Actions"
@@ -72,7 +95,7 @@
   "list": {
     "loading": "Chargement…",
     "empty": "Aucune fiche ne correspond à ces filtres.",
-    "emptyPending": "Aucun champ en cours d’enrichissement pour ces filtres.",
+    "emptyPending": "Aucun attribut en cours d’enrichissement pour ces filtres.",
     "error": "Impossible de charger la liste.",
     "retry": "Réessayer",
     "loadMore": "Charger plus",
@@ -94,7 +117,7 @@
   "drawer": {
     "close": "Fermer le détail",
     "eyebrow": "{brand} · {place} · {rid}",
-    "toReview": "{count, plural, =0 {Rien à relire} one {# valeur à relire} other {# valeurs à relire}}",
+    "toReview": "{count, plural, =0 {Rien à valider} one {# attribut à valider} other {# attributs à valider}}",
     "avgScore": "Score moyen {score}/100",
     "loading": "Chargement de la fiche…",
     "error": "Impossible de charger la fiche."
@@ -187,7 +210,7 @@
     "scrapedName": "Nom scrapé",
     "pageName": "Nom de la page",
     "openPage": "Ouvrir la page source ↗",
-    "delay": "Une fois validé, l’hôtel est enrichi pour cette source au prochain passage du pipeline (toutes les 15 minutes) : ses valeurs apparaîtront ensuite dans « À relire ». Rejeté, la source n’est plus utilisée pour cet hôtel.",
+    "delay": "Une fois validé, l’hôtel est enrichi pour cette source au prochain passage du pipeline (toutes les 15 minutes) : ses valeurs apparaîtront ensuite dans « Attributs à valider ». Rejeté, la source n’est plus utilisée pour cet hôtel.",
     "empty": "Aucun rapprochement à valider pour ce filtre.",
     "approve": "Valider le rapprochement",
     "reject": "Rejeter le rapprochement",
@@ -211,7 +234,8 @@
     "saved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement rejeté.} other {# rapprochements rejetés.}}",
     "savedApproved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement validé : ses valeurs arriveront au prochain passage du pipeline.} other {# rapprochements validés : leurs valeurs arriveront au prochain passage du pipeline.}}",
     "refused": "{count, plural, one {# rapprochement refusé par le serveur :} other {# rapprochements refusés par le serveur :}}",
-    "shown": "{count, plural, one {# rapprochement affiché} other {# rapprochements affichés}}"
+    "shown": "{count, plural, one {# rapprochement affiché} other {# rapprochements affichés}}",
+    "notJudged": "Pas encore jugé"
   },
   "bulkMatches": {
     "cancel": "Annuler",
@@ -242,6 +266,43 @@
     "record": "{date} · {author} · {hotels, plural, one {# hôtel} other {# hôtels}} · {rows, plural, one {# valeur} other {# valeurs}}",
     "unauthorized": "Utilisateur non identifié : action refusée par le serveur.",
     "busy": "Un export est en cours : attendez sa fin avant d’en relancer un."
+  },
+  "settings": {
+    "title": "Seuils de validation automatique",
+    "eyebrow": "Automatisation du pipeline",
+    "intro": "Score au moins égal au seuil de validation : validé automatiquement. Score sous le seuil de rejet : rejeté automatiquement. Entre les deux : à valider dans l’interface. Le changement s’applique tout de suite, sans relancer le pipeline ; une décision humaine l’emporte toujours.",
+    "steps": {
+      "match": "① Rapprochements",
+      "enrichment": "② Attributs"
+    },
+    "rules": {
+      "match": "Validation automatique seulement si l’agent juge conclut « même hôtel » et que le contrôle automatique ne l’a pas rejeté. Une page d’un autre pays est toujours rejetée.",
+      "enrichment": "Validation automatique seulement sans alerte, et jamais pour une valeur déduite. Les rejets par règle (absent des sources, déjà dans le PIM…) ne dépendent pas des seuils. Seuls comptent les attributs dont le rapprochement est validé."
+    },
+    "approve": "Validation automatique si score ≥",
+    "reject": "Rejet automatique si score <",
+    "enabled": "Activé",
+    "off": "désactivé",
+    "current": "En vigueur : validation {approve} · rejet {reject}",
+    "isDefault": "valeurs par défaut du déploiement",
+    "now": "Aujourd’hui",
+    "simulated": "Avec ces seuils",
+    "autoApproved": "Validés auto.",
+    "autoRejected": "Rejetés auto.",
+    "toValidate": "À valider",
+    "scope": "{count, plural, =0 {Aucun élément sans décision humaine.} one {Sur # élément sans décision humaine.} other {Sur # éléments sans décision humaine.}}",
+    "comment": "Motif du changement (facultatif)",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Seuils enregistrés : ils s’appliquent dès maintenant.",
+    "unchanged": "Aucun changement à enregistrer.",
+    "readOnly": "Lecture seule : seuls les responsables désignés peuvent changer les seuils.",
+    "invalid": "Le seuil de rejet doit être inférieur ou égal au seuil de validation.",
+    "history": "Historique",
+    "noHistory": "Aucun changement : valeurs par défaut du déploiement.",
+    "change": "{date} · {author} · validation {approve} · rejet {reject}",
+    "loading": "Chargement des seuils…",
+    "error": "Impossible de charger les seuils."
   },
   "number": "{value, number}"
 }

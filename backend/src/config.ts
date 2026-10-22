@@ -10,6 +10,16 @@ const schema = z.object({
   EXPORTS_BUCKET: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(8080),
   GOOGLE_IMPERSONATE_SERVICE_ACCOUNT: z.string().optional(),
+  // Comptes autorisés à changer les seuils de validation automatique, séparés par « , » ; vide = tout relecteur
+  SETTINGS_EDITORS: z
+    .string()
+    .optional()
+    .transform((v) =>
+      (v ?? '')
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    ),
 });
 
 export type Config = z.infer<typeof schema>;
