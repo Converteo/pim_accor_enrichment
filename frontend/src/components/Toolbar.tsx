@@ -10,7 +10,7 @@ import {
   type Stats,
   type TabKey,
 } from "@/domain/types";
-import { sourceLabel } from "./labels";
+import { codeLabel, sourceLabel } from "./labels";
 import styles from "./Toolbar.module.css";
 
 interface ToolbarProps {
@@ -65,8 +65,10 @@ function Segment({ label, icon, children }: { label: string; icon: ReactNode; ch
 
 export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: ToolbarProps) {
   const t = useTranslations();
-  // /matches only filters by source.
+  // Only filters with an effect on the tab's lists: /matches filters by source, brand and verdict,
+  // and matches waiting for the judge have no verdict yet.
   const hotelFilters = tab !== "matches";
+  const verdictFilter = tab === "matches" || tab === "auto";
 
   function select(key: keyof Filters) {
     return (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) =>
@@ -95,30 +97,28 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             />
           </label>
         ) : null}
-        {hotelFilters ? (
-          <Segment
-            label={t("filters.brandLabel")}
-            icon={
-              <>
-                <path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.5 1.5 0 0 1 0 2.1l-6.9 6.9a1.5 1.5 0 0 1-2.1 0l-8.1-7.9Z" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-              </>
-            }
+        <Segment
+          label={t("filters.brandLabel")}
+          icon={
+            <>
+              <path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.5 1.5 0 0 1 0 2.1l-6.9 6.9a1.5 1.5 0 0 1-2.1 0l-8.1-7.9Z" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+            </>
+          }
+        >
+          <select
+            className={`${styles.control} ${styles.select}`}
+            value={filters.brand}
+            onChange={select("brand")}
           >
-            <select
-              className={`${styles.control} ${styles.select}`}
-              value={filters.brand}
-              onChange={select("brand")}
-            >
-              <option value="">{t("filters.allBrands")}</option>
-              {facets?.brands.map((brand) => (
-                <option key={brand} value={brand}>
-                  {brand}
-                </option>
-              ))}
-            </select>
-          </Segment>
-        ) : null}
+            <option value="">{t("filters.allBrands")}</option>
+            {facets?.brands.map((brand) => (
+              <option key={brand} value={brand}>
+                {brand}
+              </option>
+            ))}
+          </select>
+        </Segment>
         <Segment
           label={t("filters.sourceLabel")}
           icon={
@@ -142,6 +142,22 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             ))}
           </select>
         </Segment>
+        {verdictFilter ? (
+          <Segment label={t("filters.verdictLabel")} icon={<path d="M4 5.5h16v10H9.5L4 19.5v-14Z" />}>
+            <select
+              className={`${styles.control} ${styles.select}`}
+              value={filters.verdict}
+              onChange={select("verdict")}
+            >
+              <option value="">{t("filters.allVerdicts")}</option>
+              {facets?.verdicts?.map((verdict) => (
+                <option key={verdict} value={verdict}>
+                  {codeLabel(t, "matches.judgeVerdicts", verdict)}
+                </option>
+              ))}
+            </select>
+          </Segment>
+        ) : null}
         {hotelFilters ? (
           <Segment
             label={t("filters.familyLabel")}

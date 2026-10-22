@@ -110,6 +110,8 @@ export interface MatchItem {
   confidence: string | null;
   judgeReason: string | null;
   justification: string | null;
+  /** Judge agent's verdict (same_hotel, different_hotel, undetermined); null until judged. */
+  verdict: string | null;
   status: MatchStatus;
   lastDecision: Decision | null;
 }
@@ -179,6 +181,7 @@ export interface Thresholds {
 export interface Facets {
   brands: string[];
   sources: string[];
+  verdicts: string[];
 }
 
 export interface FieldValues {
@@ -268,4 +271,9 @@ export interface Filters {
   source: string;
   family: "" | Family;
   priority: "" | Priority;
+  /** Judge agent's verdict: matches only. */
+  verdict: string;
 }
+
+/** The filters /matches understands. */
+export type MatchFilters = Pick<Filters, "source" | "brand" | "verdict">;

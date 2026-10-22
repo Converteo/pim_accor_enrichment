@@ -63,7 +63,9 @@
     "brandLabel": "Brand",
     "sourceLabel": "Source",
     "familyLabel": "Family",
-    "priorityLabel": "Priority"
+    "priorityLabel": "Priority",
+    "verdictLabel": "Judge's verdict",
+    "allVerdicts": "All verdicts"
   },
   "families": {
     "general": "Welcome and services",
@@ -237,7 +239,12 @@
     "savedApproved": "{count, plural, =0 {No match saved.} one {# match approved: its values will come with the next pipeline run.} other {# matches approved: their values will come with the next pipeline run.}}",
     "refused": "{count, plural, one {# match refused by the server:} other {# matches refused by the server:}}",
     "shown": "{count, plural, one {# match shown} other {# matches shown}}",
-    "notJudged": "Not judged yet"
+    "notJudged": "Not judged yet",
+    "judgeVerdicts": {
+      "same_hotel": "Same hotel",
+      "different_hotel": "Different hotel",
+      "undetermined": "Undetermined"
+    }
   },
   "bulkMatches": {
     "cancel": "Cancel",

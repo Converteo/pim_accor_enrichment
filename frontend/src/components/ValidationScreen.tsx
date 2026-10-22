@@ -51,6 +51,7 @@ const EMPTY_FILTERS: Filters = {
   source: "",
   family: "",
   priority: "",
+  verdict: "",
 };
 
 /** One value decided by the reviewer, with the fiche it belongs to. */
@@ -126,8 +127,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     fetchHotels(hotelView, query, cursor),
     (hotel) => hotel.rid,
   );
-  const matches = useMatchReview({
-    source: query.source,
+  const matchCallbacks: Pick<Parameters<typeof useMatchReview>[0], "onResult" | "onError"> = {
     onResult: ({ decision, accepted, refused }) => {
       const saved = t(decision === "human_approved" ? "matches.savedApproved" : "matches.saved", {
         count: accepted,
@@ -141,11 +141,28 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             }
           : { tone: "success", text: saved },
       );
-      if (accepted > 0) setMatchComment("");
+      if (accepted > 0) {
+        setMatchComment("");
+        // A rejected auto-approved match takes its values out of the auto-approved and to-review lists.
+        if (tab === "auto") {
+          autoValues.reload();
+          hotels.reload();
+        }
+      }
       fetchStats().then(setStats, () => undefined);
     },
     onError: (error) => setNotice({ tone: "error", text: failedText(error) }),
+  };
+  const matches = useMatchReview({ filters: query, ...matchCallbacks });
+  // « Validés automatiquement » tab: same detail as the matches to validate, with a reject button (PIM-49).
+  const autoMatches = useMatchReview({
+    filters: query,
+    status: "auto_approved",
+    enabled: tab === "auto",
+    ...matchCallbacks,
   });
+  // The tab decides which list the match drawer belongs to.
+  const review = tab === "auto" ? autoMatches : matches;
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(filters), filters.search === query.search ? 0 : 300);
@@ -154,23 +171,16 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
 
   // « En cours » tab: matches waiting for the judge, read only when the tab is shown.
   const pendingMatches = usePagedList(
-    JSON.stringify(["pending_judgment", tab === "pending", query.source]),
+    JSON.stringify(["pending_judgment", tab === "pending", query.source, query.brand]),
     (cursor): Promise<Page<MatchItem>> =>
       tab === "pending"
-        ? fetchMatches(query.source, cursor, "pending_judgment")
+        ? // Not judged yet: no verdict to filter on.
+          fetchMatches({ ...query, verdict: "" }, cursor, "pending_judgment")
         : Promise.resolve({ items: [], nextCursor: null }),
     matchKey,
   );
 
-  // « Validés automatiquement » tab (read only), read only when the tab is shown.
-  const autoMatches = usePagedList(
-    JSON.stringify(["auto_approved", tab === "auto", query.source]),
-    (cursor): Promise<Page<MatchItem>> =>
-      tab === "auto"
-        ? fetchMatches(query.source, cursor, "auto_approved")
-        : Promise.resolve({ items: [], nextCursor: null }),
-    matchKey,
-  );
+  // Values of the « Validés automatiquement » tab (read only), read only when the tab is shown.
   const autoValues = usePagedList(
     JSON.stringify(["auto_values", tab === "auto", query]),
     (cursor): Promise<Page<AutoApprovedValue>> =>
@@ -197,7 +207,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     hotels.reload();
     matches.list.reload();
     pendingMatches.reload();
-    autoMatches.reload();
+    autoMatches.list.reload();
     autoValues.reload();
   }
 
@@ -368,16 +378,18 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }
 
   const closeMatch = matches.close;
+  const closeAutoMatch = autoMatches.close;
   const onClose = useCallback(() => {
     setOpenRid(null);
     setSettingsOpen(false);
     closeMatch();
-  }, [closeMatch]);
+    closeAutoMatch();
+  }, [closeMatch, closeAutoMatch]);
 
   function onOpenMatch(key: string) {
     setOpenRid(null);
     setMatchComment("");
-    matches.setOpenKey(key);
+    review.setOpenKey(key);
   }
 
   function onToggleMatch(key: string, checked: boolean) {
@@ -390,8 +402,8 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }
 
   // Last match shown: the drawer slides out with its content after a decision or a close.
-  const openMatch = matches.shown;
-  const drawerOpen = openRid !== null || matches.open !== null || settingsOpen;
+  const openMatch = review.shown;
+  const drawerOpen = openRid !== null || review.open !== null || settingsOpen;
 
   const summary = hotels.items.find((hotel) => hotel.rid === detail?.rid);
   const shownHotel = detail?.data?.hotel ?? summary;
@@ -404,8 +416,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
           stats={stats}
           author={author}
           onOpenSettings={() => {
-            setOpenRid(null);
-            closeMatch();
+            onClose();
             setSettingsOpen(true);
           }}
         />
@@ -447,19 +458,19 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
           ) : tab === "auto" ? (
             <>
               <SectionTitle title={t("autoTab.matches")} hint={t("autoTab.matchesHint")} />
-              {autoMatches.status === "ready" && autoMatches.items.length > 0 ? (
-                <MatchTable rows={autoMatches.items} readOnly />
+              {autoMatches.list.status === "ready" && autoMatches.list.items.length > 0 ? (
+                <MatchTable rows={autoMatches.list.items} readOnly onOpen={onOpenMatch} />
               ) : null}
               <ListFooter
-                status={autoMatches.status}
-                count={autoMatches.items.length}
-                shown={t("matches.shown", { count: autoMatches.items.length })}
+                status={autoMatches.list.status}
+                count={autoMatches.list.items.length}
+                shown={t("matches.shown", { count: autoMatches.list.items.length })}
                 empty={t("autoTab.matchesEmpty")}
-                error={autoMatches.error}
-                hasMore={autoMatches.hasMore}
-                loadingMore={autoMatches.loadingMore}
-                onMore={autoMatches.loadMore}
-                onRetry={autoMatches.reload}
+                error={autoMatches.list.error}
+                hasMore={autoMatches.list.hasMore}
+                loadingMore={autoMatches.list.loadingMore}
+                onMore={autoMatches.list.loadMore}
+                onRetry={autoMatches.list.reload}
               />
               <SectionTitle title={t("autoTab.values")} hint={t("autoTab.valuesHint")} />
               {autoValues.status === "ready" && autoValues.items.length > 0 ? (
@@ -618,7 +629,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         )}
       </Drawer>
       <Drawer
-        open={matches.open !== null}
+        open={review.open !== null}
         eyebrow={
           openMatch
             ? t("drawer.eyebrow", {
@@ -649,19 +660,22 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
               <button
                 type="button"
                 className="btn btn-danger"
-                disabled={matches.busy}
-                onClick={() => void matches.decide([matchKey(openMatch)], "human_rejected", matchComment)}
+                disabled={review.busy}
+                onClick={() => void review.decide([matchKey(openMatch)], "human_rejected", matchComment)}
               >
                 {t("matches.reject")}
               </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={matches.busy}
-                onClick={() => void matches.decide([matchKey(openMatch)], "human_approved", matchComment)}
-              >
-                {t("matches.approve")}
-              </button>
+              {/* Already approved by the threshold: the reviewer can only go back on it. */}
+              {openMatch.status === "auto_approved" ? null : (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={review.busy}
+                  onClick={() => void review.decide([matchKey(openMatch)], "human_approved", matchComment)}
+                >
+                  {t("matches.approve")}
+                </button>
+              )}
             </>
           ) : null
         }

@@ -63,7 +63,9 @@
     "brandLabel": "Marque",
     "sourceLabel": "Source",
     "familyLabel": "Famille",
-    "priorityLabel": "Priorité"
+    "priorityLabel": "Priorité",
+    "verdictLabel": "Avis du juge",
+    "allVerdicts": "Tous les avis"
   },
   "families": {
     "general": "Accueil et services",
@@ -237,7 +239,12 @@
     "savedApproved": "{count, plural, =0 {Aucun rapprochement enregistré.} one {# rapprochement validé : ses valeurs arriveront au prochain passage du pipeline.} other {# rapprochements validés : leurs valeurs arriveront au prochain passage du pipeline.}}",
     "refused": "{count, plural, one {# rapprochement refusé par le serveur :} other {# rapprochements refusés par le serveur :}}",
     "shown": "{count, plural, one {# rapprochement affiché} other {# rapprochements affichés}}",
-    "notJudged": "Pas encore jugé"
+    "notJudged": "Pas encore jugé",
+    "judgeVerdicts": {
+      "same_hotel": "Même hôtel",
+      "different_hotel": "Hôtel différent",
+      "undetermined": "Indéterminé"
+    }
   },
   "bulkMatches": {
     "cancel": "Annuler",

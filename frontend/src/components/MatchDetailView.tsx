@@ -68,6 +68,9 @@ export function MatchDetailView({ match }: MatchDetailViewProps) {
             {formatScore(match.score)}
             <small>/100</small>
           </span>
+          {match.verdict ? (
+            <span className={styles.badge}>{codeLabel(tRoot, "matches.judgeVerdicts", match.verdict)}</span>
+          ) : null}
           {match.confidence ? (
             <span className={styles.badge}>
               {tRoot("value.confidence", { level: codeLabel(tRoot, "value.confidenceLevel", match.confidence) })}

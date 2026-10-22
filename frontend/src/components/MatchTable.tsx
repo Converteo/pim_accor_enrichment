@@ -2,12 +2,12 @@ import { useLocale, useTranslations } from "next-intl";
 import type { ChangeEvent, MouseEvent } from "react";
 import { cityLine, formatScore, matchKey } from "@/domain/rules";
 import type { MatchItem } from "@/domain/types";
-import { countryName, sourceLabel } from "./labels";
+import { codeLabel, countryName, sourceLabel } from "./labels";
 import styles from "./FicheTable.module.css";
 
 interface MatchTableProps {
   rows: MatchItem[];
-  /** Matches waiting for the judge: nothing to decide, no selection, no detail. */
+  /** No selection (no bulk decision); rows still open their detail when `onOpen` is given. */
   readOnly?: boolean;
   selected?: ReadonlySet<string>;
   onToggleRow?: (key: string, selected: boolean) => void;
@@ -65,11 +65,11 @@ export function MatchTable({
             <th className={styles.headCell} scope="col">
               {t("matches.judge")}
             </th>
-            {readOnly ? null : (
+            {onOpen ? (
               <th className={`${styles.headCell} ${styles.actionsHead}`} scope="col">
                 {t("columns.actions")}
               </th>
-            )}
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -79,8 +79,8 @@ export function MatchTable({
             return (
               <tr
                 key={key}
-                className={readOnly ? undefined : isSelected ? `${styles.row} ${styles.selected}` : styles.row}
-                onClick={readOnly ? undefined : () => onOpen?.(key)}
+                className={onOpen ? (isSelected ? `${styles.row} ${styles.selected}` : styles.row) : undefined}
+                onClick={onOpen ? () => onOpen(key) : undefined}
               >
                 {readOnly ? null : (
                   <td className={styles.cell}>
@@ -117,8 +117,11 @@ export function MatchTable({
                       <small>/100</small>
                     </span>
                   )}
+                  {row.verdict ? (
+                    <div className={styles.city}>{codeLabel(t, "matches.judgeVerdicts", row.verdict)}</div>
+                  ) : null}
                 </td>
-                {readOnly ? null : (
+                {onOpen ? (
                   <td className={styles.cell}>
                     <div className={styles.actions}>
                       <button
@@ -126,14 +129,14 @@ export function MatchTable({
                         className="btn-icon link"
                         onClick={(event) => {
                           stopRowOpen(event);
-                          onOpen?.(key);
+                          onOpen(key);
                         }}
                       >
                         {t("row.view")}
                       </button>
                     </div>
                   </td>
-                )}
+                ) : null}
               </tr>
             );
           })}

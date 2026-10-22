@@ -12,6 +12,7 @@ import type {
   HotelDetail,
   HotelSummary,
   MatchDecisionItem,
+  MatchFilters,
   MatchItem,
   Page,
   Stats,
@@ -79,14 +80,15 @@ export function fetchHotels(
   filters: Filters,
   cursor: string | null,
 ): Promise<Page<HotelSummary>> {
+  // The verdict only filters matches.
   return call(
-    `/hotels${query({ view, ...filters, limit: PAGE_SIZE, cursor })}`,
+    `/hotels${query({ view, ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`,
   );
 }
 
 /** Values validated by the threshold, lowest score first (read only). */
 export function fetchAutoApprovedValues(filters: Filters, cursor: string | null): Promise<Page<AutoApprovedValue>> {
-  return call(`/enrichments/auto-approved${query({ ...filters, limit: PAGE_SIZE, cursor })}`);
+  return call(`/enrichments/auto-approved${query({ ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`);
 }
 
 export function fetchHotel(rid: string): Promise<HotelDetail> {
@@ -111,11 +113,11 @@ export function fetchFieldValues(pimField: string): Promise<FieldValues> {
 }
 
 export function fetchMatches(
-  source: string,
+  { source, brand, verdict }: MatchFilters,
   cursor: string | null,
   status: "needs_review" | "pending_judgment" | "auto_approved" = "needs_review",
 ): Promise<Page<MatchItem>> {
-  return call(`/matches${query({ status, source, limit: PAGE_SIZE, cursor })}`);
+  return call(`/matches${query({ status, source, brand, verdict, limit: PAGE_SIZE, cursor })}`);
 }
 
 export function decideMatches(items: MatchDecisionItem[]): Promise<DecisionResult<"key">> {
