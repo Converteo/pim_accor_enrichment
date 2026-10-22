@@ -106,7 +106,7 @@ describe('GET /matches', () => {
   it('transmet source, limit et cursor', async () => {
     repo.matches.mockResolvedValue({ items: [], nextCursor: null });
     await request(app.getHttpServer()).get('/matches?source=expedia&limit=5&cursor=x').expect(200);
-    expect(repo.matches).toHaveBeenCalledWith({ source: 'expedia', limit: 5, cursor: 'x' });
+    expect(repo.matches).toHaveBeenCalledWith({ status: 'needs_review', source: 'expedia', limit: 5, cursor: 'x' });
   });
 });
 

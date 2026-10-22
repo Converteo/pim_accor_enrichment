@@ -32,6 +32,8 @@ HUMAN_CORRECTED = "human_corrected"
 NOT_IN_SOURCES, MODEL_OMITTED = "not_in_sources", "model_omitted"
 ALREADY_IN_PIM, PIM_CONFLICT = "already_in_pim", "pim_conflict"
 NO_EXCERPT, NOT_IN_PIM_LIST, INVALID_FORMAT = "no_excerpt", "not_in_pim_list", "invalid_format"
+# Set by v_enrichments, not by the job: score under the reject threshold of validation.auto_validation_settings
+LOW_SCORE = "low_score"
 
 
 def confidence(score: int) -> str:
@@ -47,8 +49,3 @@ def match_status(pre_verdict: str, pre_reason: str | None, verdict: str, score: 
     return NEEDS_REVIEW
 
 
-def enrichment_status(status: str, score: int | None, warning: str | None, auto_threshold: int | None) -> str:
-    """Optional automatic validation of a proposed value (off while auto_threshold is None)."""
-    if status == NEEDS_REVIEW and auto_threshold is not None and score is not None and score >= auto_threshold and not warning:
-        return AUTO_APPROVED
-    return status

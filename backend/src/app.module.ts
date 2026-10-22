@@ -13,6 +13,7 @@ import { HealthController } from './health.controller.js';
 import { HotelsController } from './hotels.controller.js';
 import { MatchesController } from './matches.controller.js';
 import { BigQueryRepository, Repository } from './repository.js';
+import { SettingsController, SettingsService } from './settings.js';
 
 export const GCP_AUTH = Symbol('GCP_AUTH');
 
@@ -21,7 +22,14 @@ export class AppModule {
   static forRoot(config: Config): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, HotelsController, MatchesController, DecisionsController, ExportController],
+      controllers: [
+        HealthController,
+        HotelsController,
+        MatchesController,
+        DecisionsController,
+        ExportController,
+        SettingsController,
+      ],
       providers: [
         { provide: CONFIG, useValue: config },
         { provide: APP_FILTER, useClass: ErrorFilter },
@@ -29,6 +37,7 @@ export class AppModule {
         { provide: Bq, useFactory: (auth: AuthClient | undefined) => createBq(config, auth), inject: [GCP_AUTH] },
         { provide: Repository, useClass: BigQueryRepository },
         DecisionsService,
+        SettingsService,
         ExportService,
         {
           provide: EXPORT_CLIENTS,

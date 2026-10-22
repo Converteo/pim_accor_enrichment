@@ -9,6 +9,7 @@ import {
   fetchHotel,
   fetchHotels,
   fetchHotelsDetail,
+  fetchMatches,
   fetchStats,
 } from "@/data/source";
 import { applyDecisions, cityLine, formatScore, matchKey, withReviewCount } from "@/domain/rules";
@@ -18,10 +19,13 @@ import type {
   Facets,
   Filters,
   HotelDetail,
+  MatchItem,
+  Page,
   Stats,
   TabKey,
   ValueDecision as Decision,
 } from "@/domain/types";
+import { AutoValidationPanel } from "./AutoValidationPanel";
 import { BulkBar } from "./BulkBar";
 import { Drawer } from "./Drawer";
 import { ExportBar } from "./ExportBar";
@@ -89,7 +93,10 @@ interface ValidationScreenProps {
 
 export function ValidationScreen({ author }: ValidationScreenProps) {
   const t = useTranslations();
-  const [tab, setTab] = useState<TabKey>("review");
+  // Matches come first (their values appear once approved); with none to validate, the attributes tab opens.
+  const [tab, setTab] = useState<TabKey>("matches");
+  const tabChosen = useRef(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   // The search box filters on the back: wait for a pause in typing.
   const [query, setQuery] = useState<Filters>(EMPTY_FILTERS);
@@ -142,11 +149,36 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     return () => clearTimeout(timer);
   }, [filters, query.search]);
 
+  // « En cours » tab: matches waiting for the judge, read only when the tab is shown.
+  const pendingMatches = usePagedList(
+    JSON.stringify(["pending_judgment", tab === "pending", query.source]),
+    (cursor): Promise<Page<MatchItem>> =>
+      tab === "pending"
+        ? fetchMatches(query.source, cursor, "pending_judgment")
+        : Promise.resolve({ items: [], nextCursor: null }),
+    matchKey,
+  );
+
   useEffect(() => {
     // Indicators and facets are secondary: the list shows its own error if the back is down.
-    fetchStats().then(setStats, () => undefined);
+    fetchStats().then(
+      (loaded) => {
+        setStats(loaded);
+        if (!tabChosen.current && loaded.matchesToReview === 0) setTab("review");
+      },
+      () => undefined,
+    );
     fetchFacets().then(setFacets, () => undefined);
   }, []);
+
+  /** New thresholds change statuses at once: counters and lists are read again. */
+  function onThresholdsSaved(message: string) {
+    setNotice({ tone: "success", text: message });
+    fetchStats().then(setStats, () => undefined);
+    hotels.reload();
+    matches.list.reload();
+    pendingMatches.reload();
+  }
 
   // A selection only makes sense on the list it was made on.
   function onFilter(patch: Partial<Filters>) {
@@ -156,6 +188,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }
 
   function onTab(next: TabKey) {
+    tabChosen.current = true;
     setTab(next);
     setSelected(new Set());
     matches.setSelected(new Set());
@@ -176,7 +209,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }
 
   /**
-   * One POST for all the values (one INSERT on the back). Optimistic: values leave « à relire » at once;
+   * One POST for all the values (one INSERT on the back). Optimistic: values leave « à valider » at once;
    * the fiches leave the list once the back has answered, then the counters and the open fiche are re-read.
    */
   async function submit(decisions: PendingDecision[]): Promise<boolean> {
@@ -316,6 +349,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   const closeMatch = matches.close;
   const onClose = useCallback(() => {
     setOpenRid(null);
+    setSettingsOpen(false);
     closeMatch();
   }, [closeMatch]);
 
@@ -336,7 +370,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
 
   // Last match shown: the drawer slides out with its content after a decision or a close.
   const openMatch = matches.shown;
-  const drawerOpen = openRid !== null || matches.open !== null;
+  const drawerOpen = openRid !== null || matches.open !== null || settingsOpen;
 
   const summary = hotels.items.find((hotel) => hotel.rid === detail?.rid);
   const shownHotel = detail?.data?.hotel ?? summary;
@@ -345,7 +379,15 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     <>
       {/* The drawer is modal: the page behind it leaves the focus order and the accessibility tree. */}
       <div inert={drawerOpen}>
-        <Topbar stats={stats} author={author} />
+        <Topbar
+          stats={stats}
+          author={author}
+          onOpenSettings={() => {
+            setOpenRid(null);
+            closeMatch();
+            setSettingsOpen(true);
+          }}
+        />
         <main className={styles.app}>
           <Toolbar
             tab={tab}
@@ -383,6 +425,26 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             </>
           ) : (
             <>
+              {tab === "pending" ? (
+                <>
+                  <SectionTitle title={t("pendingTab.matches")} hint={t("pendingTab.matchesHint")} />
+                  {pendingMatches.status === "ready" && pendingMatches.items.length > 0 ? (
+                    <MatchTable rows={pendingMatches.items} readOnly />
+                  ) : null}
+                  <ListFooter
+                    status={pendingMatches.status}
+                    count={pendingMatches.items.length}
+                    shown={t("matches.shown", { count: pendingMatches.items.length })}
+                    empty={t("pendingTab.matchesEmpty")}
+                    error={pendingMatches.error}
+                    hasMore={pendingMatches.hasMore}
+                    loadingMore={pendingMatches.loadingMore}
+                    onMore={pendingMatches.loadMore}
+                    onRetry={pendingMatches.reload}
+                  />
+                  <SectionTitle title={t("pendingTab.values")} hint={t("pendingTab.valuesHint")} />
+                </>
+              ) : null}
               {hotels.status === "ready" && hotels.items.length > 0 ? (
                 <FicheTable
                   rows={hotels.items}
@@ -572,8 +634,26 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
           onDecide={decideSelection}
         />
       )}
+      <Drawer
+        open={settingsOpen}
+        eyebrow={t("settings.eyebrow")}
+        title={t("settings.title")}
+        onClose={onClose}
+      >
+        <AutoValidationPanel open={settingsOpen} onSaved={onThresholdsSaved} />
+      </Drawer>
       <Notice notice={notice} onClose={() => setNotice(null)} />
     </>
+  );
+}
+
+/** Heading of one list of the « En cours » tab. */
+function SectionTitle({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div className={styles.section}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
+      <p className={styles.sectionHint}>{hint}</p>
+    </div>
   );
 }
 

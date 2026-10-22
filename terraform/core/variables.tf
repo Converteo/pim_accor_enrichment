@@ -71,22 +71,27 @@ variable "environments" {
     # Frontend accessible sans authentification (allUsers → roles/run.invoker)
     front_public = optional(bool, false)
     # IAP sur le Cloud Run front, réservé à domain:converteo.com (incompatible avec front_public)
-    front_iap     = optional(bool, false)
-    front_scaling = optional(object({ min = number, max = number }), { min = 0, max = 2 })
-    back_scaling  = optional(object({ min = number, max = number }), { min = 0, max = 2 })
+    front_iap = optional(bool, false)
+    # Comptes autorisés à changer les seuils de validation automatique dans l'interface (vide = tout relecteur Converteo)
+    settings_editors = optional(list(string), [])
+    front_scaling    = optional(object({ min = number, max = number }), { min = 0, max = 2 })
+    back_scaling     = optional(object({ min = number, max = number }), { min = 0, max = 2 })
 
     # Pipeline d'enrichissement (pipeline/), réglages posés en variables d'environnement des jobs
     pipeline = optional(object({
-      gemini_model         = optional(string, "gemini-3.8-flash")
-      thinking_level       = optional(string, "LOW")
-      vertex_location      = optional(string, "eu")
-      llm_concurrency      = optional(number, 6)
-      judge_threshold_high = optional(number, 80) # score de l'agent juge à partir duquel un rapprochement est validé automatiquement
+      gemini_model    = optional(string, "gemini-3.8-flash")
+      thinking_level  = optional(string, "LOW")
+      vertex_location = optional(string, "eu")
+      llm_concurrency = optional(number, 6)
+      # Seuils de validation automatique par défaut (score 0-100), tant qu'ils n'ont pas été réglés dans l'interface
+      # (table validation.auto_validation_settings, appliquée à la lecture par v_matches et v_enrichments).
+      judge_threshold_high = optional(number, 80) # rapprochement validé automatiquement à partir de ce score
       judge_threshold_low  = optional(number, 30) # en dessous : rejeté ; entre les deux : à valider dans l'interface
-      # null = pas de validation automatique des enrichissements : tout passe par l'interface
-      enrich_auto_validate_score = optional(number)
-      scope_status               = optional(string, "Open,Pre-opening") # statuts d'hôtel du PIM traités
-      scheduler_paused           = optional(bool, true)
+      # null = pas de validation ni de rejet automatique des valeurs proposées : tout passe par l'interface
+      enrich_auto_approve_score = optional(number)
+      enrich_auto_reject_score  = optional(number)
+      scope_status              = optional(string, "Open,Pre-opening") # statuts d'hôtel du PIM traités
+      scheduler_paused          = optional(bool, true)
     }), {})
   }))
 

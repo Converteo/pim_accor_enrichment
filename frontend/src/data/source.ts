@@ -1,4 +1,6 @@
 import type {
+  AutoValidation,
+  AutoValidationStep,
   DecisionResult,
   EnrichmentDecisionItem,
   ExportExecution,
@@ -12,6 +14,7 @@ import type {
   MatchItem,
   Page,
   Stats,
+  Thresholds,
 } from "../domain/types";
 
 // Only client module that talks to the back, through the Next.js relay /api/* (src/app/api/[...path]).
@@ -101,8 +104,12 @@ export function fetchFieldValues(pimField: string): Promise<FieldValues> {
   return call(`/fields/${encodeURIComponent(pimField)}/values`);
 }
 
-export function fetchMatches(source: string, cursor: string | null): Promise<Page<MatchItem>> {
-  return call(`/matches${query({ source, limit: PAGE_SIZE, cursor })}`);
+export function fetchMatches(
+  source: string,
+  cursor: string | null,
+  status: "needs_review" | "pending_judgment" = "needs_review",
+): Promise<Page<MatchItem>> {
+  return call(`/matches${query({ status, source, limit: PAGE_SIZE, cursor })}`);
 }
 
 export function decideMatches(items: MatchDecisionItem[]): Promise<DecisionResult<"key">> {
@@ -119,6 +126,22 @@ export function startExport(): Promise<{ executionId: string }> {
 
 export function fetchExecution(executionId: string): Promise<ExportExecution> {
   return call(`/export/executions/${encodeURIComponent(executionId)}`);
+}
+
+export function fetchAutoValidation(): Promise<AutoValidation> {
+  return call("/settings/auto-validation");
+}
+
+/** Adds a row to validation.auto_validation_settings; the back answers with the updated state. */
+export function saveAutoValidation(
+  step: AutoValidationStep,
+  thresholds: Thresholds,
+  comment: string,
+): Promise<AutoValidation> {
+  return call(`/settings/auto-validation/${step}`, {
+    method: "POST",
+    body: { ...thresholds, ...(comment.trim() ? { comment: comment.trim() } : {}) },
+  });
 }
 
 export function exportFileUrl(exportId: string, name: string): string {

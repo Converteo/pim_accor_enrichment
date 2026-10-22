@@ -31,7 +31,9 @@ locals {
     enrichment_proposals  = { dataset = "enhanced", partition = "enriched_at", cluster = ["family", "rid", "status"] }
     enrichment_candidates = { dataset = "enhanced", partition = "computed_at", cluster = ["family", "rid"] }
     enrichment_decisions  = { dataset = "validation", partition = "decided_at", cluster = ["rid", "pim_field"] }
-    exports               = { dataset = "enhanced", partition = "exported_at", cluster = [] }
+    # Seuils de validation automatique réglés dans l'interface (la dernière ligne de chaque étape s'applique)
+    auto_validation_settings = { dataset = "validation", partition = null, cluster = ["step"] }
+    exports                  = { dataset = "enhanced", partition = "exported_at", cluster = [] }
   }
 
   # Vues, dans l'ordre de leurs dépendances
@@ -63,6 +65,17 @@ locals {
 
   dataset_refs = { for k, d in google_bigquery_dataset.pipeline : k => "${var.project_id}.${d.dataset_id}" }
 
+  # Seuils par défaut des vues v_matches et v_enrichments, tant que personne ne les a réglés dans l'interface
+  # (littéraux SQL : NULL = pas de validation ou de rejet automatique)
+  view_vars = merge(local.dataset_refs, {
+    for k, v in {
+      match_approve_default      = local.cfg.pipeline.judge_threshold_high
+      match_reject_default       = local.cfg.pipeline.judge_threshold_low
+      enrichment_approve_default = local.cfg.pipeline.enrich_auto_approve_score
+      enrichment_reject_default  = local.cfg.pipeline.enrich_auto_reject_score
+    } : k => v == null ? "CAST(NULL AS INT64)" : tostring(floor(v))
+  })
+
   jobs_common_env = {
     PROJECT_ID            = var.project_id
     BQ_RAW_DATASET        = google_bigquery_dataset.pipeline["raw"].dataset_id
@@ -81,8 +94,6 @@ locals {
     LLM_CONCURRENCY      = tostring(local.cfg.pipeline.llm_concurrency)
     JUDGE_THRESHOLD_HIGH = tostring(local.cfg.pipeline.judge_threshold_high)
     JUDGE_THRESHOLD_LOW  = tostring(local.cfg.pipeline.judge_threshold_low)
-    # Vide = pas de validation automatique des enrichissements : tout passe par l'interface
-    ENRICH_AUTO_VALIDATE_SCORE = local.cfg.pipeline.enrich_auto_validate_score == null ? "" : tostring(local.cfg.pipeline.enrich_auto_validate_score)
   }
 
   jobs_extra_env = {
@@ -235,7 +246,7 @@ resource "google_bigquery_table" "view_matches" {
   deletion_protection = false
 
   view {
-    query          = templatefile("${local.pipeline_src}/views/v_matches.sql", local.dataset_refs)
+    query          = templatefile("${local.pipeline_src}/views/v_matches.sql", local.view_vars)
     use_legacy_sql = false
   }
 
@@ -263,7 +274,7 @@ resource "google_bigquery_table" "view_enrichments" {
   deletion_protection = false
 
   view {
-    query          = templatefile("${local.pipeline_src}/views/v_enrichments.sql", local.dataset_refs)
+    query          = templatefile("${local.pipeline_src}/views/v_enrichments.sql", local.view_vars)
     use_legacy_sql = false
   }
 

@@ -223,8 +223,7 @@ def enrich(settings: Settings, state, candidates_hash: str | None = None) -> int
                     skipped = [s for s in answer.non_traitees if s.rid == h["rid"]]
                     context = {"run_id": settings.run_id, "batch_id": batch_id, "family": settings.family, "source_hash": h["source_hash"],
                                "llm_model": settings.gemini_model, "prompt_version": version, "enriched_at": started}
-                    rows += core.rows_for_hotel(h, h["targets"], answers.get(h["rid"]), skipped, by_field, allowed, labels, context,
-                                                settings.enrich_auto_validate_score)
+                    rows += core.rows_for_hotel(h, h["targets"], answers.get(h["rid"]), skipped, by_field, allowed, labels, context)
     finally:
         agent.close()
 

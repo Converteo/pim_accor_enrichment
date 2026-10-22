@@ -6,25 +6,33 @@
     "title": "Enrichment validation",
     "subtitle": "Accor PIM · Property records",
     "language": "Language",
-    "noUser": "Unidentified user"
+    "noUser": "Unidentified user",
+    "settings": "Automation thresholds"
   },
   "kpi": {
-    "hotelsToReview": "Records to review",
-    "valuesToReview": "Values to review",
     "matchesToReview": "Matches to validate",
-    "valuesPending": "Fields being enriched",
-    "valuesApproved": "Values ready for export"
+    "hotelsToReview": "Records to validate",
+    "valuesToReview": "Attributes to validate",
+    "valuesPending": "Attributes being enriched",
+    "valuesApproved": "Attributes ready for export"
   },
   "legend": {
     "item": "{label} ({count})",
-    "review": "To review",
+    "review": "Attributes to validate",
     "pending": "Being enriched",
     "approved": "Approved"
   },
   "tabs": {
-    "review": "To review",
-    "matches": "Matches to validate",
+    "matches": "① Matches to validate",
+    "review": "② Attributes to validate",
     "pending": "In progress"
+  },
+  "pendingTab": {
+    "matches": "Matches waiting for the judge",
+    "matchesHint": "The judge agent will assess them on its next run; until then they block the export.",
+    "matchesEmpty": "No match waiting for the judge.",
+    "values": "Attributes being enriched",
+    "valuesHint": "These records have an approved match: the enrichment agent will process them on its next run."
   },
   "search": {
     "placeholder": "Search for a hotel or city…"
@@ -56,7 +64,7 @@
   "columns": {
     "property": "Property record",
     "sources": "Sources",
-    "toReview": "To review",
+    "toReview": "Attributes to validate",
     "score": "Average score",
     "info": "Information",
     "actions": "Actions"
@@ -72,7 +80,7 @@
   "list": {
     "loading": "Loading…",
     "empty": "No record matches these filters.",
-    "emptyPending": "No field is being enriched for these filters.",
+    "emptyPending": "No attribute being enriched for these filters.",
     "error": "The list could not be loaded.",
     "retry": "Try again",
     "loadMore": "Load more",
@@ -94,7 +102,7 @@
   "drawer": {
     "close": "Close details",
     "eyebrow": "{brand} · {place} · {rid}",
-    "toReview": "{count, plural, =0 {Nothing to review} one {# value to review} other {# values to review}}",
+    "toReview": "{count, plural, =0 {Nothing to validate} one {# attribute to validate} other {# attributes to validate}}",
     "avgScore": "Average score {score}/100",
     "loading": "Loading the record…",
     "error": "The record could not be loaded."
@@ -187,7 +195,7 @@
     "scrapedName": "Scraped name",
     "pageName": "Page name",
     "openPage": "Open the source page ↗",
-    "delay": "Once approved, the hotel is enriched for this source on the next pipeline run (every 15 minutes); its values then appear in “To review”. Once rejected, the source is no longer used for this hotel.",
+    "delay": "Once approved, the hotel is enriched for this source on the next pipeline run (every 15 minutes); its values then appear in “Attributes to validate”. Once rejected, the source is no longer used for this hotel.",
     "empty": "No match to validate for this filter.",
     "approve": "Approve the match",
     "reject": "Reject the match",
@@ -211,7 +219,8 @@
     "saved": "{count, plural, =0 {No match saved.} one {# match rejected.} other {# matches rejected.}}",
     "savedApproved": "{count, plural, =0 {No match saved.} one {# match approved: its values will come with the next pipeline run.} other {# matches approved: their values will come with the next pipeline run.}}",
     "refused": "{count, plural, one {# match refused by the server:} other {# matches refused by the server:}}",
-    "shown": "{count, plural, one {# match shown} other {# matches shown}}"
+    "shown": "{count, plural, one {# match shown} other {# matches shown}}",
+    "notJudged": "Not judged yet"
   },
   "bulkMatches": {
     "cancel": "Cancel",
@@ -242,6 +251,43 @@
     "record": "{date} · {author} · {hotels, plural, one {# hotel} other {# hotels}} · {rows, plural, one {# value} other {# values}}",
     "unauthorized": "Unidentified user: the server refused the action.",
     "busy": "An export is running: wait for it to finish before launching another one."
+  },
+  "settings": {
+    "title": "Automatic validation thresholds",
+    "eyebrow": "Pipeline automation",
+    "intro": "Score at or above the approval threshold: approved automatically. Score below the rejection threshold: rejected automatically. In between: to validate in the app. Changes apply at once, without running the pipeline again; a human decision always wins.",
+    "steps": {
+      "match": "① Matches",
+      "enrichment": "② Attributes"
+    },
+    "rules": {
+      "match": "Approved automatically only if the judge agent says “same hotel” and the automatic check did not reject it. A page in another country is always rejected.",
+      "enrichment": "Approved automatically only without a warning, and never for an inferred value. Rule-based rejections (not in the sources, already in the PIM…) do not depend on the thresholds. Only attributes whose match is approved count."
+    },
+    "approve": "Auto-approve if score ≥",
+    "reject": "Auto-reject if score <",
+    "enabled": "On",
+    "off": "off",
+    "current": "In force: approval {approve} · rejection {reject}",
+    "isDefault": "deployment defaults",
+    "now": "Today",
+    "simulated": "With these thresholds",
+    "autoApproved": "Auto-approved",
+    "autoRejected": "Auto-rejected",
+    "toValidate": "To validate",
+    "scope": "{count, plural, =0 {No item without a human decision.} one {Out of # item without a human decision.} other {Out of # items without a human decision.}}",
+    "comment": "Reason for the change (optional)",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Thresholds saved: they apply right now.",
+    "unchanged": "Nothing to save.",
+    "readOnly": "Read only: only designated owners can change the thresholds.",
+    "invalid": "The rejection threshold must be lower than or equal to the approval threshold.",
+    "history": "History",
+    "noHistory": "No change: deployment defaults.",
+    "change": "{date} · {author} · approval {approve} · rejection {reject}",
+    "loading": "Loading thresholds…",
+    "error": "Could not load the thresholds."
   },
   "number": "{value, number}"
 }

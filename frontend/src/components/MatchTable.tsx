@@ -7,20 +7,31 @@ import styles from "./FicheTable.module.css";
 
 interface MatchTableProps {
   rows: MatchItem[];
-  selected: ReadonlySet<string>;
-  onToggleRow: (key: string, selected: boolean) => void;
-  onToggleVisible: (selected: boolean) => void;
-  onOpen: (key: string) => void;
+  /** Matches waiting for the judge: nothing to decide, no selection, no detail. */
+  readOnly?: boolean;
+  selected?: ReadonlySet<string>;
+  onToggleRow?: (key: string, selected: boolean) => void;
+  onToggleVisible?: (selected: boolean) => void;
+  onOpen?: (key: string) => void;
 }
 
-/** Hotel × source matches the judge agent hesitates on (score 30-79). */
-export function MatchTable({ rows, selected, onToggleRow, onToggleVisible, onOpen }: MatchTableProps) {
+const NONE: ReadonlySet<string> = new Set();
+
+/** Hotel × source matches the judge agent hesitates on (between the thresholds), or that wait for its judgment. */
+export function MatchTable({
+  rows,
+  readOnly = false,
+  selected = NONE,
+  onToggleRow,
+  onToggleVisible,
+  onOpen,
+}: MatchTableProps) {
   const t = useTranslations();
   const locale = useLocale();
   const headerChecked = rows.length > 0 && rows.every((row) => selected.has(matchKey(row)));
 
   function onHeaderChange(event: ChangeEvent<HTMLInputElement>) {
-    onToggleVisible(event.target.checked);
+    onToggleVisible?.(event.target.checked);
   }
 
   function stopRowOpen(event: MouseEvent) {
@@ -32,14 +43,16 @@ export function MatchTable({ rows, selected, onToggleRow, onToggleVisible, onOpe
       <table className={styles.table}>
         <thead>
           <tr>
-            <th className={`${styles.headCell} ${styles.checkCol}`} scope="col">
-              <input
-                type="checkbox"
-                checked={headerChecked}
-                aria-label={t("row.selectAll")}
-                onChange={onHeaderChange}
-              />
-            </th>
+            {readOnly ? null : (
+              <th className={`${styles.headCell} ${styles.checkCol}`} scope="col">
+                <input
+                  type="checkbox"
+                  checked={headerChecked}
+                  aria-label={t("row.selectAll")}
+                  onChange={onHeaderChange}
+                />
+              </th>
+            )}
             <th className={styles.headCell} scope="col">
               {t("matches.pim")}
             </th>
@@ -52,9 +65,11 @@ export function MatchTable({ rows, selected, onToggleRow, onToggleVisible, onOpe
             <th className={styles.headCell} scope="col">
               {t("matches.judge")}
             </th>
-            <th className={`${styles.headCell} ${styles.actionsHead}`} scope="col">
-              {t("columns.actions")}
-            </th>
+            {readOnly ? null : (
+              <th className={`${styles.headCell} ${styles.actionsHead}`} scope="col">
+                {t("columns.actions")}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -64,18 +79,20 @@ export function MatchTable({ rows, selected, onToggleRow, onToggleVisible, onOpe
             return (
               <tr
                 key={key}
-                className={isSelected ? `${styles.row} ${styles.selected}` : styles.row}
-                onClick={() => onOpen(key)}
+                className={readOnly ? undefined : isSelected ? `${styles.row} ${styles.selected}` : styles.row}
+                onClick={readOnly ? undefined : () => onOpen?.(key)}
               >
-                <td className={styles.cell}>
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    aria-label={t("row.select", { name: row.pim.name ?? row.rid })}
-                    onClick={stopRowOpen}
-                    onChange={(event) => onToggleRow(key, event.target.checked)}
-                  />
-                </td>
+                {readOnly ? null : (
+                  <td className={styles.cell}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      aria-label={t("row.select", { name: row.pim.name ?? row.rid })}
+                      onClick={stopRowOpen}
+                      onChange={(event) => onToggleRow?.(key, event.target.checked)}
+                    />
+                  </td>
+                )}
                 <td className={styles.cell}>
                   <div className={styles.name}>{row.pim.name ?? row.rid}</div>
                   <div className={styles.city}>
@@ -89,25 +106,34 @@ export function MatchTable({ rows, selected, onToggleRow, onToggleVisible, onOpe
                 </td>
                 <td className={`${styles.cell} ${styles.source}`}>{sourceLabel(t, row.source)}</td>
                 <td className={styles.cell}>
-                  <span className="score-pill pill-review">
-                    {formatScore(row.score)}
-                    <small>/100</small>
-                  </span>
+                  {row.score === null ? (
+                    <span className="status-pill pill-pending">
+                      <i className="dot dot-pending" />
+                      {t("matches.notJudged")}
+                    </span>
+                  ) : (
+                    <span className="score-pill pill-review">
+                      {formatScore(row.score)}
+                      <small>/100</small>
+                    </span>
+                  )}
                 </td>
-                <td className={styles.cell}>
-                  <div className={styles.actions}>
-                    <button
-                      type="button"
-                      className="btn-icon link"
-                      onClick={(event) => {
-                        stopRowOpen(event);
-                        onOpen(key);
-                      }}
-                    >
-                      {t("row.view")}
-                    </button>
-                  </div>
-                </td>
+                {readOnly ? null : (
+                  <td className={styles.cell}>
+                    <div className={styles.actions}>
+                      <button
+                        type="button"
+                        className="btn-icon link"
+                        onClick={(event) => {
+                          stopRowOpen(event);
+                          onOpen?.(key);
+                        }}
+                      >
+                        {t("row.view")}
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             );
           })}

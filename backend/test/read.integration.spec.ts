@@ -60,7 +60,7 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
   });
 
   it('matches : needs_review uniquement, facets non vides', async () => {
-    const m = await repo.matches({ limit: 3 });
+    const m = await repo.matches({ status: 'needs_review', limit: 3 });
     expect(m.items.length).toBeGreaterThan(0);
     expect(m.items.every((x) => x.status === 'needs_review' && x.sourceHash)).toBe(true);
     const [first] = m.items;

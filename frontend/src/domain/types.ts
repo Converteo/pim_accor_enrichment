@@ -119,9 +119,51 @@ export interface Stats {
   hotelsPending: number;
   valuesToReview: number;
   matchesToReview: number;
+  /** Matches waiting for the judge agent (pending_judgment). */
+  matchesPending: number;
   valuesPending: number;
   valuesApproved: number;
   pendingForExport: number;
+}
+
+export type AutoValidationStep = "match" | "enrichment";
+
+export interface AutoValidationChange {
+  approveThreshold: number | null;
+  rejectThreshold: number | null;
+  comment: string | null;
+  author: string;
+  setAt: string;
+}
+
+/** Items without a human decision the thresholds apply to, by score. */
+export interface ScoreBucket {
+  score: number | null;
+  /** Could be approved automatically (rules other than the score are met). */
+  approvable: number;
+  total: number;
+}
+
+export interface AutoValidationStepState {
+  step: AutoValidationStep;
+  /** null = off. */
+  approveThreshold: number | null;
+  rejectThreshold: number | null;
+  /** Nothing set in the app yet: deployment defaults. */
+  isDefault: boolean;
+  distribution: ScoreBucket[];
+  /** Most recent first. */
+  history: AutoValidationChange[];
+}
+
+export interface AutoValidation {
+  canEdit: boolean;
+  steps: AutoValidationStepState[];
+}
+
+export interface Thresholds {
+  approveThreshold: number | null;
+  rejectThreshold: number | null;
 }
 
 export interface Facets {
@@ -193,7 +235,8 @@ export interface ExportExecution {
 
 export type TabKey = "review" | "matches" | "pending";
 
-export const TAB_ORDER: readonly TabKey[] = ["review", "matches", "pending"];
+/** Order of the reviewer's work: matches first (their values appear once approved), then attributes, then what waits for the pipeline. */
+export const TAB_ORDER: readonly TabKey[] = ["matches", "review", "pending"];
 
 export const FAMILY_ORDER: readonly Family[] = [
   "general",

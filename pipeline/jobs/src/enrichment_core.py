@@ -11,7 +11,7 @@ import unicodedata
 import uuid
 
 from decisions import (ALREADY_IN_PIM, AUTO_REJECTED, INVALID_FORMAT, MODEL_OMITTED, NEEDS_REVIEW, NO_EXCERPT, NOT_IN_PIM_LIST,
-                       NOT_IN_SOURCES, PIM_CONFLICT, confidence, enrichment_status)
+                       NOT_IN_SOURCES, PIM_CONFLICT, confidence)
 from schemas_llm import AGENT_NEW_ENTITY, METHODS
 
 NEW_ENTITY = "new"
@@ -180,8 +180,7 @@ def compare_with_pim(field: dict, value: str, pim_value) -> tuple[str, str | Non
 # ------------------------------------------------------------------ rows
 
 def rows_for_hotel(hotel: dict, targets: list[dict], answer, skipped: list, fields: dict[str, dict],
-                   allowed: dict[str, set[str]], labels: dict[tuple[str, str], str], context: dict,
-                   auto_threshold: int | None) -> list[dict]:
+                   allowed: dict[str, set[str]], labels: dict[tuple[str, str], str], context: dict) -> list[dict]:
     """Rows of one hotel from the agent's answer (answer: HotelEnrichi or None; skipped: its NonTraitee items).
 
     hotel: rid, pim_entity_id, sources (source -> column -> text), validated_sources
@@ -245,6 +244,6 @@ def rows_for_hotel(hotel: dict, targets: list[dict], answer, skipped: list, fiel
         value_label = None
         if to_write and field.get("cvl_id"):
             value_label = " | ".join(labels.get((field["cvl_id"], k), k) for k in to_write.split("|"))
-        rows.append({**common, "status": enrichment_status(status, score, warning, auto_threshold), "value": to_write,
+        rows.append({**common, "status": status, "value": to_write,
                      "value_label": value_label, "reason": reason, "reason_detail": detail})
     return rows

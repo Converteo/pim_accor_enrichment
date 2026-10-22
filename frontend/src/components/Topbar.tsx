@@ -8,9 +8,10 @@ import styles from "./Topbar.module.css";
 interface TopbarProps {
   stats: Stats | null;
   author: string | null;
+  onOpenSettings: () => void;
 }
 
-export function Topbar({ stats, author }: TopbarProps) {
+export function Topbar({ stats, author, onOpenSettings }: TopbarProps) {
   const t = useTranslations("header");
 
   return (
@@ -30,6 +31,9 @@ export function Topbar({ stats, author }: TopbarProps) {
             <span className={styles.product}>{t("subtitle")}</span>
           </div>
           <div className={styles.navEnd}>
+            <button type="button" className={styles.settings} onClick={onOpenSettings}>
+              {t("settings")}
+            </button>
             <span className={author ? styles.badge : `${styles.badge} ${styles.noUser}`}>
               {author ?? t("noUser")}
             </span>

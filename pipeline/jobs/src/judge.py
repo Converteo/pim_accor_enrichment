@@ -1,10 +1,12 @@
 """Step 3 - judge agent (brick 2): is the scraped page the PIM hotel's own page? Score 0-100.
 
 Every match is judged, OK ones included, so that each carries a score. A match already judged with the same
-fingerprint (source_hash) is not sent again. Then the passing rule (decisions.match_status):
-  auto_approved  score >= JUDGE_THRESHOLD_HIGH, verdict same_hotel, no blocking indicator -> goes on to enrichment
-  auto_rejected  score <  JUDGE_THRESHOLD_LOW, or the page is in another country         -> never enriched
-  needs_review   in between                                                              -> waits for a decision in the app
+fingerprint (source_hash) is not sent again. The passing rule (decisions.match_status):
+  auto_approved  score >= approve threshold, verdict same_hotel, no blocking indicator -> goes on to enrichment
+  auto_rejected  score <  reject threshold, or the page is in another country         -> never enriched
+  needs_review   in between                                                           -> waits for a decision in the app
+The status in force is computed by v_matches at read time, with the thresholds set in the app (Terraform defaults
+JUDGE_THRESHOLD_HIGH / LOW until then); the job records judge_status with the defaults, for reference only.
 A match left out of the agent's answer is not written: it is judged again at the next run.
 """
 

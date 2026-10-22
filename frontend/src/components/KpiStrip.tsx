@@ -59,10 +59,11 @@ const ICONS = {
   ),
 };
 
+// Order of the workflow: matches first, then the attributes they bring.
 const ITEMS = [
+  { key: "matchesToReview", tone: styles.warn },
   { key: "hotelsToReview", tone: "" },
   { key: "valuesToReview", tone: "" },
-  { key: "matchesToReview", tone: styles.warn },
   { key: "valuesPending", tone: styles.warn },
   { key: "valuesApproved", tone: styles.success },
 ] as const;

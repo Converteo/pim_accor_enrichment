@@ -18,7 +18,9 @@ export const ENV = {
 export type MockRepository = { [K in keyof Repository]: ReturnType<typeof vi.fn> };
 
 /** Application complète, avec un Repository dont chaque méthode est un mock (aucun appel BigQuery). */
-export async function appWithMockRepository(): Promise<{ app: INestApplication; repo: MockRepository }> {
+export async function appWithMockRepository(
+  env: Record<string, string> = {},
+): Promise<{ app: INestApplication; repo: MockRepository }> {
   const repo = {
     hotels: vi.fn(),
     facets: vi.fn(),
@@ -32,8 +34,11 @@ export async function appWithMockRepository(): Promise<{ app: INestApplication; 
     fieldValues: vi.fn(),
     exports: vi.fn(),
     exportById: vi.fn(),
+    scoreDistributions: vi.fn(),
+    autoValidationHistory: vi.fn(),
+    insertAutoValidation: vi.fn(),
   } satisfies MockRepository;
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(loadConfig(ENV))] })
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(loadConfig({ ...ENV, ...env }))] })
     .overrideProvider(Repository)
     .useValue(repo)
     .compile();

@@ -45,12 +45,12 @@ Le backend n'a pas besoin de lire `raw`, sauf pour contrôler une valeur corrig�
 | --- | --- | --- |
 | `match_candidates` | job matching | Une ligne par **RID × source** : identité PIM (`pim_name`, `pim_city`, `pim_brand`…), identité scrapée (`scraped_name`, `url`, `page_name`…), contrôle déterministe (`pre_verdict`, `pre_reason`) et empreinte `source_hash`. Recalculée à chaque passage. |
 | `unknown_rids` | job matching | RID présents dans un scraping mais introuvables dans le PIM (pour information). |
-| `match_judgments` | agent juge | Note de l'agent : `verdict`, `score` (0-100), `confidence`, `reason`, `justification`, `status` (`auto_approved`, `needs_review`, `auto_rejected`). En ajout : un nouveau jugement seulement si l'empreinte change. |
-| `v_matches` (vue) | — | **Vue de l'écran des rapprochements.** Candidat + dernier jugement + dernière décision humaine, avec `final_status`. |
+| `match_judgments` | agent juge | Note de l'agent : `verdict`, `score` (0-100), `confidence`, `reason`, `justification`, `status` (statut avec les seuils par défaut, pour mémoire). En ajout : un nouveau jugement seulement si l'empreinte change. |
+| `v_matches` (vue) | — | **Vue de l'écran des rapprochements.** Candidat + dernier jugement + dernière décision humaine, avec `final_status`. Le statut automatique (`auto_status`) est calculé à la lecture avec les seuils en vigueur (`approve_threshold`, `reject_threshold`) ; `auto_eligible` et `auto_approvable` disent si les seuils s'appliquent. |
 | `v_approved_matches` (vue) | — | Les rapprochements qui passent à l'enrichissement : `final_status` = `auto_approved` ou `human_approved`. |
 
-`final_status` d'un rapprochement : `pending_judgment` (pas encore noté ; l'équivalent pour une valeur est `pending_enrichment`), `auto_approved` (note ≥ 80), `needs_review` (note de 30 à 79),
-`auto_rejected` (note < 30 ou autre pays), `human_approved`, `human_rejected`.
+`final_status` d'un rapprochement : `pending_judgment` (pas encore noté ; l'équivalent pour une valeur est `pending_enrichment`), `auto_approved` (note ≥ seuil de validation, 80 par défaut, et verdict `same_hotel`), `needs_review` (entre les deux seuils),
+`auto_rejected` (note < seuil de rejet, 30 par défaut, ou autre pays), `human_approved`, `human_rejected`.
 
 ### `validation` : décisions humaines (écrites par le backend)
 
@@ -58,6 +58,7 @@ Le backend n'a pas besoin de lire `raw`, sauf pour contrôler une valeur corrig�
 | --- | --- |
 | `match_decisions` | Une ligne par décision sur un rapprochement : `rid`, `source`, `source_hash`, `decision` (`human_approved` ou `human_rejected`), `comment`, `author`, `decided_at`. |
 | `enrichment_decisions` | Une ligne par décision sur une valeur : `enrichment_id`, `rid`, `pim_field`, `entity_id`, `decision` (`human_approved`, `human_rejected` ou `human_corrected`), `corrected_value`, `comment`, `author`, `decided_at`. |
+| `auto_validation_settings` | Une ligne par réglage des seuils dans l'interface : `step` (`match` ou `enrichment`), `approve_threshold`, `reject_threshold` (null = désactivé), `comment`, `author`, `set_at`. La dernière ligne de chaque étape s'applique ; sans ligne, les valeurs par défaut de Terraform. |
 
 Ce sont les **seules tables écrites par le backend.**
 
@@ -68,7 +69,7 @@ Ce sont les **seules tables écrites par le backend.**
 | `enrichment_candidates` | job d'enrichissement (code, sans IA) | **Équivalent de `match_candidates` pour les valeurs.** Une ligne par hôtel × champ × entité à enrichir, pour chaque hôtel dont un rapprochement est validé : `family`, `rid`, `entity`, `entity_id`, `pim_field`, `label`, `priority`, `pim_value`, `source_hash` (empreinte du contenu de l'hôtel). Réécrite pour la famille quand ses cibles changent ; les vues lisent le dernier ensemble. |
 | `enrichment_proposals` | agent d'enrichissement | Toutes les réponses de l'agent, une ligne par hôtel × champ × entité et par passage : `enrichment_id`, `family`, `priority`, `entity`, `entity_id`, `pim_field`, `label`, `pim_value`, `value`, `value_label`, `method`, `source`, `source_field`, `source_excerpt`, `score`, `confidence`, `warning`, `status`, `reason`, `reason_detail`, `source_hash`, `prompt_version`. |
 | `v_enrichments` (vue) | — | **Vue de l'écran des fiches.** Dernière ligne par hôtel × champ × entité, plus la dernière décision humaine sur cette ligne, et une ligne `pending_enrichment` par cible pas encore enrichie : `final_status`, `final_value` (la valeur corrigée le cas échéant), `author`, `decided_at`. |
-| `v_approved_enrichments` (vue) | — | Ce qui part à l'export : `final_status` = `human_approved`, `human_corrected` (ou `auto_approved`, désactivé), et dont le rapprochement est toujours validé. |
+| `v_approved_enrichments` (vue) | — | Ce qui part à l'export : `final_status` = `human_approved`, `human_corrected` ou `auto_approved`, et dont le rapprochement est toujours validé. |
 | `exports` | job export | Historique des exports : `path` (dossier du bucket), `row_count`, `hotel_count`, `files`, `triggered_by`, `exported_at`. |
 
 `final_status` d'une valeur :
@@ -76,8 +77,8 @@ Ce sont les **seules tables écrites par le backend.**
 | Statut | Sens | Dans l'interface |
 | --- | --- | --- |
 | `pending_enrichment` | cible d'un rapprochement validé, pas encore enrichie (ou dont le contenu a changé depuis) | « en cours » ou masqué |
-| `needs_review` | valeur proposée par l'agent pour un champ vide, extrait à l'appui | **à relire** |
-| `auto_approved` | validation automatique au-dessus d'un seuil (désactivée) | — |
+| `needs_review` | valeur proposée par l'agent pour un champ vide, extrait à l'appui, entre les deux seuils | **à valider** |
+| `auto_approved` | score ≥ seuil de validation, sans alerte, méthode autre que `inferred` (seuil désactivé par défaut) | — |
 | `auto_rejected` | rien à proposer, motif dans `reason` (ci-dessous) et texte dans `reason_detail` | masqué, sauf `pim_conflict` |
 | `human_approved`, `human_corrected`, `human_rejected` | décision du relecteur | historique |
 
@@ -92,6 +93,7 @@ Ce sont les **seules tables écrites par le backend.**
 | `no_excerpt` | valeur sans extrait de la source | masqué |
 | `not_in_pim_list` | code absent de la liste du PIM | masqué |
 | `invalid_format` | heure, booléen ou nombre mal formé, valeur vide, plusieurs valeurs pour un champ simple | masqué |
+| `low_score` | score sous le seuil de rejet en vigueur (posé par `v_enrichments` à la lecture, pas par le job) | masqué |
 
 ## 2. Le parcours d'une fiche en relecture
 

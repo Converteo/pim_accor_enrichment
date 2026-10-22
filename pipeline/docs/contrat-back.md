@@ -9,7 +9,7 @@ Datasets (un jeu par environnement, `<base>` = `cvto_accor_pim_enrichment_<env>_
 | --- | --- | --- |
 | `<base>_matching` | lecture | rapprochements RID × source (`match_candidates`), notes de l'agent juge (`match_judgments`), vues `v_matches` et `v_approved_matches` |
 | `<base>_enhanced` | lecture | champs à enrichir (`enrichment_candidates`), réponses de l'agent (`enrichment_proposals`), vues `v_enrichments`, `v_approved_enrichments` et `v_field_allowed_values` (codes autorisés par champ, vue autorisée sur `raw`), historique `exports` |
-| `<base>_validation` | lecture et écriture | décisions humaines (`match_decisions`, `enrichment_decisions`) |
+| `<base>_validation` | lecture et écriture | décisions humaines (`match_decisions`, `enrichment_decisions`) et seuils de validation automatique (`auto_validation_settings`) |
 
 Le SA backend a aussi `roles/bigquery.jobUser` sur le projet, `run.jobsExecutorWithOverrides` et `run.viewer` sur le job d'export (lancement avec surcharge d'env, liste et état des exécutions) et la lecture du bucket des exports.
 Les schémas des tables sont dans `pipeline/jobs/src/schemas/`, les vues dans `pipeline/jobs/src/views/`.
@@ -86,6 +86,17 @@ SELECT
         OR (final_status = 'needs_review'
             AND EXISTS (SELECT 1 FROM `<base>_matching.v_approved_matches` r WHERE r.rid = e.rid AND r.source = e.source))) AS en_attente
 ```
+
+## 3 bis. Seuils de validation automatique
+
+Lus et changés dans l'interface (`GET /settings/auto-validation`, `POST /settings/auto-validation/:step`). Un changement
+ajoute une ligne à `<base>_validation.auto_validation_settings` (`step`, `approve_threshold`, `reject_threshold`, `comment`,
+`author`, `set_at`) ; `v_matches` et `v_enrichments` appliquent tout de suite la dernière ligne de chaque étape. Seuls les
+comptes de `SETTINGS_EDITORS` (variable d'environnement du back, `settings_editors` dans Terraform) peuvent écrire ;
+vide = tout relecteur Converteo.
+
+La simulation se fait dans le front à partir de la répartition des scores des éléments sans décision humaine
+(colonnes `auto_eligible`, `auto_approvable`, `score` des deux vues), même règle que les vues.
 
 ## 4. Rythme
 

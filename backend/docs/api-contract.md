@@ -75,7 +75,19 @@ interface MatchItem {
   status: MatchStatus; lastDecision: Decision|null;
 }
 
-interface Stats { hotelsToReview: number; hotelsPending: number; valuesToReview: number; matchesToReview: number; valuesPending: number; valuesApproved: number; pendingForExport: number; }
+interface Stats { hotelsToReview: number; hotelsPending: number; valuesToReview: number; matchesToReview: number; matchesPending: number; valuesPending: number; valuesApproved: number; pendingForExport: number; }
+
+type AutoValidationStep = 'match'|'enrichment';
+interface AutoValidationChange { approveThreshold: number|null; rejectThreshold: number|null; comment: string|null; author: string; setAt: string; }
+interface ScoreBucket { score: number|null; approvable: number; total: number; }  // éléments sans décision humaine auxquels les seuils s'appliquent
+interface AutoValidationStepState {
+  step: AutoValidationStep;
+  approveThreshold: number|null; rejectThreshold: number|null;   // en vigueur ; null = désactivé
+  isDefault: boolean;                                             // aucun réglage : valeurs par défaut de Terraform
+  distribution: ScoreBucket[];
+  history: AutoValidationChange[];                                // du plus récent au plus ancien
+}
+interface AutoValidation { canEdit: boolean; steps: AutoValidationStepState[]; }
 
 interface FieldValues { pimField: string; dataType: string; multivalue: boolean; values: { key: string; label: string }[]; }
 ```
@@ -90,13 +102,16 @@ interface FieldValues { pimField: string; dataType: string; multivalue: boolean;
 | GET | `/hotels/:rid` | `HotelDetail` | 404 si inconnu ; `hotel.sources` = toutes les sources dont le rapprochement est validé (PIM-19), pas seulement celles qui ont des valeurs à relire |
 | POST | `/decisions/enrichments` | `{accepted: string[], rejected: {enrichmentId, code, message}[]}` | corps `{items: {enrichmentId, decision: 'human_approved'|'human_rejected'|'human_corrected', correctedValue?, comment?}[]}` ; contrôles du contrat § 3.2-3.3 ; un seul INSERT |
 | GET | `/fields/:pimField/values` | `FieldValues` | codes autorisés (vue `enhanced.v_field_allowed_values`, livrée par la session infra) |
-| GET | `/matches?source&limit&cursor` | `{items: MatchItem[], nextCursor}` | `final_status = 'needs_review'` |
+| GET | `/matches?status&source&limit&cursor` | `{items: MatchItem[], nextCursor}` | `status=needs_review` (défaut) ou `pending_judgment` (onglet « En cours de traitement ») ; curseur propre à chaque statut |
 | POST | `/decisions/matches` | `{accepted: string[], rejected: {key, code, message}[]}` | corps `{items: {rid, source, sourceHash, decision: 'human_approved'|'human_rejected', comment?}[]}` ; `key` = `rid|source|sourceHash` |
 | GET | `/export/status` | `{pendingCount: number, canExport: boolean, runningExecutionId: string\|null, history: {exportId, path, rowCount, hotelCount, files: string[], triggeredBy, exportedAt}[]}` | `canExport` faux tant qu'il reste des éléments en attente ou qu'une exécution tourne ; `runningExecutionId` pour reprendre le suivi |
 | POST | `/export` | `{executionId}` | lance `gcrj-<base>-export` (Cloud Run jobs.run) ; 409 `export_blocked` si pendingCount > 0, 409 `export_running` si une exécution tourne déjà |
 | GET | `/export/executions/:id` | `{state: 'running'|'succeeded'|'failed', message?}` | `succeeded` sans nouvelle ligne dans `history` = le job n'avait rien à exporter (aucune valeur validée) ou a refusé (attente apparue entre-temps) |
 | GET | `/exports/:exportId/files/:name` | flux du fichier (Content-Disposition) | lecture du bucket exports |
+| GET | `/settings/auto-validation` | `AutoValidation` | seuils en vigueur des deux étapes, répartition des scores (simulation côté front), historique ; `canEdit` d'après `X-PIM-Author` et `SETTINGS_EDITORS` |
+| POST | `/settings/auto-validation/:step` | `AutoValidation` | `step` = `match` ou `enrichment` ; corps `{approveThreshold: int 0-100|null, rejectThreshold: int 0-100|null, comment?}`, rejet ≤ validation ; 403 `settings_forbidden` hors `SETTINGS_EDITORS` ; un INSERT dans `validation.auto_validation_settings`, appliqué tout de suite par les vues |
 
 ## Modifications proposées
+- 22/10 [pipeline] intégrée ci-dessus : seuils de validation automatique réglables dans l'interface (`/settings/auto-validation`), `GET /matches?status=pending_judgment` et `Stats.matchesPending` pour l'onglet « En cours de traitement ».
 - 21/10 [front] ✅ acceptée par back (11:50), intégrée ci-dessus : `GET /hotels?view=pending` et `Stats.hotelsPending` (fiches ayant ≥1 champ `pending_enrichment`), pour l'onglet « En cours » de PIM-17. Tant que le back ne les sert pas, le front affiche l'onglet vide avec un message.
 - 21/10 [front] ✅ acceptée par back, intégrée ci-dessus : `POST /export` : refuser en 409 (`export_running`) quand une exécution du job est déjà en cours, et indiquer `runningExecutionId: string|null` dans `GET /export/status`. Le front ne protège que son propre onglet (sessionStorage) : deux relecteurs, ou deux onglets, peuvent sinon lancer deux jobs.

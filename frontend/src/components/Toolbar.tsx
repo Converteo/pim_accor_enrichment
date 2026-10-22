@@ -33,11 +33,17 @@ const iconProps = {
   "aria-hidden": true,
 } as const;
 
-const TAB_COUNT = {
-  review: "hotelsToReview",
-  matches: "matchesToReview",
-  pending: "hotelsPending",
-} as const satisfies Record<TabKey, keyof Stats>;
+/** « En cours » holds the matches waiting for the judge and the fiches waiting for the enrichment agent. */
+function tabCount(tab: TabKey, stats: Stats): number {
+  switch (tab) {
+    case "matches":
+      return stats.matchesToReview;
+    case "review":
+      return stats.hotelsToReview;
+    case "pending":
+      return stats.matchesPending + stats.hotelsPending;
+  }
+}
 
 function Segment({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
   return (
@@ -189,7 +195,7 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             >
               {t(`tabs.${key}`)}{" "}
               <span className={styles.count}>
-                {stats ? t("number", { value: stats[TAB_COUNT[key]] }) : "—"}
+                {stats ? t("number", { value: tabCount(key, stats) }) : "—"}
               </span>
             </button>
           );
