@@ -36,6 +36,7 @@ interface HotelSummary {
   rid: string; name: string; brand: string|null; city: string|null; country: string|null;
   sources: string[];            // sources validées ayant des valeurs à relire
   toReviewCount: number;        // valeurs needs_review sur rapprochement validé
+  outdatedCount: number;        // parmi toReviewCount, valeurs signalées « non prioritaire, à vérifier » (outdated)
   avgScore: number|null;        // moyenne des scores à relire, 0-100
   pendingCount: number;         // champs pending_enrichment
   conflictCount: number;        // auto_rejected reason=pim_conflict
@@ -55,11 +56,12 @@ interface EnrichmentValue {
   score: number|null; confidence: string|null; warning: string|null;
   status: ValueStatus; reason: string|null; reasonDetail: string|null;
   finalValue: string|null;
+  outdated: string|null;        // motif FR si « non prioritaire, à vérifier », sinon null (règle : § Valeurs signalées)
   lastDecision: Decision|null;
 }
 
 interface HotelDetail {
-  hotel: Omit<HotelSummary,'toReviewCount'|'avgScore'|'pendingCount'|'conflictCount'|'families'>;
+  hotel: Omit<HotelSummary,'toReviewCount'|'outdatedCount'|'avgScore'|'pendingCount'|'conflictCount'|'families'>;
   toReview: EnrichmentValue[];  // needs_review, rapprochement validé, tri priorité puis score desc
   pending: EnrichmentValue[];   // pending_enrichment
   conflicts: EnrichmentValue[]; // auto_rejected / pim_conflict
@@ -72,6 +74,7 @@ interface MatchItem {
   page: { scrapedName: string|null; pageName: string|null; url: string|null; country: string|null };
   preVerdict: string|null; preReason: string|null;
   score: number|null; confidence: string|null; judgeReason: string|null; justification: string|null;
+  verdict: string|null;         // avis brut du juge : 'same_hotel'|'different_hotel'|'undetermined' ; null si pas encore jugé
   status: MatchStatus; lastDecision: Decision|null;
 }
 
@@ -99,14 +102,14 @@ interface FieldValues { pimField: string; dataType: string; multivalue: boolean;
 |---|---|---|---|
 | GET | `/healthz` | `{status:'ok'}` | |
 | GET | `/stats` | `Stats` | `pendingForExport` = compte du job d'export ; il peut inclure des champs `pending_enrichment` d'hôtels dont plus aucun rapprochement n'est validé (invisibles dans les listes) |
-| GET | `/hotels?view&brand&source&family&priority&search&limit&cursor` | `{items: HotelSummary[], nextCursor}` | `view=review` (défaut) : fiches avec ≥1 valeur à relire ; filtre `EXISTS v_approved_matches` obligatoire ; tri priorité min puis avgScore desc. `view=pending` : fiches avec ≥1 champ `pending_enrichment` (filtres `family`/`priority` appliqués à ces champs, `source` aux sources validées), tri pendingCount desc |
-| GET | `/hotels/facets` | `{brands: string[], sources: string[]}` | listes des filtres |
+| GET | `/hotels?view&brand&source&family&priority&search&outdated&limit&cursor` | `{items: HotelSummary[], nextCursor}` | `view=review` (défaut) : fiches avec ≥1 valeur à relire ; filtre `EXISTS v_approved_matches` obligatoire ; tri : fiches dont toutes les valeurs à relire sont signalées (`outdatedCount = toReviewCount`) en dernier, puis priorité min puis avgScore desc. `outdated=hide` : fiches avec ≥1 valeur à relire non signalée ; `outdated=only` : fiches avec ≥1 valeur à relire signalée (combiné aux filtres `source`/`family`/`priority` sur les mêmes valeurs ; ignoré pour `view=pending`). `view=pending` : fiches avec ≥1 champ `pending_enrichment` (filtres `family`/`priority` appliqués à ces champs, `source` aux sources validées), tri pendingCount desc |
+| GET | `/hotels/facets` | `{brands: string[], sources: string[], verdicts: string[]}` | listes des filtres ; `verdicts` = avis du juge présents dans `v_matches` |
 | GET | `/hotels/:rid` | `HotelDetail` | 404 si inconnu ; `hotel.sources` = toutes les sources dont le rapprochement est validé (PIM-19), pas seulement celles qui ont des valeurs à relire |
 | POST | `/decisions/enrichments` | `{accepted: string[], rejected: {enrichmentId, code, message}[]}` | corps `{items: {enrichmentId, decision: 'human_approved'|'human_rejected'|'human_corrected', correctedValue?, comment?}[]}` ; contrôles du contrat § 3.2-3.3 ; un seul INSERT |
 | GET | `/fields/:pimField/values` | `FieldValues` | codes autorisés (vue `enhanced.v_field_allowed_values`, livrée par la session infra) |
-| GET | `/matches?status&source&limit&cursor` | `{items: MatchItem[], nextCursor}` | `status=needs_review` (défaut), `pending_judgment` (onglet « En cours de traitement ») ou `auto_approved` (onglet « Validés automatiquement », score croissant) ; curseur propre à chaque statut |
+| GET | `/matches?status&source&brand&verdict&limit&cursor` | `{items: MatchItem[], nextCursor}` | `status=needs_review` (défaut), `pending_judgment` (onglet « En cours de traitement ») ou `auto_approved` (onglet « Validés automatiquement », score croissant) ; curseur propre à chaque statut ; `brand` (égalité sur `pim.brand`, valeurs de `Facets.brands`) et `verdict` (valeurs de `Facets.verdicts`) pour tous les statuts ; `Stats` non filtrés |
 | GET | `/enrichments/auto-approved?brand&source&family&priority&search&limit&cursor` | `{items: AutoApprovedValue[], nextCursor}` | valeurs `auto_approved` sur un rapprochement validé, score croissant (cas limites d'abord) ; lecture seule |
-| POST | `/decisions/matches` | `{accepted: string[], rejected: {key, code, message}[]}` | corps `{items: {rid, source, sourceHash, decision: 'human_approved'|'human_rejected', comment?}[]}` ; `key` = `rid|source|sourceHash` |
+| POST | `/decisions/matches` | `{accepted: string[], rejected: {key, code, message}[]}` | corps `{items: {rid, source, sourceHash, decision: 'human_approved'|'human_rejected', comment?}[]}` ; `key` = `rid|source|sourceHash` ; statuts décidables : `needs_review`, `auto_approved` (contrôle de l'onglet « Validés automatiquement »), `human_*` (revenir sur une décision). Un rejet sort le rapprochement de `v_approved_matches` : ses valeurs (statut inchangé dans `v_enrichments`) quittent la relecture, l'onglet « Validés automatiquement », les compteurs et l'export, et ne sont plus décidables (`match_not_approved`) |
 | GET | `/export/status` | `{pendingCount: number, canExport: boolean, runningExecutionId: string\|null, history: {exportId, path, rowCount, hotelCount, files: string[], triggeredBy, exportedAt}[]}` | `canExport` faux tant qu'il reste des éléments en attente ou qu'une exécution tourne ; `runningExecutionId` pour reprendre le suivi |
 | POST | `/export` | `{executionId}` | lance `gcrj-<base>-export` (Cloud Run jobs.run) ; 409 `export_blocked` si pendingCount > 0, 409 `export_running` si une exécution tourne déjà |
 | GET | `/export/executions/:id` | `{state: 'running'|'succeeded'|'failed', message?}` | `succeeded` sans nouvelle ligne dans `history` = le job n'avait rien à exporter (aucune valeur validée) ou a refusé (attente apparue entre-temps) |
@@ -114,7 +117,15 @@ interface FieldValues { pimField: string; dataType: string; multivalue: boolean;
 | GET | `/settings/auto-validation` | `AutoValidation` | seuils en vigueur des deux étapes, répartition des scores (simulation côté front), historique ; `canEdit` d'après `X-PIM-Author` et `SETTINGS_EDITORS` |
 | POST | `/settings/auto-validation/:step` | `AutoValidation` | `step` = `match` ou `enrichment` ; corps `{approveThreshold: int 0-100, rejectThreshold: int 0-100, comment?}` (toujours activés), rejet ≤ validation ; 403 `settings_forbidden` hors `SETTINGS_EDITORS` ; un INSERT dans `validation.auto_validation_settings`, appliqué tout de suite par les vues |
 
+## Valeurs signalées « non prioritaire, à vérifier » (PIM-50)
+Une valeur est signalée (`outdated` non null) quand le rapprochement validé de sa source (rid × source) a été jugé
+`judge_reason` ∈ {`former_brand`, `rebranding`} : la page est publiée sous un ancien nom ou une ancienne enseigne, ses
+valeurs peuvent décrire l'ancien établissement. Motif : « Page source sous un ancien nom : <pageName, sinon scrapedName> ».
+Calculé par le back à la lecture (`v_approved_matches`), sans changer les vues. Les extraits et `warning` ne citent pas le
+nom de l'hôtel : ils ne permettent pas ce repérage (analyse du 22/10 en dev : 739 valeurs à relire sur 6 265, 433 fiches).
+
 ## Modifications proposées
+- 22/10 [back] intégrée ci-dessus (contrat v2, PIM-46 à 50) : `GET /matches?brand&verdict` pour tous les statuts, `MatchItem.verdict`, `Facets.verdicts` ; décision humaine sur un rapprochement `auto_approved` ; `EnrichmentValue.outdated`, `HotelSummary.outdatedCount`, `GET /hotels?outdated=hide|only` et tri des fiches entièrement signalées en fin de liste.
 - 22/10 [pipeline] intégrée ci-dessus : seuils de validation automatique réglables dans l'interface (`/settings/auto-validation`), `GET /matches?status=pending_judgment` et `Stats.matchesPending` pour l'onglet « En cours de traitement » ; onglet « Validés automatiquement » (`GET /matches?status=auto_approved`, `GET /enrichments/auto-approved`, `Stats.matchesAutoApproved` et `valuesAutoApproved`), en lecture seule.
 - 21/10 [front] ✅ acceptée par back (11:50), intégrée ci-dessus : `GET /hotels?view=pending` et `Stats.hotelsPending` (fiches ayant ≥1 champ `pending_enrichment`), pour l'onglet « En cours » de PIM-17. Tant que le back ne les sert pas, le front affiche l'onglet vide avec un message.
 - 21/10 [front] ✅ acceptée par back, intégrée ci-dessus : `POST /export` : refuser en 409 (`export_running`) quand une exécution du job est déjà en cours, et indiquer `runningExecutionId: string|null` dans `GET /export/status`. Le front ne protège que son propre onglet (sessionStorage) : deux relecteurs, ou deux onglets, peuvent sinon lancer deux jobs.

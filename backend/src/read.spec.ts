@@ -19,7 +19,9 @@ describe('GET /hotels', () => {
   it('transmet les filtres validés', async () => {
     repo.hotels.mockResolvedValue({ items: [], nextCursor: null });
     await request(app.getHttpServer())
-      .get('/hotels?view=pending&brand=Novotel&source=expedia&family=pool&priority=P1&search=paris&limit=10&cursor=abc')
+      .get(
+        '/hotels?view=pending&brand=Novotel&source=expedia&family=pool&priority=P1&search=paris&outdated=hide&limit=10&cursor=abc',
+      )
       .expect(200);
     expect(repo.hotels).toHaveBeenCalledWith({
       view: 'pending',
@@ -28,12 +30,13 @@ describe('GET /hotels', () => {
       family: 'pool',
       priority: 'P1',
       search: 'paris',
+      outdated: 'hide',
       limit: 10,
       cursor: 'abc',
     });
   });
 
-  it.each(['family=spa', 'priority=P4', 'view=all', 'limit=0', 'limit=201', 'limit=abc'])(
+  it.each(['family=spa', 'priority=P4', 'view=all', 'outdated=yes', 'limit=0', 'limit=201', 'limit=abc'])(
     'refuse %s avec une erreur 400 en français',
     async (q) => {
       const res = await request(app.getHttpServer()).get(`/hotels?${q}`).expect(400);

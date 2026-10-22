@@ -28,6 +28,8 @@ export interface HotelSummary {
   country: string | null;
   sources: string[];
   toReviewCount: number;
+  /** Valeurs à relire signalées « non prioritaire, à vérifier » (EnrichmentValue.outdated), parmi toReviewCount. */
+  outdatedCount: number;
   avgScore: number | null;
   pendingCount: number;
   conflictCount: number;
@@ -64,6 +66,8 @@ export interface EnrichmentValue {
   reason: string | null;
   reasonDetail: string | null;
   finalValue: string | null;
+  /** Motif court si la valeur est « non prioritaire, à vérifier » (source publiée sous un ancien nom), sinon null. */
+  outdated: string | null;
   lastDecision: Decision | null;
 }
 
