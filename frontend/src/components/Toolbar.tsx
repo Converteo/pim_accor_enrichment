@@ -34,17 +34,20 @@ const iconProps = {
   "aria-hidden": true,
 } as const;
 
-/** « En cours » holds the matches waiting for the judge and the fiches waiting for the enrichment agent. */
-function tabCount(tab: TabKey, stats: Stats): number {
+/**
+ * Same numbers as the indicators above, never summed across units: the two last tabs hold a list of matches
+ * and a list of attributes, so they show one counter per unit.
+ */
+function tabCounts(tab: TabKey, stats: Stats): { matches?: number; values?: number } {
   switch (tab) {
     case "matches":
-      return stats.matchesToReview;
+      return { matches: stats.matchesToReview };
     case "review":
-      return stats.hotelsToReview;
+      return { values: stats.valuesToReview };
     case "pending":
-      return stats.matchesPending + stats.hotelsPending;
+      return { matches: stats.matchesPending, values: stats.valuesPending };
     case "auto":
-      return stats.matchesAutoApproved + stats.valuesAutoApproved;
+      return { matches: stats.matchesAutoApproved, values: stats.valuesAutoApproved };
   }
 }
 
@@ -188,6 +191,9 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
       <div className={styles.tabs}>
         {TAB_ORDER.map((key) => {
           const active = tab === key;
+          const counts = stats ? tabCounts(key, stats) : null;
+          // The label of a single-unit tab already names the unit.
+          const unit = counts?.matches !== undefined && counts.values !== undefined;
           return (
             <button
               key={key}
@@ -199,9 +205,19 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
               onClick={() => onTab(key)}
             >
               {t(`tabs.${key}`)}{" "}
-              <span className={styles.count}>
-                {stats ? t("number", { value: tabCount(key, stats) }) : "—"}
-              </span>
+              {counts ? (
+                (["matches", "values"] as const).map((kind) =>
+                  counts[kind] === undefined ? null : (
+                    <span key={kind} className={styles.count}>
+                      {unit
+                        ? t(`tabs.${kind}Count`, { count: counts[kind] })
+                        : t("number", { value: counts[kind] })}
+                    </span>
+                  ),
+                )
+              ) : (
+                <span className={styles.count}>—</span>
+              )}
             </button>
           );
         })}

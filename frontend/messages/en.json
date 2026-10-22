@@ -26,7 +26,9 @@
     "matches": "Matches to validate",
     "review": "Attributes to validate",
     "pending": "In progress",
-    "auto": "Auto-approved"
+    "auto": "Auto-approved",
+    "matchesCount": "{count, plural, one {# match} other {# matches}}",
+    "valuesCount": "{count, plural, one {# attribute} other {# attributes}}"
   },
   "pendingTab": {
     "matches": "Matches waiting for the judge",
@@ -265,7 +267,14 @@
     "history": "{count, plural, one {History (# export)} other {History (# exports)}}",
     "record": "{date} · {author} · {hotels, plural, one {# hotel} other {# hotels}} · {rows, plural, one {# value} other {# values}}",
     "unauthorized": "Unidentified user: the server refused the action.",
-    "busy": "An export is running: wait for it to finish before launching another one."
+    "busy": "An export is running: wait for it to finish before launching another one.",
+    "blockedDetail": "The export will be possible once everything is decided. Still left: {details}.",
+    "waiting": {
+      "matchesToReview": "{count, plural, one {# match to validate} other {# matches to validate}}",
+      "valuesToReview": "{count, plural, one {# attribute to validate} other {# attributes to validate}}",
+      "matchesPending": "{count, plural, one {# match waiting for the judge} other {# matches waiting for the judge}}",
+      "valuesPending": "{count, plural, one {# attribute being enriched} other {# attributes being enriched}}"
+    }
   },
   "settings": {
     "title": "Automatic validation thresholds",

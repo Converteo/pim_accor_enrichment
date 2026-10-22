@@ -25,8 +25,10 @@
   "tabs": {
     "matches": "Rapprochements à valider",
     "review": "Attributs à valider",
-    "pending": "En cours de traitement",
-    "auto": "Validés automatiquement"
+    "pending": "En cours",
+    "auto": "Validés automatiquement",
+    "matchesCount": "{count, plural, one {# rapprochement} other {# rapprochements}}",
+    "valuesCount": "{count, plural, one {# attribut} other {# attributs}}"
   },
   "pendingTab": {
     "matches": "Rapprochements en attente de jugement",
@@ -265,7 +267,14 @@
     "history": "{count, plural, one {Historique (# export)} other {Historique (# exports)}}",
     "record": "{date} · {author} · {hotels, plural, one {# hôtel} other {# hôtels}} · {rows, plural, one {# valeur} other {# valeurs}}",
     "unauthorized": "Utilisateur non identifié : action refusée par le serveur.",
-    "busy": "Un export est en cours : attendez sa fin avant d’en relancer un."
+    "busy": "Un export est en cours : attendez sa fin avant d’en relancer un.",
+    "blockedDetail": "L’export sera possible quand tout sera décidé. Il reste : {details}.",
+    "waiting": {
+      "matchesToReview": "{count, plural, one {# rapprochement à valider} other {# rapprochements à valider}}",
+      "valuesToReview": "{count, plural, one {# attribut à valider} other {# attributs à valider}}",
+      "matchesPending": "{count, plural, one {# rapprochement en attente de jugement} other {# rapprochements en attente de jugement}}",
+      "valuesPending": "{count, plural, one {# attribut en cours d’enrichissement} other {# attributs en cours d’enrichissement}}"
+    }
   },
   "settings": {
     "title": "Seuils de validation automatique",
