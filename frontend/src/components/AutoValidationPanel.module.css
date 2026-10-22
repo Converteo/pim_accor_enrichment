@@ -57,15 +57,6 @@
   color: var(--ink);
 }
 
-.tag {
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--loyalty);
-  background: var(--loyalty-soft);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
 .fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -97,15 +88,6 @@
 .unit {
   font-size: 13px;
   color: var(--text-muted);
-}
-
-.toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--text);
 }
 
 .simulation {
@@ -162,24 +144,3 @@
   color: var(--danger);
 }
 
-.history {
-  font-size: 13px;
-  color: var(--text);
-}
-
-.history summary {
-  cursor: pointer;
-  color: var(--link);
-}
-
-.history ul {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.changeComment {
-  color: var(--text-muted);
-}

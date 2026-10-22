@@ -70,26 +70,20 @@ export function AutoValidationPanel({ open, onSaved }: AutoValidationPanelProps)
   );
 }
 
+/** Both thresholds are always on: typed text of each. */
 interface Draft {
-  approveOn: boolean;
   approve: string;
-  rejectOn: boolean;
   reject: string;
 }
 
 function draftOf(step: AutoValidationStepState): Draft {
-  return {
-    approveOn: step.approveThreshold !== null,
-    approve: String(step.approveThreshold ?? 90),
-    rejectOn: step.rejectThreshold !== null,
-    reject: String(step.rejectThreshold ?? 30),
-  };
+  return { approve: String(step.approveThreshold ?? ""), reject: String(step.rejectThreshold ?? "") };
 }
 
 /** undefined while a typed threshold is not an integer from 0 to 100. */
 function thresholdsOf(draft: Draft): Thresholds | undefined {
-  const approve = draft.approveOn ? parseThreshold(draft.approve) : null;
-  const reject = draft.rejectOn ? parseThreshold(draft.reject) : null;
+  const approve = parseThreshold(draft.approve);
+  const reject = parseThreshold(draft.reject);
   return approve === undefined || reject === undefined
     ? undefined
     : { approveThreshold: approve, rejectThreshold: reject };
@@ -121,6 +115,7 @@ function StepSettings({ step, canEdit, onSaved }: StepSettingsProps) {
   const simulated = valid ? simulate(step.distribution, next) : null;
   const total = step.distribution.reduce((sum, bucket) => sum + bucket.total, 0);
   const shown = (value: number | null) => (value === null ? t("off") : String(value));
+  const last = step.history[0];
 
   async function save() {
     if (!next || !valid || !changed || saving) return;
@@ -150,26 +145,19 @@ function StepSettings({ step, canEdit, onSaved }: StepSettingsProps) {
           approve: shown(step.approveThreshold),
           reject: shown(step.rejectThreshold),
         })}
-        {step.isDefault ? <span className={styles.tag}>{t("isDefault")}</span> : null}
       </p>
 
       <div className={styles.fields}>
         <ThresholdField
           label={t("approve")}
-          enabledLabel={t("enabled")}
-          on={draft.approveOn}
           value={draft.approve}
           disabled={!canEdit || saving}
-          onToggle={(on) => patch({ approveOn: on })}
           onChange={(value) => patch({ approve: value })}
         />
         <ThresholdField
           label={t("reject")}
-          enabledLabel={t("enabled")}
-          on={draft.rejectOn}
           value={draft.reject}
           disabled={!canEdit || saving}
-          onToggle={(on) => patch({ rejectOn: on })}
           onChange={(value) => patch({ reject: value })}
         />
       </div>
@@ -223,41 +211,27 @@ function StepSettings({ step, canEdit, onSaved }: StepSettingsProps) {
         </p>
       ) : null}
 
-      <details className={styles.history}>
-        <summary>{t("history")}</summary>
-        {step.history.length === 0 ? (
-          <p className={styles.note}>{t("noHistory")}</p>
-        ) : (
-          <ul>
-            {step.history.slice(0, 10).map((change) => (
-              <li key={change.setAt}>
-                {t("change", {
-                  date: format.dateTime(new Date(change.setAt), { dateStyle: "short", timeStyle: "short" }),
-                  author: change.author,
-                  approve: shown(change.approveThreshold),
-                  reject: shown(change.rejectThreshold),
-                })}
-                {change.comment ? <span className={styles.changeComment}> — {change.comment}</span> : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </details>
+      {last ? (
+        <p className={styles.note}>
+          {t("lastChange", {
+            author: last.author,
+            date: format.dateTime(new Date(last.setAt), { dateStyle: "short", timeStyle: "short" }),
+          })}
+          {last.comment ? ` — ${last.comment}` : ""}
+        </p>
+      ) : null}
     </section>
   );
 }
 
 interface ThresholdFieldProps {
   label: string;
-  enabledLabel: string;
-  on: boolean;
   value: string;
   disabled: boolean;
-  onToggle: (on: boolean) => void;
   onChange: (value: string) => void;
 }
 
-function ThresholdField({ label, enabledLabel, on, value, disabled, onToggle, onChange }: ThresholdFieldProps) {
+function ThresholdField({ label, value, disabled, onChange }: ThresholdFieldProps) {
   const id = useId();
   return (
     <div className={styles.field}>
@@ -273,20 +247,12 @@ function ThresholdField({ label, enabledLabel, on, value, disabled, onToggle, on
           min={0}
           max={100}
           step={1}
+          required
           value={value}
-          disabled={disabled || !on}
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
         />
         <span className={styles.unit}>/100</span>
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={on}
-            disabled={disabled}
-            onChange={(event) => onToggle(event.target.checked)}
-          />
-          {enabledLabel}
-        </label>
       </div>
     </div>
   );

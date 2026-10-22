@@ -58,7 +58,7 @@ Le backend n'a pas besoin de lire `raw`, sauf pour contrôler une valeur corrig�
 | --- | --- |
 | `match_decisions` | Une ligne par décision sur un rapprochement : `rid`, `source`, `source_hash`, `decision` (`human_approved` ou `human_rejected`), `comment`, `author`, `decided_at`. |
 | `enrichment_decisions` | Une ligne par décision sur une valeur : `enrichment_id`, `rid`, `pim_field`, `entity_id`, `decision` (`human_approved`, `human_rejected` ou `human_corrected`), `corrected_value`, `comment`, `author`, `decided_at`. |
-| `auto_validation_settings` | Une ligne par réglage des seuils dans l'interface : `step` (`match` ou `enrichment`), `approve_threshold`, `reject_threshold` (null = désactivé), `comment`, `author`, `set_at`. La dernière ligne de chaque étape s'applique ; sans ligne, les valeurs par défaut de Terraform. |
+| `auto_validation_settings` | Une ligne par réglage des seuils dans l'interface : `step` (`match` ou `enrichment`), `approve_threshold`, `reject_threshold` (toujours renseignés depuis l'interface), `comment`, `author`, `set_at`. La dernière ligne de chaque étape s'applique ; sans ligne, les valeurs par défaut de Terraform. |
 
 Ce sont les **seules tables écrites par le backend.**
 
@@ -78,7 +78,7 @@ Ce sont les **seules tables écrites par le backend.**
 | --- | --- | --- |
 | `pending_enrichment` | cible d'un rapprochement validé, pas encore enrichie (ou dont le contenu a changé depuis) | « en cours » ou masqué |
 | `needs_review` | valeur proposée par l'agent pour un champ vide, extrait à l'appui, entre les deux seuils | **à valider** |
-| `auto_approved` | score ≥ seuil de validation, sans alerte, méthode autre que `inferred` (seuil désactivé par défaut) | — |
+| `auto_approved` | score ≥ seuil de validation (85 par défaut), sans alerte, méthode autre que `inferred` | « Validés automatiquement » |
 | `auto_rejected` | rien à proposer, motif dans `reason` (ci-dessous) et texte dans `reason_detail` | masqué, sauf `pim_conflict` |
 | `human_approved`, `human_corrected`, `human_rejected` | décision du relecteur | historique |
 

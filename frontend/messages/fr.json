@@ -23,8 +23,8 @@
     "approved": "Validés"
   },
   "tabs": {
-    "matches": "① Rapprochements à valider",
-    "review": "② Attributs à valider",
+    "matches": "Rapprochements à valider",
+    "review": "Attributs à valider",
     "pending": "En cours de traitement",
     "auto": "Validés automatiquement"
   },
@@ -270,21 +270,19 @@
   "settings": {
     "title": "Seuils de validation automatique",
     "eyebrow": "Automatisation du pipeline",
-    "intro": "Score au moins égal au seuil de validation : validé automatiquement. Score sous le seuil de rejet : rejeté automatiquement. Entre les deux : à valider dans l’interface. Le changement s’applique tout de suite, sans relancer le pipeline ; une décision humaine l’emporte toujours.",
+    "intro": "Score ≥ seuil de validation : validé auto. Score < seuil de rejet : rejeté auto. Entre les deux : à valider. Effet immédiat ; une décision humaine l’emporte toujours.",
     "steps": {
-      "match": "① Rapprochements",
-      "enrichment": "② Attributs"
+      "match": "Rapprochements",
+      "enrichment": "Attributs"
     },
     "rules": {
-      "match": "Validation automatique seulement si l’agent juge conclut « même hôtel » et que le contrôle automatique ne l’a pas rejeté. Une page d’un autre pays est toujours rejetée.",
-      "enrichment": "Validation automatique seulement sans alerte, et jamais pour une valeur déduite. Les rejets par règle (absent des sources, déjà dans le PIM…) ne dépendent pas des seuils. Seuls comptent les attributs dont le rapprochement est validé."
+      "match": "Validation auto. si « même hôtel ».",
+      "enrichment": "Validation auto. hors alertes et valeurs déduites."
     },
     "approve": "Validation automatique si score ≥",
     "reject": "Rejet automatique si score <",
-    "enabled": "Activé",
     "off": "désactivé",
     "current": "En vigueur : validation {approve} · rejet {reject}",
-    "isDefault": "valeurs par défaut du déploiement",
     "now": "Aujourd’hui",
     "simulated": "Avec ces seuils",
     "autoApproved": "Validés auto.",
@@ -298,11 +296,9 @@
     "unchanged": "Aucun changement à enregistrer.",
     "readOnly": "Lecture seule : seuls les responsables désignés peuvent changer les seuils.",
     "invalid": "Le seuil de rejet doit être inférieur ou égal au seuil de validation.",
-    "history": "Historique",
-    "noHistory": "Aucun changement : valeurs par défaut du déploiement.",
-    "change": "{date} · {author} · validation {approve} · rejet {reject}",
     "loading": "Chargement des seuils…",
-    "error": "Impossible de charger les seuils."
+    "error": "Impossible de charger les seuils.",
+    "lastChange": "Modifié par {author} le {date}"
   },
   "number": "{value, number}"
 }

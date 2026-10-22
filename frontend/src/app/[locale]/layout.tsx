@@ -1,4 +1,4 @@
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import { Montserrat, Roboto } from "next/font/google";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
@@ -20,6 +20,11 @@ const roboto = Roboto({
   variable: "--font-sans",
   display: "swap",
 });
+
+// Browser tab icon: the ALL Accor logo on a white tile.
+export const metadata: Metadata = {
+  icons: { icon: { url: "/brand/favicon.svg", type: "image/svg+xml" } },
+};
 
 export const viewport: Viewport = {
   width: "device-width",

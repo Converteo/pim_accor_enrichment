@@ -87,14 +87,6 @@ describe('POST /settings/auto-validation/:step', () => {
     expect(res.body.steps).toHaveLength(2);
   });
 
-  it('accepte de désactiver les deux seuils', async () => {
-    await post('match', { approveThreshold: null, rejectThreshold: null }).expect(200);
-    expect(repo.insertAutoValidation).toHaveBeenCalledWith(
-      { step: 'match', approve_threshold: null, reject_threshold: null, comment: null },
-      'chef@converteo.com',
-    );
-  });
-
   it('refuse un relecteur absent de SETTINGS_EDITORS', async () => {
     const res = await post('match', { approveThreshold: 80, rejectThreshold: 30 }, 'relecteur@converteo.com').expect(
       403,
@@ -115,6 +107,7 @@ describe('POST /settings/auto-validation/:step', () => {
     ['seuil hors bornes', 'match', { approveThreshold: 101, rejectThreshold: 30 }],
     ['seuil décimal', 'match', { approveThreshold: 80.5, rejectThreshold: 30 }],
     ['seuil manquant', 'match', { approveThreshold: 80 }],
+    ['seuil désactivé', 'match', { approveThreshold: null, rejectThreshold: 30 }],
     ['rejet au-dessus de la validation', 'match', { approveThreshold: 50, rejectThreshold: 60 }],
   ])('400 : %s', async (_, step, body) => {
     const res = await post(step, body).expect(400);
