@@ -17,11 +17,12 @@ const hotelQuery = z.object({
   family: optional(z.enum(FAMILIES)),
   priority: optional(z.enum(PRIORITIES)),
   search: text,
+  outdated: optional(z.enum(['hide', 'only'])),
   limit,
   cursor: text,
 });
 
-const autoApprovedQuery = hotelQuery.omit({ view: true });
+const autoApprovedQuery = hotelQuery.omit({ view: true, outdated: true });
 
 @Controller()
 export class HotelsController {

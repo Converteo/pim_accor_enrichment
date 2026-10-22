@@ -19,7 +19,9 @@ describe('GET /hotels', () => {
   it('transmet les filtres validés', async () => {
     repo.hotels.mockResolvedValue({ items: [], nextCursor: null });
     await request(app.getHttpServer())
-      .get('/hotels?view=pending&brand=Novotel&source=expedia&family=pool&priority=P1&search=paris&limit=10&cursor=abc')
+      .get(
+        '/hotels?view=pending&brand=Novotel&source=expedia&family=pool&priority=P1&search=paris&outdated=hide&limit=10&cursor=abc',
+      )
       .expect(200);
     expect(repo.hotels).toHaveBeenCalledWith({
       view: 'pending',
@@ -28,12 +30,13 @@ describe('GET /hotels', () => {
       family: 'pool',
       priority: 'P1',
       search: 'paris',
+      outdated: 'hide',
       limit: 10,
       cursor: 'abc',
     });
   });
 
-  it.each(['family=spa', 'priority=P4', 'view=all', 'limit=0', 'limit=201', 'limit=abc'])(
+  it.each(['family=spa', 'priority=P4', 'view=all', 'outdated=yes', 'limit=0', 'limit=201', 'limit=abc'])(
     'refuse %s avec une erreur 400 en français',
     async (q) => {
       const res = await request(app.getHttpServer()).get(`/hotels?${q}`).expect(400);
@@ -65,10 +68,9 @@ describe('GET /hotels', () => {
 
 describe('GET /hotels/facets et /stats', () => {
   it('/hotels/facets ne passe pas pour un RID', async () => {
-    repo.facets.mockResolvedValue({ brands: ['Novotel'], sources: ['expedia'] });
-    await request(app.getHttpServer())
-      .get('/hotels/facets')
-      .expect(200, { brands: ['Novotel'], sources: ['expedia'] });
+    const facets = { brands: ['Novotel'], sources: ['expedia'], verdicts: ['same_hotel'] };
+    repo.facets.mockResolvedValue(facets);
+    await request(app.getHttpServer()).get('/hotels/facets').expect(200, facets);
     expect(repo.hotel).not.toHaveBeenCalled();
   });
 
@@ -111,6 +113,17 @@ describe('GET /matches', () => {
     await request(app.getHttpServer()).get('/matches?source=expedia&limit=5&cursor=x').expect(200);
     expect(repo.matches).toHaveBeenCalledWith({ status: 'needs_review', source: 'expedia', limit: 5, cursor: 'x' });
   });
+
+  it.each(['needs_review', 'pending_judgment', 'auto_approved'])(
+    'filtre marque et avis du juge pour status=%s',
+    async (status) => {
+      repo.matches.mockResolvedValue({ items: [], nextCursor: null });
+      await request(app.getHttpServer())
+        .get(`/matches?status=${status}&brand=Ibis&verdict=undetermined&source=`)
+        .expect(200);
+      expect(repo.matches).toHaveBeenCalledWith({ status, brand: 'Ibis', verdict: 'undetermined', limit: 50 });
+    },
+  );
 
   it.each(['pending_judgment', 'auto_approved'])('accepte status=%s', async (status) => {
     repo.matches.mockResolvedValue({ items: [], nextCursor: null });

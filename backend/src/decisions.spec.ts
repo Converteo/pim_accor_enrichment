@@ -245,11 +245,20 @@ describe('checkMatchDecisions', () => {
     expect(rejected).toMatchObject([{ code }]);
   });
 
-  it.each(['auto_approved', 'auto_rejected', 'pending_judgment'])('refuse le statut %s', (status) => {
+  it.each(['auto_rejected', 'pending_judgment'])('refuse le statut %s', (status) => {
     expect(checkMatchDecisions([item()], new Map([[KEY, status]])).rejected).toMatchObject([
       { key: KEY, code: 'invalid_status' },
     ]);
   });
+
+  it.each(['human_rejected', 'human_approved'])(
+    'accepte %s sur un rapprochement validé automatiquement',
+    (decision) => {
+      const { rows, rejected } = checkMatchDecisions([item({ decision })], new Map([[KEY, 'auto_approved']]));
+      expect(rejected).toEqual([]);
+      expect(rows).toMatchObject([{ decision }]);
+    },
+  );
 
   it('accepte de revenir sur une décision humaine', () => {
     const { rows } = checkMatchDecisions([item({ decision: 'human_rejected' })], new Map([[KEY, 'human_approved']]));

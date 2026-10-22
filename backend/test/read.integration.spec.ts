@@ -39,6 +39,24 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     expect(found.items.map((x) => x.rid)).toContain(h!.rid);
   });
 
+  it('hotels : valeurs signalées (ancien nom), filtre outdated et compteur cohérent avec le détail', async () => {
+    const only = await repo.hotels({ view: 'review', outdated: 'only', limit: 5 });
+    expect(only.items.length).toBeGreaterThan(0);
+    for (const h of only.items) expect(h.outdatedCount).toBeGreaterThan(0);
+    const [summary] = only.items;
+    const detail = await repo.hotel(summary!.rid);
+    const flagged = detail!.toReview.filter((v) => v.outdated);
+    expect(flagged).toHaveLength(summary!.outdatedCount);
+    expect(flagged[0]!.outdated).toMatch(/^Page source sous un ancien nom/);
+    const hide = await repo.hotels({ view: 'review', outdated: 'hide', limit: 50 });
+    for (const h of hide.items) expect(h.outdatedCount).toBeLessThan(h.toReviewCount);
+    // Sans filtre, les fiches entièrement signalées ne passent jamais avant une fiche qui ne l'est pas
+    const all = (await repo.hotels({ view: 'review', limit: 200 })).items;
+    const firstAllFlagged = all.findIndex((h) => h.outdatedCount === h.toReviewCount);
+    if (firstAllFlagged >= 0)
+      expect(all.slice(firstAllFlagged).every((h) => h.outdatedCount === h.toReviewCount)).toBe(true);
+  });
+
   it('hotel : détail cohérent avec la liste, null si inconnu', async () => {
     const [summary] = (await repo.hotels({ view: 'review', limit: 1 })).items;
     const detail = await repo.hotel(summary!.rid);
@@ -68,6 +86,20 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     expect(await repo.matchStatuses([key, 'x|y|z'])).toEqual(new Map([[key, 'needs_review']]));
     const f = await repo.facets();
     expect(f.sources.length).toBeGreaterThan(0);
+    expect(f.verdicts).toContain('same_hotel');
+  });
+
+  it('matches : filtres marque et avis du juge sur les validés automatiquement', async () => {
+    const [first] = (await repo.matches({ status: 'auto_approved', limit: 1 })).items;
+    const m = await repo.matches({
+      status: 'auto_approved',
+      brand: first!.pim.brand!,
+      verdict: 'same_hotel',
+      limit: 20,
+    });
+    expect(m.items.length).toBeGreaterThan(0);
+    expect(m.items.every((x) => x.pim.brand === first!.pim.brand && x.verdict === 'same_hotel')).toBe(true);
+    expect((await repo.matches({ status: 'auto_approved', verdict: 'undetermined', limit: 1 })).items).toEqual([]);
   });
 
   it('fieldValues : types et codes depuis v_field_allowed_values', async () => {

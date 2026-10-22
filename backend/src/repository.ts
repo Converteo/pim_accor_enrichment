@@ -28,15 +28,19 @@ export interface HotelFilters {
   family?: Family;
   priority?: Priority;
   search?: string;
+  /** Liste « à relire » seulement : valeurs signalées (ancien nom) masquées ou seules retenues. */
+  outdated?: 'hide' | 'only';
   limit: number;
   cursor?: string;
 }
 
-export type AutoApprovedFilters = Omit<HotelFilters, 'view'>;
+export type AutoApprovedFilters = Omit<HotelFilters, 'view' | 'outdated'>;
 
 export interface MatchFilters {
   status: 'needs_review' | 'pending_judgment' | 'auto_approved';
   source?: string;
+  brand?: string;
+  verdict?: string;
   limit: number;
   cursor?: string;
 }
@@ -150,6 +154,7 @@ function enrichmentValue(r: Row): EnrichmentValue {
     reason: str(r.reason),
     reasonDetail: str(r.reason_detail),
     finalValue: str(r.final_value),
+    outdated: str(r.outdated),
     lastDecision: decision(r),
   };
 }
@@ -178,10 +183,23 @@ function matchItem(r: Row): MatchItem {
     confidence: str(r.confidence),
     judgeReason: str(r.judge_reason),
     justification: str(r.justification),
+    verdict: str(r.verdict),
     status: r.final_status as MatchItem['status'],
     lastDecision: decision(r),
   };
 }
+
+/**
+ * PIM-50 : motif « non prioritaire, à vérifier » par rid × source. Le juge a validé une page publiée sous un ancien nom
+ * ou une ancienne enseigne (judge_reason) : ses valeurs peuvent décrire l'ancien établissement. Les extraits ne citent
+ * jamais le nom de l'hôtel, seul l'avis du juge le repère (analyse du 22/10, journal du chantier).
+ * from : relation avec rid, source, judge_reason, page_name, scraped_name (v_approved_matches).
+ */
+const outdatedBySource = (from: string) => `
+  SELECT rid, source,
+    MAX(IF(judge_reason IN ('former_brand', 'rebranding'),
+      CONCAT('Page source sous un ancien nom', IFNULL(CONCAT(' : ', COALESCE(page_name, scraped_name)), '')), NULL)) AS outdated
+  FROM ${from} GROUP BY rid, source`;
 
 const HOTEL_FILTER_TYPES = {
   brand: 'STRING',
@@ -189,6 +207,7 @@ const HOTEL_FILTER_TYPES = {
   family: 'STRING',
   priority: 'STRING',
   search: 'STRING',
+  outdated: 'STRING',
 };
 
 @Injectable()
@@ -209,10 +228,14 @@ export class BigQueryRepository extends Repository {
     const { approved, enrichments } = this.t;
     // Une fiche = un RID. « À relire » : needs_review sur un rapprochement validé (EXISTS v_approved_matches, obligatoire).
     // Les compteurs portent sur toute la fiche ; les filtres décident seulement quelles fiches sortent.
+    // Liste « à relire » sans filtre outdated : les fiches dont toutes les valeurs à relire sont signalées en dernier.
     const rows = await this.bq.query<Row>(
       `
-      WITH am AS (SELECT rid, source, pim_name, pim_brand, pim_city, pim_country FROM ${approved}),
-      approved AS (SELECT DISTINCT rid, source FROM am),
+      WITH am AS (
+        SELECT rid, source, pim_name, pim_brand, pim_city, pim_country, judge_reason, page_name, scraped_name
+        FROM ${approved}
+      ),
+      approved AS (${outdatedBySource('am')}),
       identity AS (
         SELECT rid, ANY_VALUE(pim_name) AS name, ANY_VALUE(pim_brand) AS brand, ANY_VALUE(pim_city) AS city,
           ANY_VALUE(pim_country) AS country
@@ -221,6 +244,7 @@ export class BigQueryRepository extends Repository {
       e AS (
         SELECT e.rid, e.source, e.family, e.priority, e.score, e.final_status, e.validated_sources,
           e.final_status = 'needs_review' AND a.rid IS NOT NULL AS review,
+          e.final_status = 'needs_review' AND a.outdated IS NOT NULL AS flagged,
           e.final_status = 'pending_enrichment' AS pending,
           e.final_status = 'auto_rejected' AND a.rid IS NOT NULL AS conflict
         FROM ${enrichments} e
@@ -231,6 +255,7 @@ export class BigQueryRepository extends Repository {
       agg AS (
         SELECT rid,
           COUNTIF(review) AS to_review_count,
+          COUNTIF(flagged) AS outdated_count,
           CAST(ROUND(AVG(IF(review, score, NULL))) AS INT64) AS avg_score,
           MIN(IF(review, priority, NULL)) AS review_priority,
           COUNTIF(pending) AS pending_count,
@@ -240,7 +265,8 @@ export class BigQueryRepository extends Repository {
           COUNTIF(
             IF(@view = 'pending',
               pending AND (@source IS NULL OR @source IN UNNEST(SPLIT(IFNULL(validated_sources, ''), ','))),
-              review AND (@source IS NULL OR source = @source))
+              review AND (@source IS NULL OR source = @source)
+                AND (@outdated IS NULL OR flagged = (@outdated = 'only')))
             AND (@family IS NULL OR family = @family)
             AND (@priority IS NULL OR priority = @priority)
           ) AS selected
@@ -250,7 +276,8 @@ export class BigQueryRepository extends Repository {
         SELECT agg.*, i.name, i.brand, i.city, i.country,
           IF(@view = 'pending',
             FORMAT('%06d|%s', 999999 - pending_count, rid),
-            FORMAT('%s|%03d|%s', IFNULL(review_priority, 'P9'), 100 - IFNULL(avg_score, 0), rid)) AS sort_key
+            FORMAT('%d|%s|%03d|%s', IF(outdated_count = to_review_count, 1, 0), IFNULL(review_priority, 'P9'),
+              100 - IFNULL(avg_score, 0), rid)) AS sort_key
         FROM agg JOIN identity i USING (rid)
         WHERE selected > 0
           AND (@brand IS NULL OR i.brand = @brand)
@@ -265,6 +292,7 @@ export class BigQueryRepository extends Repository {
         family: f.family ?? null,
         priority: f.priority ?? null,
         search: f.search ?? null,
+        outdated: f.outdated ?? null,
         cursor: decodeCursor(f.view, f.cursor),
         limit: f.limit + 1,
       },
@@ -278,6 +306,7 @@ export class BigQueryRepository extends Repository {
       country: str(r.country),
       sources: [...(r.sources as string[])].sort(),
       toReviewCount: Number(r.to_review_count),
+      outdatedCount: Number(r.outdated_count),
       avgScore: num(r.avg_score),
       pendingCount: Number(r.pending_count),
       conflictCount: Number(r.conflict_count),
@@ -290,8 +319,9 @@ export class BigQueryRepository extends Repository {
     const [row] = await this.bq.query<Facets>(`
       SELECT
         ARRAY(SELECT DISTINCT pim_brand FROM ${approved} WHERE pim_brand IS NOT NULL ORDER BY 1) AS brands,
-        ARRAY(SELECT DISTINCT source FROM ${matches} ORDER BY 1) AS sources`);
-    return row ?? { brands: [], sources: [] };
+        ARRAY(SELECT DISTINCT source FROM ${matches} ORDER BY 1) AS sources,
+        ARRAY(SELECT DISTINCT verdict FROM ${matches} WHERE verdict IS NOT NULL ORDER BY 1) AS verdicts`);
+    return row ?? { brands: [], sources: [], verdicts: [] };
   }
 
   async stats(): Promise<Stats> {
@@ -354,9 +384,9 @@ export class BigQueryRepository extends Repository {
       ),
       // Les auto_rejected autres que pim_conflict ne sont jamais renvoyés
       this.bq.query<Row>(
-        `SELECT e.*,
-          EXISTS (SELECT 1 FROM ${approved} r WHERE r.rid = e.rid AND r.source = e.source) AS approved
+        `SELECT e.*, o.rid IS NOT NULL AS approved, o.outdated
         FROM ${enrichments} e
+        LEFT JOIN (${outdatedBySource(approved)}) o ON o.rid = e.rid AND o.source = e.source
         WHERE e.rid = @rid
           AND (e.final_status IN ('needs_review', 'pending_enrichment', 'human_approved', 'human_rejected', 'human_corrected')
             OR (e.final_status = 'auto_rejected' AND e.reason = 'pim_conflict'))
@@ -398,10 +428,18 @@ export class BigQueryRepository extends Repository {
         SELECT *, ${order} AS sort_key
         FROM ${matches}
         WHERE final_status = @status AND (@source IS NULL OR source = @source)
+          AND (@brand IS NULL OR pim_brand = @brand) AND (@verdict IS NULL OR verdict = @verdict)
       )
       WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
-      { status: f.status, source: f.source ?? null, cursor: decodeCursor(list, f.cursor), limit: f.limit + 1 },
-      { source: 'STRING' },
+      {
+        status: f.status,
+        source: f.source ?? null,
+        brand: f.brand ?? null,
+        verdict: f.verdict ?? null,
+        cursor: decodeCursor(list, f.cursor),
+        limit: f.limit + 1,
+      },
+      { source: 'STRING', brand: 'STRING', verdict: 'STRING' },
     );
     return page(list, rows, f.limit, matchItem);
   }
@@ -410,19 +448,23 @@ export class BigQueryRepository extends Repository {
     const { approved, enrichments } = this.t;
     const rows = await this.bq.query<Row>(
       `
-      WITH am AS (SELECT rid, source, pim_name, pim_brand, pim_city, pim_country FROM ${approved}),
+      WITH am AS (
+        SELECT rid, source, pim_name, pim_brand, pim_city, pim_country, judge_reason, page_name, scraped_name
+        FROM ${approved}
+      ),
       identity AS (
         SELECT rid, ANY_VALUE(pim_name) AS name, ANY_VALUE(pim_brand) AS brand, ANY_VALUE(pim_city) AS city,
           ANY_VALUE(pim_country) AS country
         FROM am GROUP BY rid
-      )
+      ),
+      o AS (${outdatedBySource('am')})
       SELECT * FROM (
-        SELECT e.*, i.name, i.brand, i.city, i.country,
+        SELECT e.*, i.name, i.brand, i.city, i.country, o.outdated,
           FORMAT('%03d|%s|%s|%s', IFNULL(e.score, 0), e.rid, e.pim_field, IFNULL(e.entity_id, '')) AS sort_key
         FROM ${enrichments} e
         JOIN identity i USING (rid)
+        JOIN o ON o.rid = e.rid AND o.source = e.source
         WHERE e.final_status = 'auto_approved'
-          AND EXISTS (SELECT 1 FROM am WHERE am.rid = e.rid AND am.source = e.source)
           AND (@source IS NULL OR e.source = @source)
           AND (@family IS NULL OR e.family = @family)
           AND (@priority IS NULL OR e.priority = @priority)
