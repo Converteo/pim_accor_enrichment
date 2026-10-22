@@ -23,8 +23,8 @@
     "approved": "Approved"
   },
   "tabs": {
-    "matches": "① Matches to validate",
-    "review": "② Attributes to validate",
+    "matches": "Matches to validate",
+    "review": "Attributes to validate",
     "pending": "In progress",
     "auto": "Auto-approved"
   },
@@ -272,8 +272,8 @@
     "eyebrow": "Pipeline automation",
     "intro": "Score ≥ approval threshold: auto-approved. Score < rejection threshold: auto-rejected. In between: to validate. Applies at once; a human decision always wins.",
     "steps": {
-      "match": "① Matches",
-      "enrichment": "② Attributes"
+      "match": "Matches",
+      "enrichment": "Attributes"
     },
     "rules": {
       "match": "Auto-approval if “same hotel”.",

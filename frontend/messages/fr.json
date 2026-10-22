@@ -23,8 +23,8 @@
     "approved": "Validés"
   },
   "tabs": {
-    "matches": "① Rapprochements à valider",
-    "review": "② Attributs à valider",
+    "matches": "Rapprochements à valider",
+    "review": "Attributs à valider",
     "pending": "En cours de traitement",
     "auto": "Validés automatiquement"
   },
@@ -272,8 +272,8 @@
     "eyebrow": "Automatisation du pipeline",
     "intro": "Score ≥ seuil de validation : validé auto. Score < seuil de rejet : rejeté auto. Entre les deux : à valider. Effet immédiat ; une décision humaine l’emporte toujours.",
     "steps": {
-      "match": "① Rapprochements",
-      "enrichment": "② Attributs"
+      "match": "Rapprochements",
+      "enrichment": "Attributs"
     },
     "rules": {
       "match": "Validation auto. si « même hôtel ».",
