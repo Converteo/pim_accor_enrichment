@@ -40,7 +40,7 @@
     "matchesHint": "Judge agent score at or above the approval threshold in force. For information: lowest score first, borderline cases on top.",
     "matchesEmpty": "No match approved automatically for this filter.",
     "values": "Attributes approved automatically",
-    "valuesHint": "Score at or above the approval threshold, no warning, not inferred. They go to the export. For information: borderline cases first.",
+    "valuesHint": "Score at or above the approval threshold, no warning. They go to the export. For information: borderline cases first.",
     "valuesEmpty": "No attribute approved automatically for these filters: the attributes approval threshold may be off (“Automation thresholds”).",
     "valuesShown": "{count, plural, one {# attribute shown} other {# attributes shown}}",
     "attribute": "Attribute",
@@ -277,7 +277,7 @@
     },
     "rules": {
       "match": "Auto-approval if “same hotel”.",
-      "enrichment": "Auto-approval except warnings and inferred values."
+      "enrichment": "Auto-approval except warnings."
     },
     "approve": "Auto-approve if score ≥",
     "reject": "Auto-reject if score <",

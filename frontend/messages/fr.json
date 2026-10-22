@@ -40,7 +40,7 @@
     "matchesHint": "Score de l’agent juge au moins égal au seuil de validation en vigueur. Pour information : du score le plus bas au plus haut, les cas limites d’abord.",
     "matchesEmpty": "Aucun rapprochement validé automatiquement pour ce filtre.",
     "values": "Attributs validés automatiquement",
-    "valuesHint": "Score au moins égal au seuil de validation, sans alerte, valeur non déduite. Ils partiront à l’export. Pour information : les cas limites d’abord.",
+    "valuesHint": "Score au moins égal au seuil de validation, sans alerte. Ils partiront à l’export. Pour information : les cas limites d’abord.",
     "valuesEmpty": "Aucun attribut validé automatiquement pour ces filtres : le seuil de validation des attributs est peut-être désactivé (« Seuils d’automatisation »).",
     "valuesShown": "{count, plural, one {# attribut affiché} other {# attributs affichés}}",
     "attribute": "Attribut",
@@ -277,7 +277,7 @@
     },
     "rules": {
       "match": "Validation auto. si « même hôtel ».",
-      "enrichment": "Validation auto. hors alertes et valeurs déduites."
+      "enrichment": "Validation auto. hors alertes."
     },
     "approve": "Validation automatique si score ≥",
     "reject": "Rejet automatique si score <",

@@ -78,7 +78,7 @@ Ce sont les **seules tables écrites par le backend.**
 | --- | --- | --- |
 | `pending_enrichment` | cible d'un rapprochement validé, pas encore enrichie (ou dont le contenu a changé depuis) | « en cours » ou masqué |
 | `needs_review` | valeur proposée par l'agent pour un champ vide, extrait à l'appui, entre les deux seuils | **à valider** |
-| `auto_approved` | score ≥ seuil de validation (85 par défaut), sans alerte, méthode autre que `inferred` | « Validés automatiquement » |
+| `auto_approved` | score ≥ seuil de validation (85 par défaut), sans alerte | « Validés automatiquement » |
 | `auto_rejected` | rien à proposer, motif dans `reason` (ci-dessous) et texte dans `reason_detail` | masqué, sauf `pim_conflict` |
 | `human_approved`, `human_corrected`, `human_rejected` | décision du relecteur | historique |
 
