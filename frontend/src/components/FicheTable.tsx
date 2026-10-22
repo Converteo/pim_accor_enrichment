@@ -127,6 +127,12 @@ export function FicheTable({
                         {t("row.pending", { count: row.pendingCount })}
                       </span>
                     ) : null}
+                    {row.outdatedCount > 0 ? (
+                      <span className="status-pill pill-pending">
+                        <i className="dot dot-pending" />
+                        {t("row.outdated", { count: row.outdatedCount })}
+                      </span>
+                    ) : null}
                     {row.conflictCount > 0 ? (
                       <span className="status-pill pill-rejected">
                         <i className="dot dot-rejected" />

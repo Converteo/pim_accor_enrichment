@@ -24,28 +24,45 @@ export function HotelDetailView({ detail, renderActions }: HotelDetailViewProps)
     return entity ? `${value.label} · ${entity}` : value.label;
   }
 
+  // « Non prioritaire, à vérifier » values come after the others (PIM-50).
+  const outdated = detail.toReview.filter((value) => value.outdated !== null);
+
+  function card(value: EnrichmentValue) {
+    return (
+      <ValueCard
+        key={value.enrichmentId ?? `${value.pimField}-${value.entityId}`}
+        value={value}
+        entity={entityLabel(t, value, ordinals)}
+      >
+        {renderActions?.(value)}
+      </ValueCard>
+    );
+  }
+
   return (
     <>
       {detail.toReview.length === 0 ? (
         <p className={styles.done}>{t("detail.nothingToReview")}</p>
       ) : null}
-      {groupByFamily(detail.toReview).map((group) => (
+      {groupByFamily(detail.toReview.filter((value) => value.outdated === null)).map((group) => (
         <details key={group.family} className={styles.family} open>
           <summary className={styles.summary}>
             {t(`families.${group.family}`)}
             <span className={styles.count}>{group.values.length}</span>
           </summary>
-          {group.values.map((value) => (
-            <ValueCard
-              key={value.enrichmentId ?? `${value.pimField}-${value.entityId}`}
-              value={value}
-              entity={entityLabel(t, value, ordinals)}
-            >
-              {renderActions?.(value)}
-            </ValueCard>
-          ))}
+          {group.values.map(card)}
         </details>
       ))}
+      {outdated.length > 0 ? (
+        <details className={styles.family} open>
+          <summary className={styles.summary}>
+            {t("detail.outdated")}
+            <span className={styles.count}>{outdated.length}</span>
+          </summary>
+          <p className={styles.hint}>{t("detail.outdatedHint")}</p>
+          {outdated.map(card)}
+        </details>
+      ) : null}
 
       {detail.pending.length > 0 ? (
         <details className={styles.block}>

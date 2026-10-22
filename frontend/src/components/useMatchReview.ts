@@ -1,11 +1,15 @@
 import { useCallback, useState } from "react";
 import { decideMatches, fetchMatches } from "@/data/source";
 import { matchKey } from "@/domain/rules";
-import type { MatchDecision, MatchItem } from "@/domain/types";
+import type { MatchDecision, MatchFilters, MatchItem, Page } from "@/domain/types";
 import { usePagedList } from "./usePagedList";
 
 interface Options {
-  source: string;
+  filters: MatchFilters;
+  /** Matches to validate, or matches approved by the threshold that the reviewer may still reject (PIM-49). */
+  status?: "needs_review" | "auto_approved";
+  /** Read only while the tab showing the list is open. */
+  enabled?: boolean;
   /** Called after each answer of the back, with the keys it refused (message per key). */
   onResult: (result: {
     decision: MatchDecision;
@@ -15,9 +19,14 @@ interface Options {
   onError: (error: unknown) => void;
 }
 
-/** « Rapprochements à valider » tab: list, open match, selection and decisions (PIM-30). */
-export function useMatchReview({ source, onResult, onError }: Options) {
-  const list = usePagedList(JSON.stringify(["matches", source]), (cursor) => fetchMatches(source, cursor), matchKey);
+/** A list of matches to decide: list, open match, selection and decisions (PIM-30, PIM-49). */
+export function useMatchReview({ filters, status = "needs_review", enabled = true, onResult, onError }: Options) {
+  const list = usePagedList(
+    JSON.stringify([status, enabled, filters.source, filters.brand, filters.verdict]),
+    (cursor): Promise<Page<MatchItem>> =>
+      enabled ? fetchMatches(filters, cursor, status) : Promise.resolve({ items: [], nextCursor: null }),
+    matchKey,
+  );
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState(false);

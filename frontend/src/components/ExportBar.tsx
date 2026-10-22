@@ -1,16 +1,19 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiError, exportFileUrl, fetchExecution, fetchExportStatus, startExport } from "@/data/source";
-import type { ExportExecution, ExportStatus } from "@/domain/types";
+import type { ExportExecution, ExportStatus, Stats } from "@/domain/types";
 import { errorText } from "./labels";
 import styles from "./ExportBar.module.css";
 
 const POLL_MS = 3000;
 
 interface ExportBarProps {
-  /** Items still waiting for a decision, from /stats: the banner re-reads its status when it changes. */
-  pending: number | undefined;
+  /** The banner re-reads its status when the items waiting for a decision change, and details them. */
+  stats: Stats | null;
 }
+
+// Same counters as the tabs and the indicators: their sum is pendingForExport (back, /stats).
+const WAITING = ["matchesToReview", "valuesToReview", "matchesPending", "valuesPending"] as const;
 
 type Execution = { id: string } & ExportExecution & {
   /** Exports already in the history when the follow-up started. */
@@ -20,8 +23,9 @@ type Execution = { id: string } & ExportExecution & {
 };
 
 /** Export of the PIM enhanced: blocked while values or matches still wait for a decision. */
-export function ExportBar({ pending }: ExportBarProps) {
+export function ExportBar({ stats }: ExportBarProps) {
   const t = useTranslations("export");
+  const pending = stats?.pendingForExport;
   const tRoot = useTranslations();
   const format = useFormatter();
   const id = useId();
@@ -133,7 +137,16 @@ export function ExportBar({ pending }: ExportBarProps) {
                   ? t("busy")
                   : status.canExport
                     ? t("ready")
-                    : t("blocked", { count: status.pendingCount })}
+                    : // Detailed from /stats, read with the tabs, so that both agree even while the pipeline runs.
+                      stats && stats.pendingForExport > 0
+                      ? t("blockedDetail", {
+                          details: format.list(
+                            WAITING.filter((key) => stats[key] > 0).map((key) =>
+                              t(`waiting.${key}`, { count: stats[key] }),
+                            ),
+                          ),
+                        })
+                      : t("blocked", { count: status.pendingCount })}
           </p>
         </div>
         <div className={styles.actions}>

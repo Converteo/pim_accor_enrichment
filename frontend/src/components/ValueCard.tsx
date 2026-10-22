@@ -65,6 +65,11 @@ export function ValueCard({ value, entity, children }: ValueCardProps) {
         ) : null}
       </div>
       {value.reasonDetail ? <p className={styles.detail}>{value.reasonDetail}</p> : null}
+      {value.outdated ? (
+        <p className={styles.outdated} role="note">
+          {t("value.outdated", { reason: value.outdated })}
+        </p>
+      ) : null}
       {value.warning ? (
         <p className={styles.warning} role="note">
           <span aria-hidden="true">⚠</span> {value.warning}

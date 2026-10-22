@@ -10,7 +10,7 @@ import {
   type Stats,
   type TabKey,
 } from "@/domain/types";
-import { sourceLabel } from "./labels";
+import { codeLabel, sourceLabel } from "./labels";
 import styles from "./Toolbar.module.css";
 
 interface ToolbarProps {
@@ -34,17 +34,20 @@ const iconProps = {
   "aria-hidden": true,
 } as const;
 
-/** « En cours » holds the matches waiting for the judge and the fiches waiting for the enrichment agent. */
-function tabCount(tab: TabKey, stats: Stats): number {
+/**
+ * Same numbers as the indicators above, never summed across units: the two last tabs hold a list of matches
+ * and a list of attributes, so they show one counter per unit.
+ */
+function tabCounts(tab: TabKey, stats: Stats): { matches?: number; values?: number } {
   switch (tab) {
     case "matches":
-      return stats.matchesToReview;
+      return { matches: stats.matchesToReview };
     case "review":
-      return stats.hotelsToReview;
+      return { values: stats.valuesToReview };
     case "pending":
-      return stats.matchesPending + stats.hotelsPending;
+      return { matches: stats.matchesPending, values: stats.valuesPending };
     case "auto":
-      return stats.matchesAutoApproved + stats.valuesAutoApproved;
+      return { matches: stats.matchesAutoApproved, values: stats.valuesAutoApproved };
   }
 }
 
@@ -62,8 +65,12 @@ function Segment({ label, icon, children }: { label: string; icon: ReactNode; ch
 
 export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: ToolbarProps) {
   const t = useTranslations();
-  // /matches only filters by source.
+  // Only filters with an effect on the tab's lists: /matches filters by source, brand and verdict,
+  // and matches waiting for the judge have no verdict yet.
   const hotelFilters = tab !== "matches";
+  const verdictFilter = tab === "matches" || tab === "auto";
+  // /hotels only flags the values of the fiches to review.
+  const outdatedFilter = tab === "review";
 
   function select(key: keyof Filters) {
     return (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) =>
@@ -92,30 +99,28 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             />
           </label>
         ) : null}
-        {hotelFilters ? (
-          <Segment
-            label={t("filters.brandLabel")}
-            icon={
-              <>
-                <path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.5 1.5 0 0 1 0 2.1l-6.9 6.9a1.5 1.5 0 0 1-2.1 0l-8.1-7.9Z" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-              </>
-            }
+        <Segment
+          label={t("filters.brandLabel")}
+          icon={
+            <>
+              <path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.5 1.5 0 0 1 0 2.1l-6.9 6.9a1.5 1.5 0 0 1-2.1 0l-8.1-7.9Z" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+            </>
+          }
+        >
+          <select
+            className={`${styles.control} ${styles.select}`}
+            value={filters.brand}
+            onChange={select("brand")}
           >
-            <select
-              className={`${styles.control} ${styles.select}`}
-              value={filters.brand}
-              onChange={select("brand")}
-            >
-              <option value="">{t("filters.allBrands")}</option>
-              {facets?.brands.map((brand) => (
-                <option key={brand} value={brand}>
-                  {brand}
-                </option>
-              ))}
-            </select>
-          </Segment>
-        ) : null}
+            <option value="">{t("filters.allBrands")}</option>
+            {facets?.brands.map((brand) => (
+              <option key={brand} value={brand}>
+                {brand}
+              </option>
+            ))}
+          </select>
+        </Segment>
         <Segment
           label={t("filters.sourceLabel")}
           icon={
@@ -139,6 +144,22 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             ))}
           </select>
         </Segment>
+        {verdictFilter ? (
+          <Segment label={t("filters.verdictLabel")} icon={<path d="M4 5.5h16v10H9.5L4 19.5v-14Z" />}>
+            <select
+              className={`${styles.control} ${styles.select}`}
+              value={filters.verdict}
+              onChange={select("verdict")}
+            >
+              <option value="">{t("filters.allVerdicts")}</option>
+              {facets?.verdicts?.map((verdict) => (
+                <option key={verdict} value={verdict}>
+                  {codeLabel(t, "matches.judgeVerdicts", verdict)}
+                </option>
+              ))}
+            </select>
+          </Segment>
+        ) : null}
         {hotelFilters ? (
           <Segment
             label={t("filters.familyLabel")}
@@ -184,10 +205,34 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             </select>
           </Segment>
         ) : null}
+        {outdatedFilter ? (
+          <Segment
+            label={t("filters.outdatedLabel")}
+            icon={
+              <>
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 7.5v5M12 16.2v.3" />
+              </>
+            }
+          >
+            <select
+              className={`${styles.control} ${styles.select}`}
+              value={filters.outdated}
+              onChange={select("outdated")}
+            >
+              <option value="">{t("filters.outdatedAll")}</option>
+              <option value="hide">{t("filters.outdatedHide")}</option>
+              <option value="only">{t("filters.outdatedOnly")}</option>
+            </select>
+          </Segment>
+        ) : null}
       </div>
       <div className={styles.tabs}>
         {TAB_ORDER.map((key) => {
           const active = tab === key;
+          const counts = stats ? tabCounts(key, stats) : null;
+          // The label of a single-unit tab already names the unit.
+          const unit = counts?.matches !== undefined && counts.values !== undefined;
           return (
             <button
               key={key}
@@ -199,9 +244,19 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
               onClick={() => onTab(key)}
             >
               {t(`tabs.${key}`)}{" "}
-              <span className={styles.count}>
-                {stats ? t("number", { value: tabCount(key, stats) }) : "—"}
-              </span>
+              {counts ? (
+                (["matches", "values"] as const).map((kind) =>
+                  counts[kind] === undefined ? null : (
+                    <span key={kind} className={styles.count}>
+                      {unit
+                        ? t(`tabs.${kind}Count`, { count: counts[kind] })
+                        : t("number", { value: counts[kind] })}
+                    </span>
+                  ),
+                )
+              ) : (
+                <span className={styles.count}>—</span>
+              )}
             </button>
           );
         })}
