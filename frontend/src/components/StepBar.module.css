@@ -170,6 +170,11 @@
     visibility 0.15s;
 }
 
+.tipLine {
+  display: block;
+  margin-top: 4px;
+}
+
 .segment:hover + .tip,
 .segment:focus-visible + .tip {
   opacity: 1;

@@ -22,7 +22,8 @@
     "values": {
       "title": "Attributs",
       "short": "Attributs",
-      "hint": "Les infos sont-elles justes ? Seuls les attributs validés partent à l’export."
+      "hint": "Les infos sont-elles justes ? Seuls les attributs validés partent à l’export.",
+      "arriving": "{count, plural, one {# nouvel attribut arrive} other {# nouveaux attributs arrivent}} sous 15 min."
     }
   },
   "tables": {

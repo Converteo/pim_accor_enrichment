@@ -22,7 +22,8 @@
     "values": {
       "title": "Attributes",
       "short": "Attributes",
-      "hint": "Is the information right? Only validated attributes are exported."
+      "hint": "Is the information right? Only validated attributes are exported.",
+      "arriving": "{count, plural, one {# new attribute arrives} other {# new attributes arrive}} within 15 min."
     }
   },
   "tables": {

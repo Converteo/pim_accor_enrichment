@@ -80,6 +80,11 @@ export function StepBar({ step, stats, onStep, children }: StepBarProps) {
               </button>
               <span role="tooltip" id={`${id}-${key}`} className={styles.tip}>
                 {t(`${name}.hint`)}
+                {/* Values still being enriched (PIM-57): a mention, not a table. */}
+                {key === 2 && stats && stats.valuesPending > 0 ? (
+                  // The space keeps two sentences apart in the description read with the button.
+                  <span className={styles.tipLine}>{" "}{t("values.arriving", { count: stats.valuesPending })}</span>
+                ) : null}
               </span>
               <StepChevron />
             </li>
