@@ -20,6 +20,9 @@ export interface Page<T> {
   nextCursor: string | null;
 }
 
+export const HOTEL_VIEWS = ['review', 'pending', 'auto_approved', 'auto_rejected', 'human'] as const;
+export type HotelView = (typeof HOTEL_VIEWS)[number];
+
 export interface HotelSummary {
   rid: string;
   name: string;
@@ -27,6 +30,10 @@ export interface HotelSummary {
   city: string | null;
   country: string | null;
   sources: string[];
+  /** Valeurs de la fiche dans la liste demandée (view) ; pour review, = toReviewCount. */
+  count: number;
+  /** view=human : date de la décision la plus récente parmi ces valeurs ; sinon null. */
+  lastDecidedAt: string | null;
   toReviewCount: number;
   /** Valeurs à relire signalées « non prioritaire, à vérifier » (EnrichmentValue.outdated), parmi toReviewCount. */
   outdatedCount: number;
@@ -79,6 +86,8 @@ export interface HotelDetail {
   pending: EnrichmentValue[];
   conflicts: EnrichmentValue[];
   decided: EnrichmentValue[];
+  /** Avec ?view= seulement : valeurs de la fiche comptées dans cette liste (HotelSummary.count). */
+  values?: EnrichmentValue[];
 }
 
 export interface MatchItem {
@@ -113,7 +122,17 @@ export interface Stats {
   matchesPending: number;
   /** Validated by the thresholds, for information (« Validés automatiquement » tab). */
   matchesAutoApproved: number;
+  matchesAutoRejected: number;
+  /** human_approved + human_rejected (« Validé manuellement »). */
+  matchesHuman: number;
   valuesAutoApproved: number;
+  /** Étape 2, fiches et valeurs de chaque liste (GET /hotels?view=). */
+  hotelsAutoApproved: number;
+  hotelsAutoRejected: number;
+  hotelsHuman: number;
+  valuesAutoRejected: number;
+  /** human_approved + human_rejected + human_corrected. */
+  valuesHuman: number;
   valuesPending: number;
   valuesApproved: number;
   pendingForExport: number;

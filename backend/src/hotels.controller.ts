@@ -1,6 +1,6 @@
 import { Controller, Get, HttpStatus, Inject, Param, Query } from '@nestjs/common';
 import { z } from 'zod';
-import { FAMILIES, PRIORITIES } from './api.js';
+import { FAMILIES, HOTEL_VIEWS, PRIORITIES } from './api.js';
 import { ApiError, parse } from './errors.js';
 import { Repository } from './repository.js';
 
@@ -11,7 +11,7 @@ const text = optional(z.string().trim());
 export const limit = z.coerce.number().int().min(1).max(200).default(50);
 
 const hotelQuery = z.object({
-  view: z.enum(['review', 'pending']).default('review'),
+  view: z.enum(HOTEL_VIEWS).default('review'),
   brand: text,
   source: text,
   family: optional(z.enum(FAMILIES)),
@@ -57,8 +57,9 @@ export class HotelsController {
   }
 
   @Get('hotels/:rid')
-  async hotel(@Param('rid') rid: string) {
-    const detail = await this.repo.hotel(rid);
+  async hotel(@Param('rid') rid: string, @Query() query: unknown) {
+    const { view } = parse(z.object({ view: optional(z.enum(HOTEL_VIEWS)) }), query);
+    const detail = await this.repo.hotel(rid, view);
     if (!detail) throw new ApiError(HttpStatus.NOT_FOUND, 'hotel_not_found', `Hôtel ${rid} introuvable.`);
     return detail;
   }

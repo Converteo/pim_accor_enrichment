@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.js';
 import { createBq, gcpAuthClient } from '../src/gcp.js';
-import { BigQueryRepository } from '../src/repository.js';
+import { BigQueryRepository, VIEW_STATUSES } from '../src/repository.js';
 
 // Lecture seule contre BigQuery dev : npm run test:integration (BQ_INTEGRATION=1, backend/.env)
 describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', { timeout: 30_000 }, () => {
@@ -72,9 +72,32 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
         pimField: value!.pimField,
         entityId: value!.entityId,
         status: 'needs_review',
+        value: value!.value,
         approved: true,
       },
     ]);
+  });
+
+  it('étape 2 : chaque liste de fiches compte ses valeurs comme le détail et les stats', async () => {
+    const s = await repo.stats();
+    for (const [view, values] of [
+      ['auto_approved', s.valuesAutoApproved],
+      ['auto_rejected', s.valuesAutoRejected],
+      ['human', s.valuesHuman],
+    ] as const) {
+      const [first] = (await repo.hotels({ view, limit: 1 })).items;
+      if (!values) continue;
+      const detail = await repo.hotel(first!.rid, view);
+      expect(detail!.values).toHaveLength(first!.count);
+      expect(detail!.values!.every((v) => VIEW_STATUSES[view].includes(v.status))).toBe(true);
+      if (view === 'human')
+        expect(first!.lastDecidedAt).toBe(
+          detail!
+            .values!.map((v) => v.lastDecision!.decidedAt)
+            .sort()
+            .at(-1),
+        );
+    }
   });
 
   it('matches : needs_review uniquement, facets non vides', async () => {
@@ -100,6 +123,19 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     expect(m.items.length).toBeGreaterThan(0);
     expect(m.items.every((x) => x.pim.brand === first!.pim.brand && x.verdict === 'same_hotel')).toBe(true);
     expect((await repo.matches({ status: 'auto_approved', verdict: 'undetermined', limit: 1 })).items).toEqual([]);
+  });
+
+  it('matches : rejetés auto, décisions humaines (plus récente d’abord) et recherche sans accents', async () => {
+    const rejected = await repo.matches({ status: 'auto_rejected', limit: 2 });
+    expect(rejected.items.every((x) => x.status === 'auto_rejected')).toBe(true);
+    const human = (await repo.matches({ status: 'human', limit: 50 })).items;
+    expect(human.length).toBeGreaterThan(0);
+    expect(human.every((x) => x.status.startsWith('human_') && x.lastDecision?.author)).toBe(true);
+    const dates = human.map((x) => x.lastDecision!.decidedAt);
+    expect(dates).toEqual([...dates].sort().reverse());
+    const found = await repo.matches({ status: 'auto_approved', search: 'são PAULO', limit: 5 });
+    expect(found.items.length).toBeGreaterThan(0);
+    expect(found.items.every((x) => /s[aã]o paulo/i.test(`${x.pim.name} ${x.pim.city}`))).toBe(true);
   });
 
   it('fieldValues : types et codes depuis v_field_allowed_values', async () => {

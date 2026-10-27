@@ -10,25 +10,36 @@ import type {
   FieldValues,
   HotelDetail,
   HotelSummary,
+  HotelView,
   MatchItem,
   Page,
   Priority,
   ScoreBucket,
   Stats,
+  ValueStatus,
 } from './api.js';
 import type { EnrichmentDecisionRow, EnrichmentState, MatchDecisionRow } from './decisions.js';
 import { ApiError } from './errors.js';
 import type { ExportRecord } from './export.js';
 import { Bq } from './gcp.js';
 
+/** Statuts des valeurs de chaque liste de fiches : une valeur n'est que dans une liste. */
+export const VIEW_STATUSES: Record<HotelView, ValueStatus[]> = {
+  review: ['needs_review'],
+  pending: ['pending_enrichment'],
+  auto_approved: ['auto_approved'],
+  auto_rejected: ['auto_rejected'],
+  human: ['human_approved', 'human_rejected', 'human_corrected'],
+};
+
 export interface HotelFilters {
-  view: 'review' | 'pending';
+  view: HotelView;
   brand?: string;
   source?: string;
   family?: Family;
   priority?: Priority;
   search?: string;
-  /** Liste « à relire » seulement : valeurs signalées (ancien nom) masquées ou seules retenues. */
+  /** Valeurs signalées (ancien nom) masquées ou seules retenues ; ignoré pour view=pending. */
   outdated?: 'hide' | 'only';
   limit: number;
   cursor?: string;
@@ -37,10 +48,13 @@ export interface HotelFilters {
 export type AutoApprovedFilters = Omit<HotelFilters, 'view' | 'outdated'>;
 
 export interface MatchFilters {
-  status: 'needs_review' | 'pending_judgment' | 'auto_approved';
+  /** human = human_approved + human_rejected. */
+  status: 'needs_review' | 'pending_judgment' | 'auto_approved' | 'auto_rejected' | 'human';
   source?: string;
   brand?: string;
   verdict?: string;
+  /** Nom PIM, ville ou RID. */
+  search?: string;
   limit: number;
   cursor?: string;
 }
@@ -53,8 +67,8 @@ export abstract class Repository {
   abstract hotels(filters: HotelFilters): Promise<Page<HotelSummary>>;
   abstract facets(): Promise<Facets>;
   abstract stats(): Promise<Stats>;
-  /** null si le RID est inconnu. */
-  abstract hotel(rid: string): Promise<HotelDetail | null>;
+  /** null si le RID est inconnu. Avec view : values = valeurs de cette liste. */
+  abstract hotel(rid: string, view?: HotelView): Promise<HotelDetail | null>;
   abstract matches(filters: MatchFilters): Promise<Page<MatchItem>>;
   /** Valeurs auto_approved sur un rapprochement validé, du score le plus bas au plus haut. */
   abstract autoApprovedValues(filters: AutoApprovedFilters): Promise<Page<AutoApprovedValue>>;
@@ -201,6 +215,11 @@ const outdatedBySource = (from: string) => `
       CONCAT('Page source sous un ancien nom', IFNULL(CONCAT(' : ', COALESCE(page_name, scraped_name)), '')), NULL)) AS outdated
   FROM ${from} GROUP BY rid, source`;
 
+/** Recherche « Établissement » : nom, ville ou RID contient @search, sans tenir compte de la casse ni des accents. */
+const fold = (expr: string) => `REGEXP_REPLACE(NORMALIZE(LOWER(${expr}), NFD), r'\\pM', '')`;
+const searchHotel = (name: string, city: string, rid: string) =>
+  `(@search IS NULL OR STRPOS(${fold(`CONCAT(IFNULL(${name}, ''), ' ', IFNULL(${city}, ''), ' ', ${rid})`)}, ${fold('@search')}) > 0)`;
+
 const HOTEL_FILTER_TYPES = {
   brand: 'STRING',
   source: 'STRING',
@@ -226,9 +245,11 @@ export class BigQueryRepository extends Repository {
 
   async hotels(f: HotelFilters): Promise<Page<HotelSummary>> {
     const { approved, enrichments } = this.t;
-    // Une fiche = un RID. « À relire » : needs_review sur un rapprochement validé (EXISTS v_approved_matches, obligatoire).
+    // Une fiche = un RID. Valeurs de la liste (inview) : statut de VIEW_STATUSES sur un rapprochement validé
+    // (EXISTS v_approved_matches, obligatoire), sauf pending_enrichment (pas encore de source).
     // Les compteurs portent sur toute la fiche ; les filtres décident seulement quelles fiches sortent.
     // Liste « à relire » sans filtre outdated : les fiches dont toutes les valeurs à relire sont signalées en dernier.
+    // Décisions humaines : la plus récente d'abord ; confirmés / rejetés auto : le plus de valeurs d'abord.
     const rows = await this.bq.query<Row>(
       `
       WITH am AS (
@@ -242,31 +263,38 @@ export class BigQueryRepository extends Repository {
         FROM am GROUP BY rid
       ),
       e AS (
-        SELECT e.rid, e.source, e.family, e.priority, e.score, e.final_status, e.validated_sources,
-          e.final_status = 'needs_review' AND a.rid IS NOT NULL AS review,
-          e.final_status = 'needs_review' AND a.outdated IS NOT NULL AS flagged,
-          e.final_status = 'pending_enrichment' AS pending,
-          e.final_status = 'auto_rejected' AND a.rid IS NOT NULL AS conflict
-        FROM ${enrichments} e
-        LEFT JOIN approved a ON a.rid = e.rid AND a.source = e.source
-        WHERE e.final_status IN ('needs_review', 'pending_enrichment')
-          OR (e.final_status = 'auto_rejected' AND e.reason = 'pim_conflict')
+        SELECT *,
+          -- sources et score affichés : ceux de la liste (en attente d'enrichissement : ceux à relire)
+          IF(@view = 'pending', review, inview) AS shown
+        FROM (
+          SELECT e.rid, e.source, e.family, e.priority, e.score, e.final_status, e.validated_sources, e.decided_at,
+            a.outdated IS NOT NULL AS outdated,
+            e.final_status = 'needs_review' AND a.rid IS NOT NULL AS review,
+            e.final_status = 'needs_review' AND a.outdated IS NOT NULL AS flagged,
+            e.final_status = 'pending_enrichment' AS pending,
+            e.final_status = 'auto_rejected' AND e.reason = 'pim_conflict' AND a.rid IS NOT NULL AS conflict,
+            e.final_status IN UNNEST(@statuses) AND (a.rid IS NOT NULL OR @view = 'pending') AS inview
+          FROM ${enrichments} e
+          LEFT JOIN approved a ON a.rid = e.rid AND a.source = e.source
+          WHERE a.rid IS NOT NULL OR e.final_status = 'pending_enrichment'
+        )
       ),
       agg AS (
         SELECT rid,
           COUNTIF(review) AS to_review_count,
           COUNTIF(flagged) AS outdated_count,
-          CAST(ROUND(AVG(IF(review, score, NULL))) AS INT64) AS avg_score,
+          COUNTIF(inview) AS count,
+          MAX(IF(inview, decided_at, NULL)) AS last_decided_at,
+          CAST(ROUND(AVG(IF(shown, score, NULL))) AS INT64) AS avg_score,
           MIN(IF(review, priority, NULL)) AS review_priority,
           COUNTIF(pending) AS pending_count,
           COUNTIF(conflict) AS conflict_count,
-          ARRAY_AGG(DISTINCT IF(review, source, NULL) IGNORE NULLS) AS sources,
-          ARRAY_AGG(DISTINCT IF(IF(@view = 'pending', pending, review), family, NULL) IGNORE NULLS) AS families,
-          COUNTIF(
-            IF(@view = 'pending',
-              pending AND (@source IS NULL OR @source IN UNNEST(SPLIT(IFNULL(validated_sources, ''), ','))),
-              review AND (@source IS NULL OR source = @source)
-                AND (@outdated IS NULL OR flagged = (@outdated = 'only')))
+          ARRAY_AGG(DISTINCT IF(shown, source, NULL) IGNORE NULLS) AS sources,
+          ARRAY_AGG(DISTINCT IF(inview, family, NULL) IGNORE NULLS) AS families,
+          COUNTIF(inview
+            AND IF(@view = 'pending',
+              @source IS NULL OR @source IN UNNEST(SPLIT(IFNULL(validated_sources, ''), ',')),
+              (@source IS NULL OR source = @source) AND (@outdated IS NULL OR outdated = (@outdated = 'only')))
             AND (@family IS NULL OR family = @family)
             AND (@priority IS NULL OR priority = @priority)
           ) AS selected
@@ -274,19 +302,21 @@ export class BigQueryRepository extends Repository {
       ),
       hotels AS (
         SELECT agg.*, i.name, i.brand, i.city, i.country,
-          IF(@view = 'pending',
-            FORMAT('%06d|%s', 999999 - pending_count, rid),
-            FORMAT('%d|%s|%03d|%s', IF(outdated_count = to_review_count, 1, 0), IFNULL(review_priority, 'P9'),
-              100 - IFNULL(avg_score, 0), rid)) AS sort_key
+          CASE @view
+            WHEN 'review' THEN FORMAT('%d|%s|%03d|%s', IF(outdated_count = to_review_count, 1, 0),
+              IFNULL(review_priority, 'P9'), 100 - IFNULL(avg_score, 0), rid)
+            WHEN 'human' THEN FORMAT('%016d|%s', 9999999999999999 - UNIX_MICROS(last_decided_at), rid)
+            ELSE FORMAT('%06d|%s', 999999 - count, rid)
+          END AS sort_key
         FROM agg JOIN identity i USING (rid)
         WHERE selected > 0
           AND (@brand IS NULL OR i.brand = @brand)
-          AND (@search IS NULL
-            OR STRPOS(LOWER(CONCAT(IFNULL(i.name, ''), ' ', IFNULL(i.city, ''), ' ', rid)), LOWER(@search)) > 0)
+          AND ${searchHotel('i.name', 'i.city', 'rid')}
       )
       SELECT * FROM hotels WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
       {
         view: f.view,
+        statuses: VIEW_STATUSES[f.view],
         brand: f.brand ?? null,
         source: f.source ?? null,
         family: f.family ?? null,
@@ -305,6 +335,8 @@ export class BigQueryRepository extends Repository {
       city: str(r.city),
       country: str(r.country),
       sources: [...(r.sources as string[])].sort(),
+      count: Number(r.count),
+      lastDecidedAt: iso(r.last_decided_at as { value: string } | null),
       toReviewCount: Number(r.to_review_count),
       outdatedCount: Number(r.outdated_count),
       avgScore: num(r.avg_score),
@@ -335,7 +367,6 @@ export class BigQueryRepository extends Repository {
         SELECT e.rid, e.final_status, a.rid IS NOT NULL AS ok, e.rid IN (SELECT rid FROM approved) AS has_approved
         FROM ${enrichments} e
         LEFT JOIN approved a ON a.rid = e.rid AND a.source = e.source
-        WHERE e.final_status IN ('needs_review', 'pending_enrichment', 'human_approved', 'auto_approved', 'human_corrected')
       ),
       counts AS (
         SELECT
@@ -344,18 +375,26 @@ export class BigQueryRepository extends Repository {
           COUNTIF(final_status = 'needs_review' AND ok) AS valuesToReview,
           COUNTIF(final_status = 'pending_enrichment') AS valuesPending,
           COUNTIF(final_status IN ('human_approved', 'auto_approved', 'human_corrected') AND ok) AS valuesApproved,
-          COUNTIF(final_status = 'auto_approved' AND ok) AS valuesAutoApproved
+          COUNTIF(final_status = 'auto_approved' AND ok) AS valuesAutoApproved,
+          -- Listes de fiches de l'étape 2 (VIEW_STATUSES), sur rapprochement validé
+          COUNT(DISTINCT IF(final_status = 'auto_approved' AND ok, rid, NULL)) AS hotelsAutoApproved,
+          COUNT(DISTINCT IF(final_status = 'auto_rejected' AND ok, rid, NULL)) AS hotelsAutoRejected,
+          COUNT(DISTINCT IF(STARTS_WITH(final_status, 'human_') AND ok, rid, NULL)) AS hotelsHuman,
+          COUNTIF(final_status = 'auto_rejected' AND ok) AS valuesAutoRejected,
+          COUNTIF(STARTS_WITH(final_status, 'human_') AND ok) AS valuesHuman
         FROM e
       ),
       mcounts AS (
         SELECT COUNTIF(final_status = 'needs_review') AS matchesToReview,
           COUNTIF(final_status = 'pending_judgment') AS matchesPending,
           COUNTIF(final_status = 'auto_approved') AS matchesAutoApproved,
+          COUNTIF(final_status = 'auto_rejected') AS matchesAutoRejected,
+          COUNTIF(final_status IN ('human_approved', 'human_rejected')) AS matchesHuman,
           COUNTIF(final_status IN ('needs_review', 'pending_judgment')) AS matchesWaiting
         FROM m
       )
       -- pendingForExport : même compte que le job d'export (contrat-back.md § 3)
-      SELECT counts.*, matchesToReview, matchesPending, matchesAutoApproved, matchesWaiting + valuesToReview + valuesPending AS pendingForExport
+      SELECT counts.*, mcounts.* EXCEPT (matchesWaiting), matchesWaiting + valuesToReview + valuesPending AS pendingForExport
       FROM counts CROSS JOIN mcounts`);
     const keys = [
       'hotelsToReview',
@@ -364,7 +403,14 @@ export class BigQueryRepository extends Repository {
       'matchesToReview',
       'matchesPending',
       'matchesAutoApproved',
+      'matchesAutoRejected',
+      'matchesHuman',
       'valuesAutoApproved',
+      'hotelsAutoApproved',
+      'hotelsAutoRejected',
+      'hotelsHuman',
+      'valuesAutoRejected',
+      'valuesHuman',
       'valuesPending',
       'valuesApproved',
       'pendingForExport',
@@ -372,7 +418,7 @@ export class BigQueryRepository extends Repository {
     return Object.fromEntries(keys.map((k) => [k, Number(row?.[k] ?? 0)])) as unknown as Stats;
   }
 
-  async hotel(rid: string): Promise<HotelDetail | null> {
+  async hotel(rid: string, view?: HotelView): Promise<HotelDetail | null> {
     const { matches, approved, enrichments } = this.t;
     const [identities, rows] = await Promise.all([
       this.bq.query<Row>(
@@ -382,14 +428,12 @@ export class BigQueryRepository extends Repository {
         FROM ${matches} WHERE rid = @rid GROUP BY rid`,
         { rid },
       ),
-      // Les auto_rejected autres que pim_conflict ne sont jamais renvoyés
+      // Toutes les valeurs de la fiche (au plus une centaine), triées ici selon la liste demandée
       this.bq.query<Row>(
         `SELECT e.*, o.rid IS NOT NULL AS approved, o.outdated
         FROM ${enrichments} e
         LEFT JOIN (${outdatedBySource(approved)}) o ON o.rid = e.rid AND o.source = e.source
         WHERE e.rid = @rid
-          AND (e.final_status IN ('needs_review', 'pending_enrichment', 'human_approved', 'human_rejected', 'human_corrected')
-            OR (e.final_status = 'auto_rejected' AND e.reason = 'pim_conflict'))
         ORDER BY e.priority IS NULL, e.priority, e.score DESC, e.pim_field, e.entity_id`,
         { rid },
       ),
@@ -397,6 +441,9 @@ export class BigQueryRepository extends Repository {
     const identity = identities[0];
     if (!identity && rows.length === 0) return null;
     const pick = (keep: (r: Row) => boolean) => rows.filter(keep).map(enrichmentValue);
+    // Même règle que la liste de fiches (hotels) : la valeur compte dans la liste si son rapprochement est validé
+    const inView = (v: HotelView) => (r: Row) =>
+      VIEW_STATUSES[v].includes(r.final_status as ValueStatus) && (r.approved === true || v === 'pending');
     return {
       hotel: {
         rid,
@@ -408,38 +455,48 @@ export class BigQueryRepository extends Repository {
       },
       toReview: pick((r) => r.final_status === 'needs_review' && r.approved === true),
       pending: pick((r) => r.final_status === 'pending_enrichment'),
-      conflicts: pick((r) => r.final_status === 'auto_rejected' && r.approved === true),
+      conflicts: pick((r) => r.final_status === 'auto_rejected' && r.reason === 'pim_conflict' && r.approved === true),
       decided: pick((r) => String(r.final_status).startsWith('human_')),
+      ...(view && { values: pick(inView(view)) }),
     };
   }
 
   async matches(f: MatchFilters): Promise<Page<MatchItem>> {
     const { matches } = this.t;
-    // Un curseur par liste. Validés automatiquement : score croissant, les cas limites (juste au-dessus du seuil) d'abord
-    const list = { needs_review: 'matches', pending_judgment: 'matches-pending', auto_approved: 'matches-auto' }[
-      f.status
-    ];
+    // Un curseur par liste. Confirmés / rejetés automatiquement : les cas limites (score proche du seuil) d'abord ;
+    // décisions humaines : la plus récente d'abord
+    const list = {
+      needs_review: 'matches',
+      pending_judgment: 'matches-pending',
+      auto_approved: 'matches-auto',
+      auto_rejected: 'matches-rejected',
+      human: 'matches-human',
+    }[f.status];
     const order =
-      f.status === 'auto_approved'
-        ? `FORMAT('%03d|%s|%s|%s', IFNULL(score, 0), source, rid, source_hash)`
-        : `FORMAT('%s|%03d|%s|%s', source, 100 - IFNULL(score, 0), rid, source_hash)`;
+      {
+        auto_approved: `FORMAT('%03d|%s|%s|%s', IFNULL(score, 0), source, rid, source_hash)`,
+        auto_rejected: `FORMAT('%03d|%s|%s|%s', 100 - IFNULL(score, 0), source, rid, source_hash)`,
+        human: `FORMAT('%016d|%s|%s|%s', 9999999999999999 - UNIX_MICROS(decided_at), source, rid, source_hash)`,
+      }[f.status as string] ?? `FORMAT('%s|%03d|%s|%s', source, 100 - IFNULL(score, 0), rid, source_hash)`;
     const rows = await this.bq.query<Row>(
       `SELECT * FROM (
         SELECT *, ${order} AS sort_key
         FROM ${matches}
-        WHERE final_status = @status AND (@source IS NULL OR source = @source)
+        WHERE final_status IN UNNEST(@statuses) AND (@source IS NULL OR source = @source)
           AND (@brand IS NULL OR pim_brand = @brand) AND (@verdict IS NULL OR verdict = @verdict)
+          AND ${searchHotel('pim_name', 'pim_city', 'rid')}
       )
       WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
       {
-        status: f.status,
+        statuses: f.status === 'human' ? ['human_approved', 'human_rejected'] : [f.status],
         source: f.source ?? null,
         brand: f.brand ?? null,
         verdict: f.verdict ?? null,
+        search: f.search ?? null,
         cursor: decodeCursor(list, f.cursor),
         limit: f.limit + 1,
       },
-      { source: 'STRING', brand: 'STRING', verdict: 'STRING' },
+      { source: 'STRING', brand: 'STRING', verdict: 'STRING', search: 'STRING' },
     );
     return page(list, rows, f.limit, matchItem);
   }
@@ -469,8 +526,7 @@ export class BigQueryRepository extends Repository {
           AND (@family IS NULL OR e.family = @family)
           AND (@priority IS NULL OR e.priority = @priority)
           AND (@brand IS NULL OR i.brand = @brand)
-          AND (@search IS NULL
-            OR STRPOS(LOWER(CONCAT(IFNULL(i.name, ''), ' ', IFNULL(i.city, ''), ' ', e.rid)), LOWER(@search)) > 0)
+          AND ${searchHotel('i.name', 'i.city', 'e.rid')}
       )
       WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
       {
@@ -501,7 +557,7 @@ export class BigQueryRepository extends Repository {
     const { approved, enrichments } = this.t;
     return this.bq.query<EnrichmentState>(
       `SELECT e.enrichment_id AS enrichmentId, e.rid, e.pim_field AS pimField, e.entity_id AS entityId,
-        e.final_status AS status,
+        e.final_status AS status, e.value,
         EXISTS (SELECT 1 FROM ${approved} r WHERE r.rid = e.rid AND r.source = e.source) AS approved
       FROM ${enrichments} e
       WHERE e.enrichment_id IN UNNEST(@ids)`,
