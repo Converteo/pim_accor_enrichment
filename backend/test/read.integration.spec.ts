@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.js';
 import { createBq, gcpAuthClient } from '../src/gcp.js';
-import { BigQueryRepository } from '../src/repository.js';
+import { BigQueryRepository, VIEW_STATUSES } from '../src/repository.js';
 
 // Lecture seule contre BigQuery dev : npm run test:integration (BQ_INTEGRATION=1, backend/.env)
 describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', { timeout: 30_000 }, () => {
@@ -72,9 +72,32 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
         pimField: value!.pimField,
         entityId: value!.entityId,
         status: 'needs_review',
+        value: value!.value,
         approved: true,
       },
     ]);
+  });
+
+  it('étape 2 : chaque liste de fiches compte ses valeurs comme le détail et les stats', async () => {
+    const s = await repo.stats();
+    for (const [view, values] of [
+      ['auto_approved', s.valuesAutoApproved],
+      ['auto_rejected', s.valuesAutoRejected],
+      ['human', s.valuesHuman],
+    ] as const) {
+      const [first] = (await repo.hotels({ view, limit: 1 })).items;
+      if (!values) continue;
+      const detail = await repo.hotel(first!.rid, view);
+      expect(detail!.values).toHaveLength(first!.count);
+      expect(detail!.values!.every((v) => VIEW_STATUSES[view].includes(v.status))).toBe(true);
+      if (view === 'human')
+        expect(first!.lastDecidedAt).toBe(
+          detail!
+            .values!.map((v) => v.lastDecision!.decidedAt)
+            .sort()
+            .at(-1),
+        );
+    }
   });
 
   it('matches : needs_review uniquement, facets non vides', async () => {

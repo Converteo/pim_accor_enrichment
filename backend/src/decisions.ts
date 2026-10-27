@@ -28,6 +28,8 @@ export interface EnrichmentState {
   pimField: string;
   entityId: string | null;
   status: string;
+  /** Valeur proposée (null si le job n'en a pas retenu, ex. already_in_pim). */
+  value: string | null;
   /** Son rapprochement est toujours dans v_approved_matches. */
   approved: boolean;
 }
@@ -50,7 +52,22 @@ export interface Rejected<K extends string> {
 }
 
 const ENRICHMENT_DECISIONS = ['human_approved', 'human_rejected', 'human_corrected'];
-const DECIDABLE = ['needs_review', 'human_approved', 'human_rejected', 'human_corrected'];
+// auto_approved / auto_rejected : un relecteur revient sur la décision automatique (PIM-55) ; la sienne prime
+const DECIDABLE = [
+  'needs_review',
+  'auto_approved',
+  'auto_rejected',
+  'human_approved',
+  'human_rejected',
+  'human_corrected',
+];
+
+/**
+ * Valider une valeur rejetée par le job l'envoie telle quelle à l'export : elle doit être au format PIM
+ * (rejets not_in_pim_list, invalid_format) et exister (already_in_pim : pas de valeur). Sinon, la corriger.
+ */
+const approvesRejected = (item: EnrichmentDecisionItem, state: EnrichmentState) =>
+  item.decision === 'human_approved' && state.status === 'auto_rejected';
 
 const reject = (key: string, code: string, message: string) => ({ key, code, message });
 
@@ -102,16 +119,20 @@ export function checkEnrichmentDecisions(
       rejected.push(reject(id, 'corrected_value_required', 'Valeur corrigée obligatoire pour une correction.'));
     else {
       let correctedValue: string | null = null;
-      if (item.decision === 'human_corrected') {
+      const approving = approvesRejected(item, state);
+      if (item.decision === 'human_corrected' || approving) {
         const field = fields.get(state.pimField);
-        const checked = field
-          ? checkCorrectedValue(field, corrected!)
-          : { error: `Champ ${state.pimField} inconnu du modèle PIM.` };
+        const raw = approving ? state.value : corrected!;
+        const checked = !raw
+          ? { error: 'Aucune valeur proposée : corrigez-la pour en saisir une.' }
+          : field
+            ? checkCorrectedValue(field, raw)
+            : { error: `Champ ${state.pimField} inconnu du modèle PIM.` };
         if ('error' in checked) {
-          rejected.push(reject(id, 'invalid_corrected_value', checked.error));
+          rejected.push(reject(id, approving ? 'invalid_value' : 'invalid_corrected_value', checked.error));
           continue;
         }
-        correctedValue = checked.value;
+        if (!approving) correctedValue = checked.value;
       }
       rows.push({
         enrichment_id: id,
@@ -202,9 +223,12 @@ export class DecisionsService {
         s,
       ]),
     );
-    // Codes autorisés lus seulement pour les champs corrigés
+    // Codes autorisés lus seulement pour les champs à contrôler (corrections, validations de valeurs rejetées)
     const corrected = items
-      .filter((i) => i.decision === 'human_corrected')
+      .filter((i) => {
+        const state = states.get(i.enrichmentId);
+        return i.decision === 'human_corrected' || (state && approvesRejected(i, state));
+      })
       .map((i) => states.get(i.enrichmentId)?.pimField);
     const pimFields = [...new Set(corrected.filter((f) => f !== undefined))];
     const fields = pimFields.length ? await this.repo.fieldValues(pimFields) : [];

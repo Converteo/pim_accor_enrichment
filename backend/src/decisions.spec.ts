@@ -16,6 +16,7 @@ const state = (id: string, over: Partial<EnrichmentState> = {}): EnrichmentState
   pimField: 'ProductFitnessCenter',
   entityId: null,
   status: 'needs_review',
+  value: 'True',
   approved: true,
   ...over,
 });
@@ -55,7 +56,7 @@ describe('checkEnrichmentDecisions', () => {
     [
       'statut non décidable',
       { enrichmentId: 'a', decision: 'human_approved' },
-      states(state('a', { status: 'auto_rejected' })),
+      states(state('a', { status: 'pending_enrichment' })),
       'invalid_status',
     ],
     [
@@ -133,6 +134,48 @@ describe('checkEnrichmentDecisions', () => {
     });
   });
 
+  describe('revenir sur une décision automatique (PIM-55)', () => {
+    const bool: FieldValues = { pimField: 'ProductFitnessCenter', dataType: 'Boolean', multivalue: false, values: [] };
+    const fields = new Map([[bool.pimField, bool]]);
+
+    it.each([
+      ['human_rejected', 'auto_approved'],
+      ['human_approved', 'auto_approved'],
+      ['human_approved', 'auto_rejected'],
+      ['human_rejected', 'auto_rejected'],
+    ])('accepte %s sur une valeur %s', (decision, status) => {
+      const { rows, rejected } = checkEnrichmentDecisions(
+        [{ enrichmentId: 'a', decision }],
+        states(state('a', { status })),
+        fields,
+      );
+      expect(rejected).toEqual([]);
+      expect(rows).toMatchObject([{ decision, corrected_value: null }]);
+    });
+
+    it.each([
+      ['sans valeur (already_in_pim)', null, /corrigez-la/],
+      ['hors format PIM (invalid_format)', 'peut-être', /True ou False/],
+    ])('refuse de valider une valeur rejetée %s', (_, value, message) => {
+      const { rows, rejected } = checkEnrichmentDecisions(
+        [{ enrichmentId: 'a', decision: 'human_approved' }],
+        states(state('a', { status: 'auto_rejected', value })),
+        fields,
+      );
+      expect(rows).toEqual([]);
+      expect(rejected).toMatchObject([{ code: 'invalid_value', message: expect.stringMatching(message) }]);
+    });
+
+    it('une valeur rejetée sans valeur reste corrigeable', () => {
+      const { rows } = checkEnrichmentDecisions(
+        [{ enrichmentId: 'a', decision: 'human_corrected', correctedValue: 'true' }],
+        states(state('a', { status: 'auto_rejected', value: null })),
+        fields,
+      );
+      expect(rows).toMatchObject([{ decision: 'human_corrected', corrected_value: 'True' }]);
+    });
+  });
+
   it('ignore correctedValue hors correction', () => {
     const { rows } = checkEnrichmentDecisions(
       [{ enrichmentId: 'a', decision: 'human_approved', correctedValue: 'x' }],
@@ -202,6 +245,17 @@ describe('POST /decisions/enrichments', () => {
     expect(res.body.accepted).toEqual(['a', 'b']);
     expect(repo.fieldValues).toHaveBeenCalledWith(['ProductCheckIn']);
     expect(repo.insertEnrichmentDecisions.mock.calls[0]![0][1]).toMatchObject({ corrected_value: '09:00' });
+  });
+
+  it('lit les codes autorisés pour valider une valeur rejetée automatiquement', async () => {
+    repo.enrichmentStates.mockResolvedValue([state('a', { status: 'auto_rejected', value: 'Sauna' })]);
+    repo.fieldValues.mockResolvedValue([
+      { pimField: 'ProductFitnessCenter', dataType: 'CVL', multivalue: false, values: [{ key: 'Spa', label: 'Spa' }] },
+    ]);
+    const res = await post({ items: [{ enrichmentId: 'a', decision: 'human_approved' }] }).expect(200);
+    expect(repo.fieldValues).toHaveBeenCalledWith(['ProductFitnessCenter']);
+    expect(res.body.rejected).toMatchObject([{ enrichmentId: 'a', code: 'invalid_value' }]);
+    expect(repo.insertEnrichmentDecisions).not.toHaveBeenCalled();
   });
 
   it('ne lit pas les codes autorisés sans correction', async () => {

@@ -36,6 +36,12 @@ describe('GET /hotels', () => {
     });
   });
 
+  it.each(['auto_approved', 'auto_rejected', 'human'])('accepte view=%s', async (view) => {
+    repo.hotels.mockResolvedValue({ items: [], nextCursor: null });
+    await request(app.getHttpServer()).get(`/hotels?view=${view}&outdated=only`).expect(200);
+    expect(repo.hotels).toHaveBeenCalledWith({ view, outdated: 'only', limit: 50 });
+  });
+
   it.each(['family=spa', 'priority=P4', 'view=all', 'outdated=yes', 'limit=0', 'limit=201', 'limit=abc'])(
     'refuse %s avec une erreur 400 en français',
     async (q) => {
@@ -85,6 +91,11 @@ describe('GET /hotels/facets et /stats', () => {
       matchesAutoRejected: 1,
       matchesHuman: 2,
       valuesAutoApproved: 0,
+      hotelsAutoApproved: 0,
+      hotelsAutoRejected: 1,
+      hotelsHuman: 1,
+      valuesAutoRejected: 2,
+      valuesHuman: 1,
       valuesPending: 0,
       valuesApproved: 0,
       pendingForExport: 5,
@@ -99,7 +110,14 @@ describe('GET /hotels/:rid', () => {
     const detail = { hotel: { rid: 'B6F6' }, toReview: [], pending: [], conflicts: [], decided: [] };
     repo.hotel.mockResolvedValue(detail);
     await request(app.getHttpServer()).get('/hotels/B6F6').expect(200, detail);
-    expect(repo.hotel).toHaveBeenCalledWith('B6F6');
+    expect(repo.hotel).toHaveBeenCalledWith('B6F6', undefined);
+  });
+
+  it('transmet view, refuse une liste inconnue', async () => {
+    repo.hotel.mockResolvedValue({ hotel: { rid: 'B6F6' } });
+    await request(app.getHttpServer()).get('/hotels/B6F6?view=human').expect(200);
+    expect(repo.hotel).toHaveBeenCalledWith('B6F6', 'human');
+    await request(app.getHttpServer()).get('/hotels/B6F6?view=all').expect(400);
   });
 
   it('404 si le RID est inconnu', async () => {
