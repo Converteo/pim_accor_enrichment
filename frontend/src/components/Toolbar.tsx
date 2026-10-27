@@ -45,8 +45,6 @@ function tabCounts(tab: TabKey, stats: Stats): { matches?: number; values?: numb
       return { matches: stats.matchesToReview };
     case "review":
       return { values: stats.valuesToReview };
-    case "pending":
-      return { matches: stats.matchesPending, values: stats.valuesPending };
     case "auto":
       return { matches: stats.matchesAutoApproved, values: stats.valuesAutoApproved };
   }
@@ -66,8 +64,7 @@ function Segment({ label, icon, children }: { label: string; icon: ReactNode; ch
 
 export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: ToolbarProps) {
   const t = useTranslations();
-  // Only filters with an effect on the tab's lists: /matches filters by source, brand and verdict,
-  // and matches waiting for the judge have no verdict yet.
+  // Only filters with an effect on the tab's lists: /matches filters by source, brand and verdict.
   const hotelFilters = tab !== "matches";
   const verdictFilter = tab === "matches" || tab === "auto";
   // /hotels only flags the values of the fiches to review.

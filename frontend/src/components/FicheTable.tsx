@@ -7,7 +7,7 @@ import styles from "./FicheTable.module.css";
 
 interface FicheTableProps {
   rows: HotelSummary[];
-  /** « En cours » lists fiches still being enriched: nothing to select or decide there. */
+  /** Without selection: no bulk decision on this list. */
   selectable: boolean;
   selected: ReadonlySet<string>;
   onToggleRow: (rid: string, selected: boolean) => void;

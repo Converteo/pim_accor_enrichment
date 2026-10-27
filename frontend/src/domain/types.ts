@@ -250,13 +250,13 @@ export interface ExportExecution {
 
 // Screen state (front only)
 
-export type TabKey = "review" | "matches" | "pending" | "auto";
+export type TabKey = "review" | "matches" | "auto";
 
-/** Order of the reviewer's work: matches first (their values appear once approved), then attributes, then what waits for the pipeline. */
-export const TAB_ORDER: readonly TabKey[] = ["matches", "review", "pending", "auto"];
+/** Order of the reviewer's work: matches first (their values appear once approved), then attributes. */
+export const TAB_ORDER: readonly TabKey[] = ["matches", "review", "auto"];
 
 /** Tabs with nothing to decide, shown in a lighter style. */
-export const INFO_TABS: readonly TabKey[] = ["pending", "auto"];
+export const INFO_TABS: readonly TabKey[] = ["auto"];
 
 export const FAMILY_ORDER: readonly Family[] = [
   "general",

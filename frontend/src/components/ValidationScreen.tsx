@@ -10,7 +10,6 @@ import {
   fetchHotel,
   fetchHotels,
   fetchHotelsDetail,
-  fetchMatches,
   fetchStats,
 } from "@/data/source";
 import { applyDecisions, cityLine, formatScore, matchKey, withReviewCount } from "@/domain/rules";
@@ -21,7 +20,6 @@ import type {
   Facets,
   Filters,
   HotelDetail,
-  MatchItem,
   Page,
   Stats,
   TabKey,
@@ -123,9 +121,8 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }, [openRid]);
 
   // The matches tab keeps the last fiche list, so coming back does not reload it.
-  const [hotelView, setHotelView] = useState<"review" | "pending">("review");
-  const hotels = usePagedList(JSON.stringify([hotelView, query]), (cursor) =>
-    fetchHotels(hotelView, query, cursor),
+  const hotels = usePagedList(JSON.stringify(query), (cursor) =>
+    fetchHotels(query, cursor),
     (hotel) => hotel.rid,
   );
   const matchCallbacks: Pick<Parameters<typeof useMatchReview>[0], "onResult" | "onError"> = {
@@ -170,17 +167,6 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     return () => clearTimeout(timer);
   }, [filters, query.search]);
 
-  // « En cours » tab: matches waiting for the judge, read only when the tab is shown.
-  const pendingMatches = usePagedList(
-    JSON.stringify(["pending_judgment", tab === "pending", query.source, query.brand]),
-    (cursor): Promise<Page<MatchItem>> =>
-      tab === "pending"
-        ? // Not judged yet: no verdict to filter on.
-          fetchMatches({ ...query, verdict: "" }, cursor, "pending_judgment")
-        : Promise.resolve({ items: [], nextCursor: null }),
-    matchKey,
-  );
-
   // Values of the « Validés automatiquement » tab (read only), read only when the tab is shown.
   const autoValues = usePagedList(
     JSON.stringify(["auto_values", tab === "auto", query]),
@@ -207,7 +193,6 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     fetchStats().then(setStats, () => undefined);
     hotels.reload();
     matches.list.reload();
-    pendingMatches.reload();
     autoMatches.list.reload();
     autoValues.reload();
   }
@@ -224,7 +209,6 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     setTab(next);
     setSelected(new Set());
     matches.setSelected(new Set());
-    if (next === "review" || next === "pending") setHotelView(next);
   }
 
   function onToggleRow(rid: string, checked: boolean) {
@@ -499,26 +483,6 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             </>
           ) : (
             <>
-              {tab === "pending" ? (
-                <>
-                  <SectionTitle title={t("pendingTab.matches")} hint={t("pendingTab.matchesHint")} />
-                  {pendingMatches.status === "ready" && pendingMatches.items.length > 0 ? (
-                    <MatchTable rows={pendingMatches.items} readOnly />
-                  ) : null}
-                  <ListFooter
-                    status={pendingMatches.status}
-                    count={pendingMatches.items.length}
-                    shown={t("matches.shown", { count: pendingMatches.items.length })}
-                    empty={t("pendingTab.matchesEmpty")}
-                    error={pendingMatches.error}
-                    hasMore={pendingMatches.hasMore}
-                    loadingMore={pendingMatches.loadingMore}
-                    onMore={pendingMatches.loadMore}
-                    onRetry={pendingMatches.reload}
-                  />
-                  <SectionTitle title={t("pendingTab.values")} hint={t("pendingTab.valuesHint")} />
-                </>
-              ) : null}
               {hotels.status === "ready" && hotels.items.length > 0 ? (
                 <FicheTable
                   rows={hotels.items}
@@ -533,7 +497,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
                 status={hotels.status}
                 count={hotels.items.length}
                 shown={t("list.shown", { count: hotels.items.length })}
-                empty={t(tab === "pending" ? "list.emptyPending" : "list.empty")}
+                empty={t("list.empty")}
                 error={hotels.error}
                 hasMore={hotels.hasMore}
                 loadingMore={hotels.loadingMore}
@@ -725,7 +689,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   );
 }
 
-/** Heading of one list of the « En cours » tab. */
+/** Heading of one list of the « Validés automatiquement » tab. */
 function SectionTitle({ title, hint }: { title: string; hint: string }) {
   return (
     <div className={styles.section}>

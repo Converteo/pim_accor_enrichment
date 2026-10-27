@@ -13,29 +13,20 @@
     "matchesToReview": "Matches to validate",
     "hotelsToReview": "Records to validate",
     "valuesToReview": "Attributes to validate",
-    "valuesPending": "Attributes being enriched",
     "valuesApproved": "Attributes ready for export"
   },
   "legend": {
     "item": "{label} ({count})",
     "review": "Attributes to validate",
-    "pending": "Being enriched",
-    "approved": "Approved"
+    "approved": "Approved",
+    "arriving": "{count, plural, one {# new attribute arrives} other {# new attributes arrive}} within 15 min, at the next pipeline run."
   },
   "tabs": {
     "matches": "Matches to validate",
     "review": "Attributes to validate",
-    "pending": "In progress",
     "auto": "Auto-approved",
     "matchesCount": "{count, plural, one {# match} other {# matches}}",
     "valuesCount": "{count, plural, one {# attribute} other {# attributes}}"
-  },
-  "pendingTab": {
-    "matches": "Matches waiting for the judge",
-    "matchesHint": "The judge agent will assess them on its next run; until then they block the export.",
-    "matchesEmpty": "No match waiting for the judge.",
-    "values": "Attributes being enriched",
-    "valuesHint": "These records have an approved match: the enrichment agent will process them on its next run."
   },
   "autoTab": {
     "matches": "Matches approved automatically",
@@ -105,7 +96,6 @@
   "list": {
     "loading": "Loading…",
     "empty": "No record matches these filters.",
-    "emptyPending": "No attribute being enriched for these filters.",
     "error": "The list could not be loaded.",
     "retry": "Try again",
     "loadMore": "Load more",

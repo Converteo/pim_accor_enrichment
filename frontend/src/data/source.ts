@@ -75,16 +75,9 @@ export function fetchFacets(): Promise<Facets> {
   return call("/hotels/facets");
 }
 
-export function fetchHotels(
-  view: "review" | "pending",
-  filters: Filters,
-  cursor: string | null,
-): Promise<Page<HotelSummary>> {
-  // The verdict only filters matches, `outdated` only the fiches to review.
-  const outdated = view === "review" ? filters.outdated : undefined;
-  return call(
-    `/hotels${query({ view, ...filters, verdict: undefined, outdated, limit: PAGE_SIZE, cursor })}`,
-  );
+export function fetchHotels(filters: Filters, cursor: string | null): Promise<Page<HotelSummary>> {
+  // The verdict only filters matches.
+  return call(`/hotels${query({ view: "review", ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`);
 }
 
 /** Values validated by the threshold, lowest score first (read only). */
@@ -116,7 +109,7 @@ export function fetchFieldValues(pimField: string): Promise<FieldValues> {
 export function fetchMatches(
   { source, brand, verdict }: MatchFilters,
   cursor: string | null,
-  status: "needs_review" | "pending_judgment" | "auto_approved" = "needs_review",
+  status: "needs_review" | "auto_approved" = "needs_review",
 ): Promise<Page<MatchItem>> {
   return call(`/matches${query({ status, source, brand, verdict, limit: PAGE_SIZE, cursor })}`);
 }

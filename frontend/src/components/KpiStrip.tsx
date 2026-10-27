@@ -45,12 +45,6 @@ const ICONS = {
       <path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" />
     </Icon>
   ),
-  valuesPending: (
-    <Icon>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5V12l3 2" />
-    </Icon>
-  ),
   valuesApproved: (
     <Icon>
       <circle cx="12" cy="12" r="8.5" />
@@ -64,7 +58,6 @@ const ITEMS = [
   { key: "matchesToReview", tone: styles.warn },
   { key: "hotelsToReview", tone: "" },
   { key: "valuesToReview", tone: "" },
-  { key: "valuesPending", tone: styles.warn },
   { key: "valuesApproved", tone: styles.success },
 ] as const;
 

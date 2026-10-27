@@ -142,7 +142,7 @@ input.control {
   border-radius: 4px;
 }
 
-/* Tabs with nothing to decide (« En cours », « Validés automatiquement ») */
+/* Tabs with nothing to decide (« Validés automatiquement ») */
 .info {
   font-weight: 400;
   font-size: 14px;

@@ -13,29 +13,20 @@
     "matchesToReview": "Rapprochements à valider",
     "hotelsToReview": "Fiches à valider",
     "valuesToReview": "Attributs à valider",
-    "valuesPending": "Attributs en cours d’enrichissement",
     "valuesApproved": "Attributs prêts à l’export"
   },
   "legend": {
     "item": "{label} ({count})",
     "review": "Attributs à valider",
-    "pending": "En cours d’enrichissement",
-    "approved": "Validés"
+    "approved": "Validés",
+    "arriving": "{count, plural, one {# nouvel attribut arrive} other {# nouveaux attributs arrivent}} sous 15 min, au prochain passage du pipeline."
   },
   "tabs": {
     "matches": "Rapprochements à valider",
     "review": "Attributs à valider",
-    "pending": "En cours",
     "auto": "Validés automatiquement",
     "matchesCount": "{count, plural, one {# rapprochement} other {# rapprochements}}",
     "valuesCount": "{count, plural, one {# attribut} other {# attributs}}"
-  },
-  "pendingTab": {
-    "matches": "Rapprochements en attente de jugement",
-    "matchesHint": "L’agent juge les évaluera à son prochain passage ; ils bloquent l’export d’ici là.",
-    "matchesEmpty": "Aucun rapprochement en attente de jugement.",
-    "values": "Attributs en cours d’enrichissement",
-    "valuesHint": "Ces fiches ont un rapprochement validé : l’agent d’enrichissement les traitera à son prochain passage."
   },
   "autoTab": {
     "matches": "Rapprochements validés automatiquement",
@@ -105,7 +96,6 @@
   "list": {
     "loading": "Chargement…",
     "empty": "Aucune fiche ne correspond à ces filtres.",
-    "emptyPending": "Aucun attribut en cours d’enrichissement pour ces filtres.",
     "error": "Impossible de charger la liste.",
     "retry": "Réessayer",
     "loadMore": "Charger plus",

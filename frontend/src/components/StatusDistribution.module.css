@@ -26,3 +26,7 @@
   align-items: center;
   gap: 8px;
 }
+
+.arriving {
+  color: var(--text-muted);
+}
