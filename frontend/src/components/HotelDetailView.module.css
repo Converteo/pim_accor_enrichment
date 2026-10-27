@@ -94,3 +94,18 @@
   align-items: center;
   gap: 8px;
 }
+
+/* Switch between the values of the table the fiche comes from and the whole fiche */
+.showAll {
+  margin-bottom: 16px;
+}
+
+/* « Validé manuellement »: the reviewer's decision on the value */
+.decision {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+  font-size: 13px;
+}

@@ -82,15 +82,16 @@ export function fetchHotels(view: TableKey, filters: Filters, cursor: string | n
   return call(`/hotels${query({ view, ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`);
 }
 
-export function fetchHotel(rid: string): Promise<HotelDetail> {
-  return call(`/hotels/${encodeURIComponent(rid)}`);
+/** With a table of step 2, `values` holds the fiche's values in that table; without, the whole fiche. */
+export function fetchHotel(rid: string, view?: TableKey): Promise<HotelDetail> {
+  return call(`/hotels/${encodeURIComponent(rid)}${query({ view })}`);
 }
 
 /** Details of several fiches (bulk decisions), a few calls at a time to spare the back. */
 export async function fetchHotelsDetail(rids: readonly string[]): Promise<HotelDetail[]> {
   const results: HotelDetail[] = [];
   for (let start = 0; start < rids.length; start += 4) {
-    results.push(...(await Promise.all(rids.slice(start, start + 4).map(fetchHotel))));
+    results.push(...(await Promise.all(rids.slice(start, start + 4).map((rid) => fetchHotel(rid)))));
   }
   return results;
 }

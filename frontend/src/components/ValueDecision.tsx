@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
+import { offeredDecisions } from "@/domain/rules";
 import type { EnrichmentValue, ValueDecision as Decision } from "@/domain/types";
 import { CorrectionForm } from "./CorrectionForm";
 import styles from "./ValueDecision.module.css";
@@ -11,7 +12,7 @@ interface ValueDecisionProps {
   onDecide: (decision: Decision, comment: string, correctedValue?: string) => void;
 }
 
-/** Approve, reject or correct one value, with an optional comment. */
+/** Approve, reject or correct one value, with an optional comment; only the decisions that change it are offered. */
 export function ValueDecision({ value, busy, onDecide }: ValueDecisionProps) {
   const t = useTranslations("decide");
   const tCorrect = useTranslations("correct");
@@ -20,6 +21,7 @@ export function ValueDecision({ value, busy, onDecide }: ValueDecisionProps) {
   const [correcting, setCorrecting] = useState(false);
   const correctRef = useRef<HTMLButtonElement>(null);
   const label = value.label;
+  const offered = offeredDecisions(value);
 
   return (
     <>
@@ -53,24 +55,28 @@ export function ValueDecision({ value, busy, onDecide }: ValueDecisionProps) {
           >
             ✎ {tCorrect("open")}
           </button>
-          <button
-            type="button"
-            className="btn btn-danger btn-small"
-            disabled={busy}
-            aria-label={t("rejectValue", { label })}
-            onClick={() => onDecide("human_rejected", comment)}
-          >
-            ✕ {t("reject")}
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-small"
-            disabled={busy}
-            aria-label={t("approveValue", { label })}
-            onClick={() => onDecide("human_approved", comment)}
-          >
-            ✓ {t("approve")}
-          </button>
+          {offered.reject ? (
+            <button
+              type="button"
+              className="btn btn-danger btn-small"
+              disabled={busy}
+              aria-label={t("rejectValue", { label })}
+              onClick={() => onDecide("human_rejected", comment)}
+            >
+              ✕ {t("reject")}
+            </button>
+          ) : null}
+          {offered.approve ? (
+            <button
+              type="button"
+              className="btn btn-primary btn-small"
+              disabled={busy}
+              aria-label={t("approveValue", { label })}
+              onClick={() => onDecide("human_approved", comment)}
+            >
+              ✓ {t("approve")}
+            </button>
+          ) : null}
         </div>
       </div>
       {correcting ? (

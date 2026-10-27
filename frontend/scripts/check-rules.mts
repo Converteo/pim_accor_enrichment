@@ -12,8 +12,10 @@ import {
   splitCodes,
   thresholdsValid,
   statusTone,
+  inTable,
+  offeredDecisions,
   textMatches,
-  withReviewCount,
+  withCount,
 } from "../src/domain/rules";
 import type { EnrichmentValue, HotelDetail, HotelSummary } from "../src/domain/types";
 
@@ -61,6 +63,9 @@ function summary(rid: string, toReviewCount: number): HotelSummary {
     country: null,
     sources: [],
     toReviewCount,
+    count: toReviewCount,
+    lastDecidedAt: null,
+    outdatedCount: 0,
     avgScore: null,
     pendingCount: 0,
     conflictCount: 0,
@@ -118,8 +123,26 @@ assert(rejected.toReview.length === 1 && rejected.decided[0]?.finalValue === nul
 
 // A fiche with nothing left to review leaves the list.
 const hotels = [summary("A", 2), summary("B", 1)];
-assert(withReviewCount(hotels, "A", 1)[0]?.toReviewCount === 1, "count updated");
-assert(withReviewCount(hotels, "B", 0).length === 1, "empty fiche removed");
+assert(withCount(hotels, "A", 1)[0]?.count === 1, "count updated");
+assert(withCount(hotels, "B", 0).length === 1, "empty fiche removed");
+
+// Tables of step 2 (?view=): decided values leave their table, except « Validé manuellement ».
+const tableDetail: HotelDetail = { ...detail, values: [value({ enrichmentId: "a", status: "auto_approved" }), value({ enrichmentId: "z", status: "auto_approved" })] };
+const fromAuto = applyDecisions(tableDetail, [{ enrichmentId: "a", decision: "human_rejected" }], null, "");
+assert(fromAuto.values?.map((v) => v.enrichmentId).join() === "z", "decided value leaves its table");
+const fromHuman = applyDecisions(tableDetail, [{ enrichmentId: "a", decision: "human_rejected" }], "x@converteo.com", "", true);
+assert(fromHuman.values?.[0]?.status === "human_rejected" && fromHuman.values?.[0]?.lastDecision?.author === "x@converteo.com", "human table keeps the value with its decision");
+assert(applyDecisions(detail, [], null, "").values === undefined, "no values without a table");
+assert(inTable("review", "needs_review") && inTable("human", "human_corrected") && !inTable("auto_approved", "human_approved"), "inTable");
+
+// The opposite decisions only; an auto-rejected value without a value or outside the PIM format can only be corrected.
+const offered = (status: EnrichmentValue["status"], v: string | null = "True", reason: string | null = null) =>
+  Object.entries(offeredDecisions({ status, value: v, reason })).filter(([, on]) => on).map(([k]) => k).join();
+assert(offered("needs_review") === "approve,reject", "both on needs_review");
+assert(offered("auto_approved") === "reject" && offered("human_approved") === "reject", "approved: reject only");
+assert(offered("auto_rejected") === "approve" && offered("human_rejected") === "approve", "rejected: approve only");
+assert(offered("auto_rejected", null, "already_in_pim") === "" && offered("auto_rejected", "X", "invalid_format") === "", "unfit: correct only");
+assert(offered("human_corrected") === "approve,reject", "corrected: both");
 
 // « Charger plus » never shows a fiche twice.
 const page2 = appendUnique(hotels, [summary("B", 1), summary("C", 3)], (hotel) => hotel.rid);

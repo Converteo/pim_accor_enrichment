@@ -36,6 +36,10 @@ export interface HotelSummary {
   country: string | null;
   sources: string[];
   toReviewCount: number;
+  /** Values of the fiche in the table it is listed in (= toReviewCount for « À vérifier »). */
+  count: number;
+  /** « Validé manuellement »: latest decision among these values; null elsewhere. */
+  lastDecidedAt: string | null;
   /** Values to review flagged « non prioritaire, à vérifier » (outdated), among toReviewCount. */
   outdatedCount: number;
   /** 0-100 */
@@ -88,6 +92,8 @@ export interface HotelDetail {
   pending: EnrichmentValue[];
   conflicts: EnrichmentValue[];
   decided: EnrichmentValue[];
+  /** Read with ?view= only: the fiche's values in that table (PIM-55). */
+  values?: EnrichmentValue[];
 }
 
 export interface MatchItem {

@@ -90,7 +90,8 @@
     "toReview": "Attributes to validate",
     "score": "Average score",
     "info": "Information",
-    "actions": "Actions"
+    "actions": "Actions",
+    "values": "Attributes"
   },
   "row": {
     "view": "View details",
@@ -99,7 +100,8 @@
     "conflicts": "{count, plural, one {# PIM conflict} other {# PIM conflicts}}",
     "select": "Select {name}",
     "selectAll": "Select all",
-    "outdated": "{count, plural, one {# low priority} other {# low priority}}"
+    "outdated": "{count, plural, one {# low priority} other {# low priority}}",
+    "decidedAt": "Last decision on {date}"
   },
   "list": {
     "loading": "Loading…",
@@ -128,7 +130,8 @@
     "toReview": "{count, plural, =0 {Nothing to validate} one {# attribute to validate} other {# attributes to validate}}",
     "avgScore": "Average score {score}/100",
     "loading": "Loading the record…",
-    "error": "The record could not be loaded."
+    "error": "The record could not be loaded.",
+    "inTable": "{count, plural, =0 {No attribute} one {# attribute} other {# attributes}} · {table}"
   },
   "value": {
     "current": "Current PIM value",
@@ -163,7 +166,11 @@
     "decidedBy": "{author}, {date}",
     "pimHas": "The PIM has “{value}”",
     "outdated": "Low priority: to check",
-    "outdatedHint": "Their source may no longer describe the current hotel (for example a page under a former name): check them after the other values."
+    "outdatedHint": "Their source may no longer describe the current hotel (for example a page under a former name): check them after the other values.",
+    "showAll": "See all the record's attributes",
+    "showTable": "Back to the “{table}” attributes",
+    "noneInTable": "No attribute of this record left in this table.",
+    "finalValue": "Retained value: {value}"
   },
   "decision": {
     "human_approved": "Approved",

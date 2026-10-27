@@ -12,7 +12,7 @@ import {
   fetchHotelsDetail,
   fetchStats,
 } from "@/data/source";
-import { applyDecisions, cityLine, formatScore, matchKey, withReviewCount } from "@/domain/rules";
+import { applyDecisions, cityLine, formatScore, inTable, matchKey, withCount } from "@/domain/rules";
 import {
   TABLE_ORDER,
   type EnrichmentDecisionItem,
@@ -89,6 +89,8 @@ function decisionsFor(
 
 interface DetailState {
   rid: string;
+  /** Table of step 2 whose values are shown; null: the whole fiche. */
+  view: TableKey | null;
   data: HotelDetail | null;
   error: unknown;
 }
@@ -122,10 +124,12 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   const [matchComment, setMatchComment] = useState("");
   // Read after an await: the fiche open when the back answers, not when the reviewer clicked.
   const openRidRef = useRef(openRid);
+  const detailViewRef = useRef<TableKey | null>(null);
 
   useEffect(() => {
     openRidRef.current = openRid;
-  }, [openRid]);
+    detailViewRef.current = detail?.view ?? null;
+  }, [openRid, detail?.view]);
 
   // Fiches of the step 2 table, read only while step 2 is shown.
   const hotels = usePagedList(
@@ -220,8 +224,9 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }
 
   /**
-   * One POST for all the values (one INSERT on the back). Optimistic: values leave « à valider » at once;
-   * the fiches leave the list once the back has answered, then the counters and the open fiche are re-read.
+   * One POST for all the values (one INSERT on the back). Optimistic: values leave their table at once (in
+   * « Validé manuellement » they take their new decision); the fiches leave the list once the back has answered,
+   * then the counters and the open fiche are re-read.
    */
   async function submit(decisions: PendingDecision[]): Promise<boolean> {
     if (decisions.length === 0 || busy) return false;
@@ -229,21 +234,30 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     const rids = new Set(decisions.map((decision) => decision.rid));
     const beforeDetail = detail;
     const beforeCounts = new Map(
-      hotels.items.filter((hotel) => rids.has(hotel.rid)).map((hotel) => [hotel.rid, hotel.toReviewCount]),
+      hotels.items.filter((hotel) => rids.has(hotel.rid)).map((hotel) => [hotel.rid, hotel.count]),
     );
+    // A decided value leaves the table it was in, and joins « Validé manuellement ».
+    const moves = (d: PendingDecision) =>
+      table === "human" ? (inTable("human", d.value.status) ? 0 : 1) : inTable(table, d.value.status) ? -1 : 0;
     const remaining = new Map(
-      [...beforeCounts].map(([rid, count]) => [rid, Math.max(0, count - decisions.filter((d) => d.rid === rid).length)]),
+      [...beforeCounts].map(([rid, count]) => [
+        rid,
+        Math.max(0, count + decisions.filter((d) => d.rid === rid).reduce((sum, d) => sum + moves(d), 0)),
+      ]),
     );
     setBusy(true);
     setNotice(null);
     setDetail((current) =>
       current?.data && rids.has(current.rid)
-        ? { ...current, data: applyDecisions(current.data, items, author, new Date().toISOString()) }
+        ? {
+            ...current,
+            data: applyDecisions(current.data, items, author, new Date().toISOString(), table === "human"),
+          }
         : current,
     );
     hotels.setItems((list) =>
       list.map((hotel) =>
-        remaining.has(hotel.rid) ? { ...hotel, toReviewCount: remaining.get(hotel.rid) ?? 0 } : hotel,
+        remaining.has(hotel.rid) ? { ...hotel, count: remaining.get(hotel.rid) ?? 0 } : hotel,
       ),
     );
 
@@ -252,11 +266,11 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       const counts = new Map(remaining);
       const refused = result.rejected.map((rejection) => {
         const decision = decisions.find((d) => d.value.enrichmentId === rejection.enrichmentId);
-        if (decision) counts.set(decision.rid, (counts.get(decision.rid) ?? 0) + 1);
+        if (decision) counts.set(decision.rid, (counts.get(decision.rid) ?? 0) - moves(decision));
         return `${decision?.value.label ?? rejection.enrichmentId} : ${rejection.message}`;
       });
       hotels.setItems((list) =>
-        [...counts].reduce((acc, [rid, count]) => withReviewCount(acc, rid, count), list),
+        [...counts].reduce((acc, [rid, count]) => withCount(acc, rid, count), list),
       );
       setNotice(
         refused.length > 0
@@ -272,7 +286,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       // Undo only what the optimistic update changed: the list or the open fiche may have moved since.
       hotels.setItems((list) =>
         list.map((hotel) =>
-          beforeCounts.has(hotel.rid) ? { ...hotel, toReviewCount: beforeCounts.get(hotel.rid) ?? 0 } : hotel,
+          beforeCounts.has(hotel.rid) ? { ...hotel, count: beforeCounts.get(hotel.rid) ?? 0 } : hotel,
         ),
       );
       setDetail((current) => (current?.rid === beforeDetail?.rid ? beforeDetail : current));
@@ -282,7 +296,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       setBusy(false);
       fetchStats().then(setStats, () => undefined);
       const open = openRidRef.current;
-      if (open !== null && rids.has(open)) loadDetail(open);
+      if (open !== null && rids.has(open)) loadDetail(open, detailViewRef.current);
     }
   }
 
@@ -327,7 +341,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     const decisions = details.flatMap((d) => decisionsFor(d.hotel.rid, d.toReview, decision, comment));
     if (decisions.length === 0) {
       // Everything was decided in the meantime: these fiches no longer belong to the list.
-      hotels.setItems((list) => details.reduce((acc, d) => withReviewCount(acc, d.hotel.rid, 0), list));
+      hotels.setItems((list) => details.reduce((acc, d) => withCount(acc, d.hotel.rid, 0), list));
       setSelected(new Set());
       setNotice({ tone: "success", text: t("decide.saved", { count: 0 }) });
       return true;
@@ -337,32 +351,36 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     return saved;
   }
 
-  function loadDetail(rid: string) {
-    fetchHotel(rid).then(
+  function loadDetail(rid: string, view: TableKey | null) {
+    fetchHotel(rid, view ?? undefined).then(
       (data) => {
-        setDetail((current) => (current?.rid === rid ? { rid, data, error: null } : current));
-        // The fiche is the freshest source for its row's counter.
+        setDetail((current) => (current?.rid === rid && current.view === view ? { rid, view, data, error: null } : current));
+        // The fiche is the freshest source for its row's counter, when it shows the row's table.
+        const values = view === null ? data.toReview : (data.values ?? []);
+        if ((view ?? "review") !== table) return;
         hotels.setItems((list) =>
           list.map((hotel) =>
             hotel.rid === rid
               ? {
                   ...hotel,
-                  toReviewCount: data.toReview.length,
-                  outdatedCount: data.toReview.filter((value) => value.outdated !== null).length,
+                  count: values.length,
+                  outdatedCount: values.filter((value) => value.outdated !== null).length,
                 }
               : hotel,
           ),
         );
       },
-      (error: unknown) => setDetail((current) => (current?.rid === rid ? { ...current, error } : current)),
+      (error: unknown) =>
+        setDetail((current) => (current?.rid === rid && current.view === view ? { ...current, error } : current)),
     );
   }
 
-  function onOpen(rid: string) {
+  /** The fiche opens on the values of the table it comes from (PIM-55); « À vérifier » shows the whole fiche. */
+  function onOpen(rid: string, view: TableKey | null = table === "review" ? null : table) {
     setOpenRid(rid);
     setFicheComment("");
-    setDetail({ rid, data: null, error: null });
-    loadDetail(rid);
+    setDetail({ rid, view, data: null, error: null });
+    loadDetail(rid, view);
   }
 
   const closeMatch = matches.close;
@@ -454,12 +472,13 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             <>
               {hotels.status === "ready" && hotels.items.length > 0 ? (
                 <FicheTable
+                  table={table}
                   rows={hotels.items}
                   selectable={table === "review"}
                   selected={selected}
                   onToggleRow={onToggleRow}
                   onToggleVisible={onToggleVisible}
-                  onOpen={onOpen}
+                  onOpen={(rid) => onOpen(rid)}
                 />
               ) : null}
               <ListFooter
@@ -492,7 +511,11 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         meta={
           detail?.data ? (
             <>
-              {detail.data.toReview.length > 0 ? (
+              {detail.view !== null ? (
+                <span className="status-pill pill-review">
+                  {t("drawer.inTable", { count: detail.data.values?.length ?? 0, table: t(`tables.${detail.view}`) })}
+                </span>
+              ) : detail.data.toReview.length > 0 ? (
                 <span className="status-pill pill-review">
                   <i className="dot dot-review" />
                   {t("drawer.toReview", { count: detail.data.toReview.length })}
@@ -510,7 +533,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
           ) : null
         }
         footer={
-          detail?.data && detail.data.toReview.length > 0 ? (
+          detail?.data && detail.view === null && detail.data.toReview.length > 0 ? (
             <>
               <input
                 className={`field ${styles.comment}`}
@@ -545,6 +568,9 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         {detail?.data ? (
           <HotelDetailView
             detail={detail.data}
+            table={table}
+            view={detail.view}
+            onToggleView={() => onOpen(detail.rid, detail.view === null ? table : null)}
             renderActions={(value) => (
               <ValueDecision
                 value={value}
@@ -560,7 +586,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             <p>
               {t("drawer.error")} {errorText(t, detail.error)}
             </p>
-            <button type="button" className="btn btn-ghost" onClick={() => onOpen(detail.rid)}>
+            <button type="button" className="btn btn-ghost" onClick={() => onOpen(detail.rid, detail.view)}>
               {t("list.retry")}
             </button>
           </div>

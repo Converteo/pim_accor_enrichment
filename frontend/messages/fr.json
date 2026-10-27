@@ -90,7 +90,8 @@
     "toReview": "Attributs à valider",
     "score": "Score moyen",
     "info": "Informations",
-    "actions": "Actions"
+    "actions": "Actions",
+    "values": "Attributs"
   },
   "row": {
     "view": "Voir détail",
@@ -99,7 +100,8 @@
     "conflicts": "{count, plural, one {# conflit PIM} other {# conflits PIM}}",
     "select": "Sélectionner {name}",
     "selectAll": "Tout sélectionner",
-    "outdated": "{count, plural, one {# non prioritaire} other {# non prioritaires}}"
+    "outdated": "{count, plural, one {# non prioritaire} other {# non prioritaires}}",
+    "decidedAt": "Dernière décision le {date}"
   },
   "list": {
     "loading": "Chargement…",
@@ -128,7 +130,8 @@
     "toReview": "{count, plural, =0 {Rien à valider} one {# attribut à valider} other {# attributs à valider}}",
     "avgScore": "Score moyen {score}/100",
     "loading": "Chargement de la fiche…",
-    "error": "Impossible de charger la fiche."
+    "error": "Impossible de charger la fiche.",
+    "inTable": "{count, plural, =0 {Aucun attribut} one {# attribut} other {# attributs}} · {table}"
   },
   "value": {
     "current": "Valeur PIM actuelle",
@@ -163,7 +166,11 @@
     "decidedBy": "{author}, le {date}",
     "pimHas": "Le PIM contient « {value} »",
     "outdated": "Non prioritaires : à vérifier",
-    "outdatedHint": "Leur source ne décrit peut-être plus l’hôtel actuel (par exemple une page sous un ancien nom) : à vérifier après les autres valeurs."
+    "outdatedHint": "Leur source ne décrit peut-être plus l’hôtel actuel (par exemple une page sous un ancien nom) : à vérifier après les autres valeurs.",
+    "showAll": "Voir tous les attributs de la fiche",
+    "showTable": "Revenir aux attributs « {table} »",
+    "noneInTable": "Plus aucun attribut de cette fiche dans ce tableau.",
+    "finalValue": "Valeur retenue : {value}"
   },
   "decision": {
     "human_approved": "Validée",

@@ -1,11 +1,13 @@
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import type { ChangeEvent, MouseEvent } from "react";
 import { cityLine, formatScore } from "@/domain/rules";
-import type { HotelSummary } from "@/domain/types";
+import type { HotelSummary, TableKey } from "@/domain/types";
 import { sourceLabel } from "./labels";
 import styles from "./FicheTable.module.css";
 
 interface FicheTableProps {
+  /** Table of step 2: the count is the fiche's values in it. */
+  table: TableKey;
   rows: HotelSummary[];
   /** Without selection: no bulk decision on this list. */
   selectable: boolean;
@@ -16,6 +18,7 @@ interface FicheTableProps {
 }
 
 export function FicheTable({
+  table,
   rows,
   selectable,
   selected,
@@ -24,6 +27,8 @@ export function FicheTable({
   onOpen,
 }: FicheTableProps) {
   const t = useTranslations();
+  const format = useFormatter();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const headerChecked = rows.length > 0 && rows.every((row) => selected.has(row.rid));
 
   function onHeaderChange(event: ChangeEvent<HTMLInputElement>) {
@@ -56,7 +61,7 @@ export function FicheTable({
               {t("columns.sources")}
             </th>
             <th className={styles.headCell} scope="col">
-              {t("columns.toReview")}
+              {t(table === "review" ? "columns.toReview" : "columns.values")}
             </th>
             <th className={styles.headCell} scope="col">
               {t("columns.score")}
@@ -103,7 +108,7 @@ export function FicheTable({
                 </td>
                 <td className={styles.cell}>
                   <span className={styles.attrs}>
-                    {t("row.values", { count: row.toReviewCount })}
+                    {t("row.values", { count: row.count })}
                   </span>
                   <div className={styles.families}>
                     {row.families.map((family) => t(`families.${family}`)).join(" · ")}
@@ -121,6 +126,17 @@ export function FicheTable({
                 </td>
                 <td className={styles.cell}>
                   <div className={styles.info}>
+                    {row.lastDecidedAt ? (
+                      <span className={styles.city}>
+                        {t("row.decidedAt", {
+                          date: format.dateTime(new Date(row.lastDecidedAt), {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                            timeZone,
+                          }),
+                        })}
+                      </span>
+                    ) : null}
                     {row.pendingCount > 0 ? (
                       <span className="status-pill pill-pending">
                         <i className="dot dot-pending" />
