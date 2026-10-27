@@ -31,7 +31,6 @@ import { AutoValidationPanel } from "./AutoValidationPanel";
 import { BulkBar } from "./BulkBar";
 import { Drawer } from "./Drawer";
 import { ExportBar } from "./ExportBar";
-import { StatusDistribution } from "./StatusDistribution";
 import { STEP_KEYS, StepBar } from "./StepBar";
 import { FicheTable } from "./FicheTable";
 import { GuidedTour, type TourStep } from "./GuidedTour";
@@ -466,7 +465,6 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
           <StepBar step={step} stats={stats} onStep={(next) => navigate(next, "review")}>
             <ExportBar stats={stats} />
           </StepBar>
-          <StatusDistribution stats={stats} />
         </Topbar>
         <main className={styles.app}>
           <Toolbar

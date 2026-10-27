@@ -44,12 +44,6 @@
       "human": "Toutes les décisions des relecteurs (validées, rejetées, corrigées), la plus récente d’abord. Ouvrez une fiche pour revenir dessus."
     }
   },
-  "legend": {
-    "item": "{label} ({count})",
-    "review": "Attributs à vérifier",
-    "approved": "Validés",
-    "arriving": "{count, plural, one {# nouvel attribut arrive} other {# nouveaux attributs arrivent}} sous 15 min, au prochain passage du pipeline."
-  },
   "search": {
     "placeholder": "Nom, ville ou code"
   },

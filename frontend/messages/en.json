@@ -44,12 +44,6 @@
       "human": "Every reviewer decision (approved, rejected, corrected), most recent first. Open a record to change it."
     }
   },
-  "legend": {
-    "item": "{label} ({count})",
-    "review": "Attributes to check",
-    "approved": "Approved",
-    "arriving": "{count, plural, one {# new attribute arrives} other {# new attributes arrive}} within 15 min, at the next pipeline run."
-  },
   "search": {
     "placeholder": "Name, city or code"
   },
