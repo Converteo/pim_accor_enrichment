@@ -11,19 +11,18 @@
     "help": "Guided tour"
   },
   "steps": {
+    "label": "Validation steps",
+    "toCheck": "to check",
+    "done": "Nothing to check",
     "matches": {
-      "eyebrow": "Step 1",
-      "title": "Hotel matching",
-      "question": "Is it the right hotel?",
-      "count": "{count, plural, =0 {Nothing to check} one {# match to check} other {# matches to check}}",
-      "next": "A confirmed hotel sends its values to step 2."
+      "title": "Matches",
+      "short": "Matches",
+      "hint": "Is it the right hotel? A confirmed hotel sends its values to step 2."
     },
     "values": {
-      "eyebrow": "Step 2",
-      "title": "Attribute validation",
-      "question": "Is the information right?",
-      "count": "{count, plural, =0 {Nothing to check} one {# attribute to check} other {# attributes to check}}{hotels, plural, =0 {} one { · # record} other { · # records}}",
-      "next": "Only validated attributes are exported."
+      "title": "Attributes",
+      "short": "Attributes",
+      "hint": "Is the information right? Only validated attributes are exported."
     }
   },
   "tables": {
@@ -299,15 +298,17 @@
     "record": "{date} · {author} · {hotels, plural, one {# hotel} other {# hotels}} · {rows, plural, one {# value} other {# values}}",
     "unauthorized": "Unidentified user: the server refused the action.",
     "busy": "An export is running: wait for it to finish before launching another one.",
-    "blockedDetail": "The export will be possible once everything is decided. Still left: {details}.",
     "waiting": {
       "matchesToReview": "{count, plural, one {# match to check} other {# matches to check}}",
       "valuesToReview": "{count, plural, one {# attribute to check} other {# attributes to check}}",
       "matchesPending": "{count, plural, one {# match waiting for the judge} other {# matches waiting for the judge}}",
       "valuesPending": "{count, plural, one {# attribute being enriched} other {# attributes being enriched}}"
     },
-    "eyebrow": "Finally",
-    "approved": "{count, plural, =0 {No attribute ready} one {# attribute ready} other {# attributes ready}}"
+    "short": "Export",
+    "approvedUnit": "ready",
+    "remaining": "Remaining: {details}.",
+    "confirmShort": "Launch?",
+    "historyShort": "{count, plural, one {# export} other {# exports}}"
   },
   "settings": {
     "title": "Automatic validation thresholds",
@@ -352,7 +353,7 @@
     "steps": {
       "steps": {
         "title": "Two steps, then the export",
-        "body": "Step 1: check that each source page describes the right hotel. Step 2: check the attributes these pages bring. Click a card to switch steps; the export runs once everything is decided."
+        "body": "Step 1: check that each source page describes the right hotel. Step 2: check the attributes these pages bring. Click a step to open it; the export runs once everything is decided."
       },
       "why": {
         "title": "Why it needs checking",

@@ -1,69 +1,33 @@
-/* Third step card: same tile as the steps, the export state and its button */
-.band {
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  padding: 18px 20px;
+/* Last segment of the step bar: same badge, title and figure as the steps, plus the launch button */
+.segment {
+  flex: 1 1 auto;
   min-width: 0;
-}
-
-.row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.eyebrow {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--brand-icon);
-}
-
-.count {
-  margin: 8px 0 0;
-  font-family: var(--font-display), Montserrat, sans-serif;
-  font-weight: 700;
-  font-size: 17px;
-  line-height: 24px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.text {
-  min-width: 0;
-}
-
-.title {
-  margin-top: 4px;
-  font-size: 17px;
-  line-height: 22px;
-}
-
-.status {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--text);
-}
-
-.actions {
+  height: 64px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 8px 0 12px;
 }
 
-.confirm {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
+.icon {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .execution {
-  margin: 10px 0 0;
-  font-size: 13px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--loyalty);
+  font-weight: 500;
 }
 
 .execution:empty {
@@ -74,15 +38,54 @@
   color: var(--offer);
 }
 
-.history {
-  margin-top: 10px;
+.actions {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.confirm {
   font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.tipWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.tip {
+  composes: tip from "./StepBar.module.css";
+  left: auto;
+  right: 0;
+}
+
+.tipWrap:hover .tip,
+.tipWrap:focus-within .tip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.4s;
+}
+
+/* Past exports: a small link after the figure, the list opens under the bar */
+.history {
+  display: inline;
+  margin-left: 8px;
 }
 
 .history summary {
+  display: inline;
   cursor: pointer;
   color: var(--link);
-  width: fit-content;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.history summary::-webkit-details-marker {
+  display: none;
 }
 
 .history summary:focus-visible {
@@ -90,20 +93,35 @@
   outline-offset: 2px;
 }
 
-.history ul {
+.panel {
+  position: absolute;
+  z-index: 15;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(520px, calc(100vw - 32px));
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 16px;
   list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  white-space: normal;
+  color: var(--text);
 }
 
-.history li {
+.panel li {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 6px 0;
+  padding: 8px 0;
+}
+
+.panel li + li {
   border-top: 1px solid var(--border);
-  color: var(--text);
 }
 
 .files {
@@ -114,4 +132,12 @@
 
 .files a {
   color: var(--link);
+}
+
+@media (max-width: 560px) {
+  .segment {
+    height: 56px;
+    gap: 10px;
+    padding: 0 6px 0 8px;
+  }
 }

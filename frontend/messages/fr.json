@@ -11,19 +11,18 @@
     "help": "Visite guidée"
   },
   "steps": {
+    "label": "Étapes de la validation",
+    "toCheck": "à vérifier",
+    "done": "Rien à vérifier",
     "matches": {
-      "eyebrow": "Étape 1",
-      "title": "Rapprochement d’hôtels",
-      "question": "Est-ce le bon hôtel ?",
-      "count": "{count, plural, =0 {Rien à vérifier} one {# rapprochement à vérifier} other {# rapprochements à vérifier}}",
-      "next": "Un hôtel confirmé envoie ses valeurs à l’étape 2."
+      "title": "Rapprochements",
+      "short": "Rapproch.",
+      "hint": "Est-ce le bon hôtel ? Un hôtel confirmé envoie ses valeurs à l’étape 2."
     },
     "values": {
-      "eyebrow": "Étape 2",
-      "title": "Validation des attributs",
-      "question": "Les infos sont-elles justes ?",
-      "count": "{count, plural, =0 {Rien à vérifier} one {# attribut à vérifier} other {# attributs à vérifier}}{hotels, plural, =0 {} one { · # fiche} other { · # fiches}}",
-      "next": "Seuls les attributs validés partent à l’export."
+      "title": "Attributs",
+      "short": "Attributs",
+      "hint": "Les infos sont-elles justes ? Seuls les attributs validés partent à l’export."
     }
   },
   "tables": {
@@ -299,15 +298,17 @@
     "record": "{date} · {author} · {hotels, plural, one {# hôtel} other {# hôtels}} · {rows, plural, one {# valeur} other {# valeurs}}",
     "unauthorized": "Utilisateur non identifié : action refusée par le serveur.",
     "busy": "Un export est en cours : attendez sa fin avant d’en relancer un.",
-    "blockedDetail": "L’export sera possible quand tout sera décidé. Il reste : {details}.",
     "waiting": {
       "matchesToReview": "{count, plural, one {# rapprochement à vérifier} other {# rapprochements à vérifier}}",
       "valuesToReview": "{count, plural, one {# attribut à vérifier} other {# attributs à vérifier}}",
       "matchesPending": "{count, plural, one {# rapprochement en attente de jugement} other {# rapprochements en attente de jugement}}",
       "valuesPending": "{count, plural, one {# attribut en cours d’enrichissement} other {# attributs en cours d’enrichissement}}"
     },
-    "eyebrow": "Pour finir",
-    "approved": "{count, plural, =0 {Aucun attribut prêt} one {# attribut prêt} other {# attributs prêts}}"
+    "short": "Export",
+    "approvedUnit": "{count, plural, one {prêt} other {prêts}}",
+    "remaining": "Reste : {details}.",
+    "confirmShort": "Lancer ?",
+    "historyShort": "{count, plural, one {# export} other {# exports}}"
   },
   "settings": {
     "title": "Seuils de validation automatique",
@@ -352,7 +353,7 @@
     "steps": {
       "steps": {
         "title": "Deux étapes, puis l’export",
-        "body": "Étape 1 : vérifier que chaque page source décrit bien le bon hôtel. Étape 2 : vérifier les attributs que ces pages apportent. Cliquez sur une carte pour changer d’étape ; l’export part quand tout est décidé."
+        "body": "Étape 1 : vérifier que chaque page source décrit bien le bon hôtel. Étape 2 : vérifier les attributs que ces pages apportent. Cliquez sur une étape pour l’ouvrir ; l’export part quand tout est décidé."
       },
       "why": {
         "title": "Pourquoi c’est à vérifier",

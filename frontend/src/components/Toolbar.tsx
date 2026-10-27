@@ -11,7 +11,7 @@ import {
   type TableKey,
 } from "@/domain/types";
 import { BrandFilter } from "./BrandFilter";
-import { STEP_KEYS } from "./StepCards";
+import { STEP_KEYS } from "./StepBar";
 import { codeLabel, sourceLabel } from "./labels";
 import styles from "./Toolbar.module.css";
 

@@ -332,6 +332,7 @@ input[type="checkbox"] {
 }
 
 .btn:disabled,
+.btn[aria-disabled="true"],
 .btn-icon:disabled {
   opacity: 0.5;
   cursor: not-allowed;
