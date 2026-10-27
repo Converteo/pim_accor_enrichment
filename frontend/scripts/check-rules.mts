@@ -12,6 +12,7 @@ import {
   splitCodes,
   thresholdsValid,
   statusTone,
+  textMatches,
   withReviewCount,
 } from "../src/domain/rules";
 import type { EnrichmentValue, HotelDetail, HotelSummary } from "../src/domain/types";
@@ -178,5 +179,9 @@ assert([" ", "101", "-1", "7.5", "abc"].every((text) => parseThreshold(text) ===
 assert(thresholdsValid({ approveThreshold: 80, rejectThreshold: 30 }), "reject under approve");
 assert(!thresholdsValid({ approveThreshold: 50, rejectThreshold: 60 }), "reject over approve");
 assert(thresholdsValid({ approveThreshold: null, rejectThreshold: 60 }), "approve off");
+
+assert(textMatches("Novotel Suites", "nov") && textMatches("Novotel", " NOV "), "brand search ignores case");
+assert(textMatches("Hôtel Mercure", "hotel") && textMatches("Mercure", "ÉRC"), "brand search ignores accents");
+assert(!textMatches("ibis", "nov") && textMatches("ibis", ""), "brand search");
 
 console.log("check-rules: ok");

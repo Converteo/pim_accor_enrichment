@@ -139,6 +139,12 @@ export function joinCodes(keys: readonly string[]): string {
   return keys.join("|");
 }
 
+/** Case- and accent-insensitive « contains » (« nov » finds « Novotel », « hotel » finds « Hôtel »). */
+export function textMatches(text: string, query: string): boolean {
+  const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  return fold(text).includes(fold(query.trim()));
+}
+
 export function cityLine(place: { city: string | null; country: string | null }): string {
   return [place.city, place.country].filter(Boolean).join(", ");
 }

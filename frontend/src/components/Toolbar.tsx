@@ -10,6 +10,7 @@ import {
   type Stats,
   type TabKey,
 } from "@/domain/types";
+import { BrandFilter } from "./BrandFilter";
 import { codeLabel, sourceLabel } from "./labels";
 import styles from "./Toolbar.module.css";
 
@@ -108,18 +109,12 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             </>
           }
         >
-          <select
+          <BrandFilter
             className={`${styles.control} ${styles.select}`}
+            brands={facets?.brands ?? []}
             value={filters.brand}
-            onChange={select("brand")}
-          >
-            <option value="">{t("filters.allBrands")}</option>
-            {facets?.brands.map((brand) => (
-              <option key={brand} value={brand}>
-                {brand}
-              </option>
-            ))}
-          </select>
+            onChange={(brand) => onFilter({ brand })}
+          />
         </Segment>
         <Segment
           label={t("filters.sourceLabel")}

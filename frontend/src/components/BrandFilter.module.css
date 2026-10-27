@@ -1,0 +1,44 @@
+.combo {
+  position: relative;
+  display: block;
+}
+
+.list {
+  position: absolute;
+  z-index: 15;
+  top: calc(100% + 14px);
+  left: 0;
+  min-width: 240px;
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.option {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.option[aria-selected="true"] {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.active {
+  background: var(--brand-soft);
+}
+
+.none {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
