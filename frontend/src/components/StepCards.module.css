@@ -1,0 +1,100 @@
+/* Cards modelled on the "Vos avantages vous attendent" tiles: steps 1 and 2, then the export */
+.steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr) 20px minmax(0, 1.25fr);
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.card {
+  font: inherit;
+  text-align: left;
+  background: var(--surface);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  cursor: pointer;
+  color: var(--text);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.active,
+.active:hover {
+  border-color: var(--tab-line);
+}
+
+.eyebrow {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brand-icon);
+}
+
+.active .eyebrow {
+  color: var(--tab-line);
+}
+
+.title {
+  font-family: var(--font-display), Montserrat, sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 22px;
+  color: var(--ink);
+}
+
+.question {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.count {
+  font-family: var(--font-display), Montserrat, sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  margin-top: 8px;
+}
+
+.next {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.arrow {
+  width: 20px;
+  height: 20px;
+  align-self: center;
+  color: var(--brand-icon);
+}
+
+@media (max-width: 1000px) {
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+}

@@ -9,41 +9,49 @@
     "noUser": "Unidentified user",
     "settings": "Automation thresholds"
   },
-  "kpi": {
-    "matchesToReview": "Matches to validate",
-    "hotelsToReview": "Records to validate",
-    "valuesToReview": "Attributes to validate",
-    "valuesApproved": "Attributes ready for export"
+  "steps": {
+    "matches": {
+      "eyebrow": "Step 1",
+      "title": "Hotel matching",
+      "question": "Is it the right hotel?",
+      "count": "{count, plural, =0 {Nothing to check} one {# match to check} other {# matches to check}}",
+      "next": "A confirmed hotel sends its values to step 2."
+    },
+    "values": {
+      "eyebrow": "Step 2",
+      "title": "Attribute validation",
+      "question": "Is the information right?",
+      "count": "{count, plural, =0 {Nothing to check} one {# attribute to check} other {# attributes to check}}{hotels, plural, =0 {} one { · # record} other { · # records}}",
+      "next": "Only validated attributes are exported."
+    }
+  },
+  "tables": {
+    "review": "To check",
+    "auto_approved": "Auto-confirmed",
+    "auto_rejected": "Auto-rejected",
+    "human": "Manually reviewed",
+    "valuesIn": "{values, plural, one {# attribute} other {# attributes}} in {hotels, plural, one {# record} other {# records}}"
+  },
+  "tableHints": {
+    "matches": {
+      "auto_approved": "Judge agent score at or above the approval threshold: the source is used for the hotel. Borderline cases first; open one to reject it.",
+      "auto_rejected": "Score below the rejection threshold: the source is not used for the hotel. Borderline cases first; open one to confirm it anyway.",
+      "human": "Every reviewer decision, most recent first. Open one to change it."
+    },
+    "values": {
+      "auto_approved": "Score at or above the approval threshold, no warning: these attributes will be exported. Open a record to change them.",
+      "auto_rejected": "Score below the rejection threshold or conflict with the PIM: these attributes are not exported. Open a record to change them.",
+      "human": "Every reviewer decision (approved, rejected, corrected), most recent first. Open a record to change it."
+    }
   },
   "legend": {
     "item": "{label} ({count})",
-    "review": "Attributes to validate",
+    "review": "Attributes to check",
     "approved": "Approved",
     "arriving": "{count, plural, one {# new attribute arrives} other {# new attributes arrive}} within 15 min, at the next pipeline run."
   },
-  "tabs": {
-    "matches": "Matches to validate",
-    "review": "Attributes to validate",
-    "auto": "Auto-approved",
-    "matchesCount": "{count, plural, one {# match} other {# matches}}",
-    "valuesCount": "{count, plural, one {# attribute} other {# attributes}}"
-  },
-  "autoTab": {
-    "matches": "Matches approved automatically",
-    "matchesHint": "Judge agent score at or above the approval threshold in force. For information: lowest score first, borderline cases on top.",
-    "matchesEmpty": "No match approved automatically for this filter.",
-    "values": "Attributes approved automatically",
-    "valuesHint": "Score at or above the approval threshold, no warning. They go to the export. For information: borderline cases first.",
-    "valuesEmpty": "No attribute approved automatically for these filters: the attributes approval threshold may be off (“Automation thresholds”).",
-    "valuesShown": "{count, plural, one {# attribute shown} other {# attributes shown}}",
-    "attribute": "Attribute",
-    "value": "Approved value",
-    "excerpt": "Source excerpt",
-    "score": "Score",
-    "threshold": "threshold {value}"
-  },
   "search": {
-    "placeholder": "Search for a hotel or city…"
+    "placeholder": "Name, city or code"
   },
   "filters": {
     "allBrands": "All brands",
@@ -213,7 +221,7 @@
     "scrapedName": "Scraped name",
     "pageName": "Page name",
     "openPage": "Open the source page ↗",
-    "delay": "Once approved, the hotel is enriched for this source on the next pipeline run (every 15 minutes); its values then appear in “Attributes to validate”. Once rejected, the source is no longer used for this hotel.",
+    "delay": "Once approved, the hotel is enriched for this source on the next pipeline run (every 15 minutes); its values then appear in step 2. Once rejected, the source is no longer used for this hotel.",
     "empty": "No match to validate for this filter.",
     "approve": "Approve the match",
     "reject": "Reject the match",
@@ -243,6 +251,13 @@
       "same_hotel": "Same hotel",
       "different_hotel": "Different hotel",
       "undetermined": "Undetermined"
+    },
+    "emptyTable": "No match in this table for these filters.",
+    "approveAnyway": "Confirm anyway",
+    "decision": "Decision",
+    "decisions": {
+      "human_approved": "Confirmed",
+      "human_rejected": "Rejected"
     }
   },
   "bulkMatches": {
@@ -276,11 +291,13 @@
     "busy": "An export is running: wait for it to finish before launching another one.",
     "blockedDetail": "The export will be possible once everything is decided. Still left: {details}.",
     "waiting": {
-      "matchesToReview": "{count, plural, one {# match to validate} other {# matches to validate}}",
-      "valuesToReview": "{count, plural, one {# attribute to validate} other {# attributes to validate}}",
+      "matchesToReview": "{count, plural, one {# match to check} other {# matches to check}}",
+      "valuesToReview": "{count, plural, one {# attribute to check} other {# attributes to check}}",
       "matchesPending": "{count, plural, one {# match waiting for the judge} other {# matches waiting for the judge}}",
       "valuesPending": "{count, plural, one {# attribute being enriched} other {# attributes being enriched}}"
-    }
+    },
+    "eyebrow": "Finally",
+    "approved": "{count, plural, =0 {No attribute ready} one {# attribute ready} other {# attributes ready}}"
   },
   "settings": {
     "title": "Automatic validation thresholds",

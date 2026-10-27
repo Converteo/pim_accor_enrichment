@@ -22,7 +22,7 @@ type Execution = { id: string } & ExportExecution & {
   empty?: boolean;
 };
 
-/** Export of the PIM enhanced: blocked while values or matches still wait for a decision. */
+/** Export of the PIM enhanced, third card of the steps: blocked while values or matches still wait for a decision. */
 export function ExportBar({ stats }: ExportBarProps) {
   const t = useTranslations("export");
   const pending = stats?.pendingForExport;
@@ -125,9 +125,11 @@ export function ExportBar({ stats }: ExportBarProps) {
     <section className={styles.band} aria-labelledby={`${id}-title`}>
       <div className={styles.row}>
         <div className={styles.text}>
+          <span className={styles.eyebrow}>{t("eyebrow")}</span>
           <h2 id={`${id}-title`} className={styles.title}>
             {t("title")}
           </h2>
+          <p className={styles.count}>{stats ? t("approved", { count: stats.valuesApproved }) : "—"}</p>
           <p id={`${id}-status`} className={styles.status} role="status">
             {error
               ? `${t("statusError")} ${errorMessage(error)}`

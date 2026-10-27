@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   ApiError,
   decideEnrichments,
-  fetchAutoApprovedValues,
   fetchFacets,
   fetchHotel,
   fetchHotels,
@@ -13,23 +13,26 @@ import {
   fetchStats,
 } from "@/data/source";
 import { applyDecisions, cityLine, formatScore, matchKey, withReviewCount } from "@/domain/rules";
-import type {
-  AutoApprovedValue,
-  EnrichmentDecisionItem,
-  EnrichmentValue,
-  Facets,
-  Filters,
-  HotelDetail,
-  Page,
-  Stats,
-  TabKey,
-  ValueDecision as Decision,
+import {
+  TABLE_ORDER,
+  type EnrichmentDecisionItem,
+  type EnrichmentValue,
+  type Facets,
+  type Filters,
+  type HotelDetail,
+  type HotelSummary,
+  type Page,
+  type Stats,
+  type Step,
+  type TableKey,
+  type ValueDecision as Decision,
 } from "@/domain/types";
 import { AutoValidationPanel } from "./AutoValidationPanel";
-import { AutoValueTable } from "./AutoValueTable";
 import { BulkBar } from "./BulkBar";
 import { Drawer } from "./Drawer";
 import { ExportBar } from "./ExportBar";
+import { StatusDistribution } from "./StatusDistribution";
+import { STEP_KEYS, StepCards } from "./StepCards";
 import { FicheTable } from "./FicheTable";
 import { HotelDetailView } from "./HotelDetailView";
 import { MatchDetailView } from "./MatchDetailView";
@@ -96,9 +99,13 @@ interface ValidationScreenProps {
 
 export function ValidationScreen({ author }: ValidationScreenProps) {
   const t = useTranslations();
-  // Matches come first (their values appear once approved); with none to validate, the attributes tab opens.
-  const [tab, setTab] = useState<TabKey>("matches");
-  const tabChosen = useRef(false);
+  // Step and table live in the URL (back button, shareable link). Without a step there, matches come first
+  // (their values appear once approved); with none to check, step 2 opens.
+  const searchParams = useSearchParams();
+  const urlStep = searchParams.get("step");
+  const [defaultStep, setDefaultStep] = useState<Step>(1);
+  const step: Step = urlStep === "1" ? 1 : urlStep === "2" ? 2 : defaultStep;
+  const table: TableKey = TABLE_ORDER.find((key) => key === searchParams.get("table")) ?? "review";
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   // The search box filters on the back: wait for a pause in typing.
@@ -120,9 +127,11 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     openRidRef.current = openRid;
   }, [openRid]);
 
-  // The matches tab keeps the last fiche list, so coming back does not reload it.
-  const hotels = usePagedList(JSON.stringify(query), (cursor) =>
-    fetchHotels(query, cursor),
+  // Fiches of the step 2 table, read only while step 2 is shown.
+  const hotels = usePagedList(
+    JSON.stringify([step, table, query]),
+    (cursor): Promise<Page<HotelSummary>> =>
+      step === 2 ? fetchHotels(table, query, cursor) : Promise.resolve({ items: [], nextCursor: null }),
     (hotel) => hotel.rid,
   );
   const matchCallbacks: Pick<Parameters<typeof useMatchReview>[0], "onResult" | "onError"> = {
@@ -139,48 +148,31 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             }
           : { tone: "success", text: saved },
       );
-      if (accepted > 0) {
-        setMatchComment("");
-        // A rejected auto-approved match takes its values out of the auto-approved and to-review lists.
-        if (tab === "auto") {
-          autoValues.reload();
-          hotels.reload();
-        }
-      }
+      if (accepted > 0) setMatchComment("");
       fetchStats().then(setStats, () => undefined);
     },
     onError: (error) => setNotice({ tone: "error", text: failedText(error) }),
   };
-  const matches = useMatchReview({ filters: query, ...matchCallbacks });
-  // « Validés automatiquement » tab: same detail as the matches to validate, with a reject button (PIM-49).
-  const autoMatches = useMatchReview({
+  // The step 1 table (PIM-54); a decision moves the match to « Validé manuellement ».
+  const matches = useMatchReview({
     filters: query,
-    status: "auto_approved",
-    enabled: tab === "auto",
+    status: table === "review" ? "needs_review" : table,
+    enabled: step === 1,
+    author,
     ...matchCallbacks,
   });
-  // The tab decides which list the match drawer belongs to.
-  const review = tab === "auto" ? autoMatches : matches;
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(filters), filters.search === query.search ? 0 : 300);
     return () => clearTimeout(timer);
   }, [filters, query.search]);
 
-  // Values of the « Validés automatiquement » tab (read only), read only when the tab is shown.
-  const autoValues = usePagedList(
-    JSON.stringify(["auto_values", tab === "auto", query]),
-    (cursor): Promise<Page<AutoApprovedValue>> =>
-      tab === "auto" ? fetchAutoApprovedValues(query, cursor) : Promise.resolve({ items: [], nextCursor: null }),
-    ({ hotel, value }) => `${hotel.rid}|${value.enrichmentId ?? value.pimField}`,
-  );
-
   useEffect(() => {
     // Indicators and facets are secondary: the list shows its own error if the back is down.
     fetchStats().then(
       (loaded) => {
         setStats(loaded);
-        if (!tabChosen.current && loaded.matchesToReview === 0) setTab("review");
+        if (loaded.matchesToReview === 0) setDefaultStep(2);
       },
       () => undefined,
     );
@@ -193,8 +185,6 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     fetchStats().then(setStats, () => undefined);
     hotels.reload();
     matches.list.reload();
-    autoMatches.list.reload();
-    autoValues.reload();
   }
 
   // A selection only makes sense on the list it was made on.
@@ -204,9 +194,14 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
     matches.setSelected(new Set());
   }
 
-  function onTab(next: TabKey) {
-    tabChosen.current = true;
-    setTab(next);
+  /** Pushed to the history: the back button returns to the previous step or table. */
+  function navigate(nextStep: Step, nextTable: TableKey) {
+    if (nextStep === step && nextTable === table) return;
+    const params = new URLSearchParams(searchParams);
+    params.set("step", String(nextStep));
+    if (nextTable === "review") params.delete("table");
+    else params.set("table", nextTable);
+    window.history.pushState(null, "", `?${params}`);
     setSelected(new Set());
     matches.setSelected(new Set());
   }
@@ -371,18 +366,16 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }
 
   const closeMatch = matches.close;
-  const closeAutoMatch = autoMatches.close;
   const onClose = useCallback(() => {
     setOpenRid(null);
     setSettingsOpen(false);
     closeMatch();
-    closeAutoMatch();
-  }, [closeMatch, closeAutoMatch]);
+  }, [closeMatch, setOpenRid, setSettingsOpen]);
 
   function onOpenMatch(key: string) {
     setOpenRid(null);
     setMatchComment("");
-    review.setOpenKey(key);
+    matches.setOpenKey(key);
   }
 
   function onToggleMatch(key: string, checked: boolean) {
@@ -395,8 +388,8 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   }
 
   // Last match shown: the drawer slides out with its content after a decision or a close.
-  const openMatch = review.shown;
-  const drawerOpen = openRid !== null || review.open !== null || settingsOpen;
+  const openMatch = matches.shown;
+  const drawerOpen = openRid !== null || matches.open !== null || settingsOpen;
 
   const summary = hotels.items.find((hotel) => hotel.rid === detail?.rid);
   const shownHotel = detail?.data?.hotel ?? summary;
@@ -406,28 +399,37 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       {/* The drawer is modal: the page behind it leaves the focus order and the accessibility tree. */}
       <div inert={drawerOpen}>
         <Topbar
-          stats={stats}
           author={author}
           onOpenSettings={() => {
             onClose();
             setSettingsOpen(true);
           }}
-        />
+        >
+          <StepCards step={step} stats={stats} onStep={(next) => navigate(next, "review")}>
+            <ExportBar stats={stats} />
+          </StepCards>
+          <StatusDistribution stats={stats} />
+        </Topbar>
         <main className={styles.app}>
           <Toolbar
-            tab={tab}
+            step={step}
+            table={table}
             filters={filters}
             stats={stats}
             facets={facets}
             onFilter={onFilter}
-            onTab={onTab}
+            onTable={(next) => navigate(step, next)}
           />
-          <ExportBar stats={stats} />
-          {tab === "matches" ? (
+          {table === "review" ? null : (
+            <p className={styles.hint}>{t(`tableHints.${STEP_KEYS[step]}.${table}`)}</p>
+          )}
+          {step === 1 ? (
             <>
               {matches.list.status === "ready" && matches.list.items.length > 0 ? (
                 <MatchTable
                   rows={matches.list.items}
+                  readOnly={table !== "review"}
+                  decisions={table === "human"}
                   selected={matches.selected}
                   onToggleRow={onToggleMatch}
                   onToggleVisible={(checked) =>
@@ -440,7 +442,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
                 status={matches.list.status}
                 count={matches.list.items.length}
                 shown={t("matches.shown", { count: matches.list.items.length })}
-                empty={t("matches.empty")}
+                empty={t(table === "review" ? "matches.empty" : "matches.emptyTable")}
                 error={matches.list.error}
                 hasMore={matches.list.hasMore}
                 loadingMore={matches.list.loadingMore}
@@ -448,45 +450,12 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
                 onRetry={matches.list.reload}
               />
             </>
-          ) : tab === "auto" ? (
-            <>
-              <SectionTitle title={t("autoTab.matches")} hint={t("autoTab.matchesHint")} />
-              {autoMatches.list.status === "ready" && autoMatches.list.items.length > 0 ? (
-                <MatchTable rows={autoMatches.list.items} readOnly onOpen={onOpenMatch} />
-              ) : null}
-              <ListFooter
-                status={autoMatches.list.status}
-                count={autoMatches.list.items.length}
-                shown={t("matches.shown", { count: autoMatches.list.items.length })}
-                empty={t("autoTab.matchesEmpty")}
-                error={autoMatches.list.error}
-                hasMore={autoMatches.list.hasMore}
-                loadingMore={autoMatches.list.loadingMore}
-                onMore={autoMatches.list.loadMore}
-                onRetry={autoMatches.list.reload}
-              />
-              <SectionTitle title={t("autoTab.values")} hint={t("autoTab.valuesHint")} />
-              {autoValues.status === "ready" && autoValues.items.length > 0 ? (
-                <AutoValueTable rows={autoValues.items} />
-              ) : null}
-              <ListFooter
-                status={autoValues.status}
-                count={autoValues.items.length}
-                shown={t("autoTab.valuesShown", { count: autoValues.items.length })}
-                empty={t("autoTab.valuesEmpty")}
-                error={autoValues.error}
-                hasMore={autoValues.hasMore}
-                loadingMore={autoValues.loadingMore}
-                onMore={autoValues.loadMore}
-                onRetry={autoValues.reload}
-              />
-            </>
           ) : (
             <>
               {hotels.status === "ready" && hotels.items.length > 0 ? (
                 <FicheTable
                   rows={hotels.items}
-                  selectable={tab === "review"}
+                  selectable={table === "review"}
                   selected={selected}
                   onToggleRow={onToggleRow}
                   onToggleVisible={onToggleVisible}
@@ -603,7 +572,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         )}
       </Drawer>
       <Drawer
-        open={review.open !== null}
+        open={matches.open !== null}
         eyebrow={
           openMatch
             ? t("drawer.eyebrow", {
@@ -631,23 +600,25 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
                 aria-label={t("matches.comment")}
                 onChange={(event) => setMatchComment(event.target.value)}
               />
-              <button
-                type="button"
-                className="btn btn-danger"
-                disabled={review.busy}
-                onClick={() => void review.decide([matchKey(openMatch)], "human_rejected", matchComment)}
-              >
-                {t("matches.reject")}
-              </button>
-              {/* Already approved by the threshold: the reviewer can only go back on it. */}
-              {openMatch.status === "auto_approved" ? null : (
+              {/* A reviewer can go back on any decision, automatic or human: only the opposite one is offered. */}
+              {openMatch.status === "auto_rejected" || openMatch.status === "human_rejected" ? null : (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={matches.busy}
+                  onClick={() => void matches.decide([matchKey(openMatch)], "human_rejected", matchComment)}
+                >
+                  {t("matches.reject")}
+                </button>
+              )}
+              {openMatch.status === "auto_approved" || openMatch.status === "human_approved" ? null : (
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={review.busy}
-                  onClick={() => void review.decide([matchKey(openMatch)], "human_approved", matchComment)}
+                  disabled={matches.busy}
+                  onClick={() => void matches.decide([matchKey(openMatch)], "human_approved", matchComment)}
                 >
-                  {t("matches.approve")}
+                  {t(openMatch.status === "auto_rejected" ? "matches.approveAnyway" : "matches.approve")}
                 </button>
               )}
             </>
@@ -657,11 +628,11 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       >
         {openMatch ? <MatchDetailView match={openMatch} /> : null}
       </Drawer>
-      {tab === "matches" ? (
+      {step === 1 ? (
         <BulkBar
           key="matches"
           labels="bulkMatches"
-          count={matches.list.items.filter((match) => matches.selected.has(matchKey(match))).length}
+          count={table === "review" ? matches.list.items.filter((match) => matches.selected.has(matchKey(match))).length : 0}
           busy={matches.busy}
           onCancel={() => matches.setSelected(new Set())}
           onDecide={(decision, comment) => matches.decide([...matches.selected], decision, comment)}
@@ -670,7 +641,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         <BulkBar
           key="fiches"
           labels="bulk"
-          count={tab === "review" ? selected.size : 0}
+          count={table === "review" ? selected.size : 0}
           busy={busy}
           onCancel={() => setSelected(new Set())}
           onDecide={decideSelection}
@@ -686,16 +657,6 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       </Drawer>
       <Notice notice={notice} onClose={() => setNotice(null)} />
     </>
-  );
-}
-
-/** Heading of one list of the « Validés automatiquement » tab. */
-function SectionTitle({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div className={styles.section}>
-      <h2 className={styles.sectionTitle}>{title}</h2>
-      <p className={styles.sectionHint}>{hint}</p>
-    </div>
   );
 }
 

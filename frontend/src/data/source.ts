@@ -1,5 +1,4 @@
 import type {
-  AutoApprovedValue,
   AutoValidation,
   AutoValidationStep,
   DecisionResult,
@@ -14,8 +13,10 @@ import type {
   MatchDecisionItem,
   MatchFilters,
   MatchItem,
+  MatchListStatus,
   Page,
   Stats,
+  TableKey,
   Thresholds,
 } from "../domain/types";
 
@@ -75,14 +76,10 @@ export function fetchFacets(): Promise<Facets> {
   return call("/hotels/facets");
 }
 
-export function fetchHotels(filters: Filters, cursor: string | null): Promise<Page<HotelSummary>> {
+/** Fiches of one table of step 2 (PIM-55): `count` = their values in the table's status. */
+export function fetchHotels(view: TableKey, filters: Filters, cursor: string | null): Promise<Page<HotelSummary>> {
   // The verdict only filters matches.
-  return call(`/hotels${query({ view: "review", ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`);
-}
-
-/** Values validated by the threshold, lowest score first (read only). */
-export function fetchAutoApprovedValues(filters: Filters, cursor: string | null): Promise<Page<AutoApprovedValue>> {
-  return call(`/enrichments/auto-approved${query({ ...filters, verdict: undefined, outdated: undefined, limit: PAGE_SIZE, cursor })}`);
+  return call(`/hotels${query({ view, ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`);
 }
 
 export function fetchHotel(rid: string): Promise<HotelDetail> {
@@ -107,11 +104,11 @@ export function fetchFieldValues(pimField: string): Promise<FieldValues> {
 }
 
 export function fetchMatches(
-  { source, brand, verdict }: MatchFilters,
+  { search, source, brand, verdict }: MatchFilters,
   cursor: string | null,
-  status: "needs_review" | "auto_approved" = "needs_review",
+  status: MatchListStatus,
 ): Promise<Page<MatchItem>> {
-  return call(`/matches${query({ status, source, brand, verdict, limit: PAGE_SIZE, cursor })}`);
+  return call(`/matches${query({ status, search, source, brand, verdict, limit: PAGE_SIZE, cursor })}`);
 }
 
 export function decideMatches(items: MatchDecisionItem[]): Promise<DecisionResult<"key">> {

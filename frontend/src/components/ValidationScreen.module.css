@@ -49,20 +49,9 @@
   min-width: 0;
 }
 
-/* « Validés automatiquement » tab: one heading per list */
-.section {
-  margin: 8px 0 12px;
-}
-
-.sectionTitle {
-  margin: 0;
-  font-size: 16px;
-  line-height: 22px;
-  color: var(--ink);
-}
-
-.sectionHint {
-  margin: 2px 0 0;
+/* What the table holds and what the reviewer can do there */
+.hint {
+  margin: -8px 0 16px;
   font-size: 13px;
   color: var(--text-muted);
 }

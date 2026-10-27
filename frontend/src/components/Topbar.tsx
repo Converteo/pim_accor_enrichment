@@ -1,17 +1,16 @@
 import { useTranslations } from "next-intl";
-import type { Stats } from "@/domain/types";
-import { KpiStrip } from "./KpiStrip";
+import type { ReactNode } from "react";
 import { LanguageSelect } from "./LanguageSelect";
-import { StatusDistribution } from "./StatusDistribution";
 import styles from "./Topbar.module.css";
 
 interface TopbarProps {
-  stats: Stats | null;
+  /** Hero content under the title: the step cards. */
+  children: ReactNode;
   author: string | null;
   onOpenSettings: () => void;
 }
 
-export function Topbar({ stats, author, onOpenSettings }: TopbarProps) {
+export function Topbar({ children, author, onOpenSettings }: TopbarProps) {
   const t = useTranslations("header");
 
   return (
@@ -44,8 +43,7 @@ export function Topbar({ stats, author, onOpenSettings }: TopbarProps) {
       <section className={styles.hero}>
         <div className={styles.heroInner}>
           <h1 className={styles.title}>{t("title")}</h1>
-          <KpiStrip stats={stats} />
-          <StatusDistribution stats={stats} />
+          {children}
         </div>
       </section>
     </>

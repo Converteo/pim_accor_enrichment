@@ -1,15 +1,17 @@
 import { useCallback, useState } from "react";
 import { decideMatches, fetchMatches } from "@/data/source";
 import { matchKey } from "@/domain/rules";
-import type { MatchDecision, MatchFilters, MatchItem, Page } from "@/domain/types";
+import type { MatchDecision, MatchFilters, MatchItem, MatchListStatus, Page } from "@/domain/types";
 import { usePagedList } from "./usePagedList";
 
 interface Options {
   filters: MatchFilters;
-  /** Matches to validate, or matches approved by the threshold that the reviewer may still reject (PIM-49). */
-  status?: "needs_review" | "auto_approved";
-  /** Read only while the tab showing the list is open. */
-  enabled?: boolean;
+  /** One of the four tables of step 1 (PIM-54): a reviewer may go back on any decision, automatic or human. */
+  status: MatchListStatus;
+  /** Read only while step 1 is shown. */
+  enabled: boolean;
+  /** Author of the decisions, shown at once in « Validé manuellement ». */
+  author: string | null;
   /** Called after each answer of the back, with the keys it refused (message per key). */
   onResult: (result: {
     decision: MatchDecision;
@@ -19,10 +21,10 @@ interface Options {
   onError: (error: unknown) => void;
 }
 
-/** A list of matches to decide: list, open match, selection and decisions (PIM-30, PIM-49). */
-export function useMatchReview({ filters, status = "needs_review", enabled = true, onResult, onError }: Options) {
+/** A list of matches to decide: list, open match, selection and decisions (PIM-30, PIM-49, PIM-54). */
+export function useMatchReview({ filters, status, enabled, author, onResult, onError }: Options) {
   const list = usePagedList(
-    JSON.stringify([status, enabled, filters.source, filters.brand, filters.verdict]),
+    JSON.stringify([status, enabled, filters.search, filters.source, filters.brand, filters.verdict]),
     (cursor): Promise<Page<MatchItem>> =>
       enabled ? fetchMatches(filters, cursor, status) : Promise.resolve({ items: [], nextCursor: null }),
     matchKey,
@@ -36,7 +38,7 @@ export function useMatchReview({ filters, status = "needs_review", enabled = tru
 
   const close = useCallback(() => setOpenKey(null), []);
 
-  /** One POST (one INSERT); decided matches leave the list once the back accepted them. */
+  /** One POST (one INSERT); decided matches move once the back accepted them. */
   async function decide(keys: readonly string[], decision: MatchDecision, comment: string): Promise<boolean> {
     const matches = list.items.filter((match) => keys.includes(matchKey(match)));
     if (busy || matches.length === 0) return false;
@@ -54,7 +56,24 @@ export function useMatchReview({ filters, status = "needs_review", enabled = tru
       const accepted = new Set(result.accepted);
       // Refused matches are stale (page changed: new sourceHash): re-read the list.
       if (result.rejected.length > 0) list.reload();
-      list.setItems((items) => items.filter((match) => !accepted.has(matchKey(match))));
+      const decided: MatchItem[] =
+        status === "human"
+          ? matches
+              .filter((match) => accepted.has(matchKey(match)))
+              .map((match) => ({
+                ...match,
+                status: decision,
+                lastDecision: {
+                  decision,
+                  author: author ?? "",
+                  decidedAt: new Date().toISOString(),
+                  comment: comment.trim() || null,
+                  correctedValue: null,
+                },
+              }))
+          : [];
+      // Decided matches leave their table for « Validé manuellement », where the latest decision comes first.
+      list.setItems((items) => [...decided, ...items.filter((match) => !accepted.has(matchKey(match)))]);
       setSelected((current) => new Set([...current].filter((key) => !accepted.has(key))));
       setOpenKey((current) => (current !== null && accepted.has(current) ? null : current));
       onResult({
