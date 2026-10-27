@@ -1,0 +1,233 @@
+/* Booking-engine pill (as the search bar below it): three segments, the active one a filled brand pill */
+.bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 18px rgba(5, 0, 51, 0.08);
+  padding: 6px;
+}
+
+.list {
+  display: flex;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.last {
+  flex: 1.35 1 0;
+}
+
+/* One step: number badge, short title, one figure */
+.segment {
+  font: inherit;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.segment:hover {
+  background: var(--surface-alt);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Active step: brand blue, as the primary button */
+.active,
+.active:hover {
+  background: var(--brand-gradient);
+  color: var(--on-brand);
+}
+
+.badge {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  font-family: var(--font-display), Montserrat, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.active .badge {
+  background: var(--surface);
+  color: var(--brand-deep);
+}
+
+.check {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-family: var(--font-display), Montserrat, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.active .title {
+  color: inherit;
+}
+
+.short {
+  display: none;
+}
+
+.figure {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.active .figure,
+.active .figure strong {
+  color: inherit;
+}
+
+.chevron {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0 4px;
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* What the step is for: on hover or keyboard focus, after a short pause */
+.tip {
+  position: absolute;
+  z-index: 15;
+  top: calc(100% + 12px);
+  left: 12px;
+  width: max-content;
+  max-width: 300px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--brand-deep);
+  color: var(--on-brand);
+  font-size: 13px;
+  line-height: 18px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s;
+}
+
+.tipLine {
+  display: block;
+  margin-top: 4px;
+}
+
+.segment:hover + .tip,
+.segment:focus-visible + .tip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.4s;
+}
+
+/* Phones: two steps side by side, the export on its own row; abbreviated titles, figures without their unit */
+@media (max-width: 560px) {
+  .bar {
+    border-radius: 20px;
+  }
+
+  .list {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .item {
+    flex: 1 1 40%;
+  }
+
+  .last {
+    flex-basis: 100%;
+  }
+
+  .segment {
+    height: 56px;
+    gap: 10px;
+    padding: 0 12px 0 8px;
+  }
+
+  .badge {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  .title {
+    font-size: 14px;
+  }
+
+  .long,
+  .unit,
+  .item:nth-child(2) .chevron {
+    display: none;
+  }
+
+  .short {
+    display: inline;
+  }
+
+  .tip {
+    display: none;
+  }
+}

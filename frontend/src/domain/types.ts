@@ -36,6 +36,10 @@ export interface HotelSummary {
   country: string | null;
   sources: string[];
   toReviewCount: number;
+  /** Values of the fiche in the table it is listed in (= toReviewCount for « À vérifier »). */
+  count: number;
+  /** « Validé manuellement »: latest decision among these values; null elsewhere. */
+  lastDecidedAt: string | null;
   /** Values to review flagged « non prioritaire, à vérifier » (outdated), among toReviewCount. */
   outdatedCount: number;
   /** 0-100 */
@@ -88,6 +92,8 @@ export interface HotelDetail {
   pending: EnrichmentValue[];
   conflicts: EnrichmentValue[];
   decided: EnrichmentValue[];
+  /** Read with ?view= only: the fiche's values in that table (PIM-55). */
+  values?: EnrichmentValue[];
 }
 
 export interface MatchItem {
@@ -127,19 +133,19 @@ export interface Stats {
   matchesToReview: number;
   /** Matches waiting for the judge agent (pending_judgment). */
   matchesPending: number;
-  /** Validated by the thresholds, for information (« Validés automatiquement » tab). */
+  /** One counter per table of each step (« Confirmé auto », « Rejeté auto », « Validé manuellement »). */
   matchesAutoApproved: number;
+  matchesAutoRejected: number;
+  matchesHuman: number;
+  hotelsAutoApproved: number;
+  hotelsAutoRejected: number;
+  hotelsHuman: number;
   valuesAutoApproved: number;
+  valuesAutoRejected: number;
+  valuesHuman: number;
   valuesPending: number;
   valuesApproved: number;
   pendingForExport: number;
-}
-
-/** Value validated by the threshold, with its fiche (read only). */
-export interface AutoApprovedValue {
-  hotel: Pick<HotelSummary, "rid" | "name" | "brand" | "city" | "country">;
-  value: EnrichmentValue;
-  approveThreshold: number | null;
 }
 
 export type AutoValidationStep = "match" | "enrichment";
@@ -250,13 +256,13 @@ export interface ExportExecution {
 
 // Screen state (front only)
 
-export type TabKey = "review" | "matches" | "pending" | "auto";
+/** Step 1: is it the right hotel (matches)? Step 2: are the attributes right (one row per fiche)? Then the export. */
+export type Step = 1 | 2;
 
-/** Order of the reviewer's work: matches first (their values appear once approved), then attributes, then what waits for the pipeline. */
-export const TAB_ORDER: readonly TabKey[] = ["matches", "review", "pending", "auto"];
+/** The four tables of each step; « human » = every human decision, all reviewers. */
+export type TableKey = "review" | "auto_approved" | "auto_rejected" | "human";
 
-/** Tabs with nothing to decide, shown in a lighter style. */
-export const INFO_TABS: readonly TabKey[] = ["pending", "auto"];
+export const TABLE_ORDER: readonly TableKey[] = ["review", "auto_approved", "auto_rejected", "human"];
 
 export const FAMILY_ORDER: readonly Family[] = [
   "general",
@@ -282,4 +288,7 @@ export interface Filters {
 }
 
 /** The filters /matches understands. */
-export type MatchFilters = Pick<Filters, "source" | "brand" | "verdict">;
+export type MatchFilters = Pick<Filters, "search" | "source" | "brand" | "verdict">;
+
+/** /matches?status=: « human » = human_approved + human_rejected, latest decision first. */
+export type MatchListStatus = "needs_review" | "auto_approved" | "auto_rejected" | "human";

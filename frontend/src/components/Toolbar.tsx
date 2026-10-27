@@ -2,24 +2,27 @@ import { useTranslations } from "next-intl";
 import type { ChangeEvent, ReactNode } from "react";
 import {
   FAMILY_ORDER,
-  INFO_TABS,
   PRIORITY_ORDER,
-  TAB_ORDER,
+  TABLE_ORDER,
   type Facets,
   type Filters,
   type Stats,
-  type TabKey,
+  type Step,
+  type TableKey,
 } from "@/domain/types";
+import { BrandFilter } from "./BrandFilter";
+import { STEP_KEYS } from "./StepBar";
 import { codeLabel, sourceLabel } from "./labels";
 import styles from "./Toolbar.module.css";
 
 interface ToolbarProps {
-  tab: TabKey;
+  step: Step;
+  table: TableKey;
   filters: Filters;
   stats: Stats | null;
   facets: Facets | null;
   onFilter: (patch: Partial<Filters>) => void;
-  onTab: (tab: TabKey) => void;
+  onTable: (table: TableKey) => void;
 }
 
 const iconProps = {
@@ -34,26 +37,29 @@ const iconProps = {
   "aria-hidden": true,
 } as const;
 
-/**
- * Same numbers as the indicators above, never summed across units: the two last tabs hold a list of matches
- * and a list of attributes, so they show one counter per unit.
- */
-function tabCounts(tab: TabKey, stats: Stats): { matches?: number; values?: number } {
-  switch (tab) {
-    case "matches":
-      return { matches: stats.matchesToReview };
-    case "review":
-      return { values: stats.valuesToReview };
-    case "pending":
-      return { matches: stats.matchesPending, values: stats.valuesPending };
-    case "auto":
-      return { matches: stats.matchesAutoApproved, values: stats.valuesAutoApproved };
-  }
-}
+// Same counters as the step cards and the export banner (/stats); the tables of a step never overlap.
+const MATCH_COUNTS = {
+  review: "matchesToReview",
+  auto_approved: "matchesAutoApproved",
+  auto_rejected: "matchesAutoRejected",
+  human: "matchesHuman",
+} as const satisfies Record<TableKey, keyof Stats>;
+const VALUE_COUNTS = {
+  review: "valuesToReview",
+  auto_approved: "valuesAutoApproved",
+  auto_rejected: "valuesAutoRejected",
+  human: "valuesHuman",
+} as const satisfies Record<TableKey, keyof Stats>;
+const HOTEL_COUNTS = {
+  review: "hotelsToReview",
+  auto_approved: "hotelsAutoApproved",
+  auto_rejected: "hotelsAutoRejected",
+  human: "hotelsHuman",
+} as const satisfies Record<TableKey, keyof Stats>;
 
-function Segment({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
+function Segment({ label, icon, tour, children }: { label: string; icon: ReactNode; tour?: string; children: ReactNode }) {
   return (
-    <label className={styles.segment}>
+    <label className={styles.segment} data-tour={tour}>
       <span className={styles.segmentLabel}>
         <svg {...iconProps}>{icon}</svg>
         {label}
@@ -63,14 +69,12 @@ function Segment({ label, icon, children }: { label: string; icon: ReactNode; ch
   );
 }
 
-export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: ToolbarProps) {
+export function Toolbar({ step, table, filters, stats, facets, onFilter, onTable }: ToolbarProps) {
   const t = useTranslations();
-  // Only filters with an effect on the tab's lists: /matches filters by source, brand and verdict,
-  // and matches waiting for the judge have no verdict yet.
-  const hotelFilters = tab !== "matches";
-  const verdictFilter = tab === "matches" || tab === "auto";
-  // /hotels only flags the values of the fiches to review.
-  const outdatedFilter = tab === "review";
+  // Only filters with an effect on the step's lists: /matches filters by search, source, brand and verdict.
+  const hotelFilters = step === 2;
+  const verdictFilter = step === 1;
+  const outdatedFilter = step === 2;
 
   function select(key: keyof Filters) {
     return (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) =>
@@ -79,26 +83,24 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
 
   return (
     <div className={styles.toolbar}>
-      <div className={styles.engine}>
-        {hotelFilters ? (
-          <label className={`${styles.segment} ${styles.search}`}>
-            <span className={styles.segmentLabel}>
-              <svg {...iconProps}>
-                <circle cx="10.5" cy="10.5" r="6.5" />
-                <path d="m20 20-4.8-4.8" />
-              </svg>
-              {t("filters.searchLabel")}
-            </span>
-            <input
-              className={styles.control}
-              type="search"
-              placeholder={t("search.placeholder")}
-              autoComplete="off"
-              value={filters.search}
-              onChange={select("search")}
-            />
-          </label>
-        ) : null}
+      <div className={styles.engine} data-tour="filters">
+        <label className={`${styles.segment} ${styles.search}`}>
+          <span className={styles.segmentLabel}>
+            <svg {...iconProps}>
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m20 20-4.8-4.8" />
+            </svg>
+            {t("filters.searchLabel")}
+          </span>
+          <input
+            className={styles.control}
+            type="search"
+            placeholder={t("search.placeholder")}
+            autoComplete="off"
+            value={filters.search}
+            onChange={select("search")}
+          />
+        </label>
         <Segment
           label={t("filters.brandLabel")}
           icon={
@@ -108,18 +110,12 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
             </>
           }
         >
-          <select
+          <BrandFilter
             className={`${styles.control} ${styles.select}`}
+            brands={facets?.brands ?? []}
             value={filters.brand}
-            onChange={select("brand")}
-          >
-            <option value="">{t("filters.allBrands")}</option>
-            {facets?.brands.map((brand) => (
-              <option key={brand} value={brand}>
-                {brand}
-              </option>
-            ))}
-          </select>
+            onChange={(brand) => onFilter({ brand })}
+          />
         </Segment>
         <Segment
           label={t("filters.sourceLabel")}
@@ -208,6 +204,7 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
         {outdatedFilter ? (
           <Segment
             label={t("filters.outdatedLabel")}
+            tour="outdated"
             icon={
               <>
                 <circle cx="12" cy="12" r="8.5" />
@@ -227,36 +224,28 @@ export function Toolbar({ tab, filters, stats, facets, onFilter, onTab }: Toolba
           </Segment>
         ) : null}
       </div>
-      <div className={styles.tabs}>
-        {TAB_ORDER.map((key) => {
-          const active = tab === key;
-          const counts = stats ? tabCounts(key, stats) : null;
-          // The label of a single-unit tab already names the unit.
-          const unit = counts?.matches !== undefined && counts.values !== undefined;
+      <div className={styles.tabs} data-tour="tables" role="group" aria-label={t(`steps.${STEP_KEYS[step]}.title`)}>
+        {TABLE_ORDER.map((key) => {
+          const active = table === key;
+          const count = stats?.[step === 1 ? MATCH_COUNTS[key] : VALUE_COUNTS[key]];
+          const hotels = stats?.[HOTEL_COUNTS[key]];
           return (
             <button
               key={key}
               type="button"
               aria-pressed={active}
-              className={[styles.tab, active ? styles.active : "", INFO_TABS.includes(key) ? styles.info : ""]
+              className={[styles.tab, active ? styles.active : "", key === "review" ? "" : styles.info]
                 .filter(Boolean)
                 .join(" ")}
-              onClick={() => onTab(key)}
+              title={
+                step === 2 && count !== undefined && hotels !== undefined
+                  ? t("tables.valuesIn", { values: count, hotels })
+                  : undefined
+              }
+              onClick={() => onTable(key)}
             >
-              {t(`tabs.${key}`)}{" "}
-              {counts ? (
-                (["matches", "values"] as const).map((kind) =>
-                  counts[kind] === undefined ? null : (
-                    <span key={kind} className={styles.count}>
-                      {unit
-                        ? t(`tabs.${kind}Count`, { count: counts[kind] })
-                        : t("number", { value: counts[kind] })}
-                    </span>
-                  ),
-                )
-              ) : (
-                <span className={styles.count}>—</span>
-              )}
+              {t(`tables.${key}`)}{" "}
+              <span className={styles.count}>{count === undefined ? "—" : t("number", { value: count })}</span>
             </button>
           );
         })}

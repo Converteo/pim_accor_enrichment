@@ -9,6 +9,7 @@ import {
   type MatchItem,
   type MatchStatus,
   type ScoreBucket,
+  type TableKey,
   type Thresholds,
   type ValueStatus,
 } from "./types";
@@ -56,45 +57,74 @@ export function groupByFamily(values: readonly EnrichmentValue[]): FamilyGroup[]
   })).filter((group) => group.values.length > 0);
 }
 
-/** Optimistic update: decided values leave « à valider » for the history, before the back confirms. */
+/**
+ * Optimistic update: decided values leave « à valider » for the history, before the back confirms. Values of a
+ * table (?view=) leave it too, except in « Validé manuellement » (`keepDecided`) where they take their new decision.
+ */
 export function applyDecisions(
   detail: HotelDetail,
   items: readonly EnrichmentDecisionItem[],
   author: string | null,
   decidedAt: string,
+  keepDecided = false,
 ): HotelDetail {
   const byId = new Map(items.map((item) => [item.enrichmentId, item]));
+  const itemOf = (value: EnrichmentValue) => (value.enrichmentId === null ? undefined : byId.get(value.enrichmentId));
+  const withDecision = (value: EnrichmentValue, item: EnrichmentDecisionItem): EnrichmentValue => ({
+    ...value,
+    status: item.decision,
+    finalValue: item.decision === "human_rejected" ? null : (item.correctedValue ?? value.value),
+    lastDecision: {
+      decision: item.decision,
+      author: author ?? "",
+      decidedAt,
+      comment: item.comment ?? null,
+      correctedValue: item.correctedValue ?? null,
+    },
+  });
   const decided: EnrichmentValue[] = [];
   const toReview = detail.toReview.filter((value) => {
-    const item = value.enrichmentId === null ? undefined : byId.get(value.enrichmentId);
-    if (!item) return true;
-    decided.push({
-      ...value,
-      status: item.decision,
-      finalValue:
-        item.decision === "human_rejected" ? null : (item.correctedValue ?? value.value),
-      lastDecision: {
-        decision: item.decision,
-        author: author ?? "",
-        decidedAt,
-        comment: item.comment ?? null,
-        correctedValue: item.correctedValue ?? null,
-      },
-    });
-    return false;
+    const item = itemOf(value);
+    if (item) decided.push(withDecision(value, item));
+    return !item;
   });
-  return { ...detail, toReview, decided: [...decided, ...detail.decided] };
+  const values = detail.values?.flatMap((value) => {
+    const item = itemOf(value);
+    return !item ? [value] : keepDecided ? [withDecision(value, item)] : [];
+  });
+  return { ...detail, toReview, decided: [...decided, ...detail.decided], ...(values ? { values } : {}) };
 }
 
-/** The list follows the drawer: a fiche with nothing left to review leaves the list. */
-export function withReviewCount(
-  hotels: readonly HotelSummary[],
-  rid: string,
-  toReviewCount: number,
-): HotelSummary[] {
-  return toReviewCount === 0
+/** Whether a value is in a table of step 2. */
+export function inTable(table: TableKey, status: ValueStatus): boolean {
+  if (table === "review") return status === "needs_review";
+  if (table === "human") return status.startsWith("human_");
+  return status === table;
+}
+
+/** The list follows the drawer: a fiche with nothing left in its table leaves the list. */
+export function withCount(hotels: readonly HotelSummary[], rid: string, count: number): HotelSummary[] {
+  return count === 0
     ? hotels.filter((hotel) => hotel.rid !== rid)
-    : hotels.map((hotel) => (hotel.rid === rid ? { ...hotel, toReviewCount } : hotel));
+    : hotels.map((hotel) => (hotel.rid === rid ? { ...hotel, count } : hotel));
+}
+
+// The back refuses to approve these as they are (invalid_value): no value, or outside the PIM format.
+const UNFIT_REASONS = ["already_in_pim", "not_in_pim_list", "invalid_format"];
+
+/** Decisions offered on a value: a reviewer can go back on any decision, automatic or human (PIM-55). */
+export function offeredDecisions(value: Pick<EnrichmentValue, "status" | "value" | "reason">): {
+  approve: boolean;
+  reject: boolean;
+} {
+  const unfit = value.value === null || (value.reason !== null && UNFIT_REASONS.includes(value.reason));
+  return {
+    approve:
+      value.status !== "auto_approved" &&
+      value.status !== "human_approved" &&
+      !(value.status === "auto_rejected" && unfit),
+    reject: value.status !== "auto_rejected" && value.status !== "human_rejected",
+  };
 }
 
 /** Next page appended without the items already shown: a fiche whose score or count changed can come back. */
@@ -137,6 +167,12 @@ export function splitCodes(value: string | null): string[] {
 
 export function joinCodes(keys: readonly string[]): string {
   return keys.join("|");
+}
+
+/** Case- and accent-insensitive « contains » (« nov » finds « Novotel », « hotel » finds « Hôtel »). */
+export function textMatches(text: string, query: string): boolean {
+  const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  return fold(text).includes(fold(query.trim()));
 }
 
 export function cityLine(place: { city: string | null; country: string | null }): string {

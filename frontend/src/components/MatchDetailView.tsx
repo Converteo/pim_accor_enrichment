@@ -1,5 +1,5 @@
-import { useLocale, useTranslations } from "next-intl";
-import { formatScore } from "@/domain/rules";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { formatScore, statusTone } from "@/domain/rules";
 import type { MatchItem } from "@/domain/types";
 import { codeLabel, countryName, sourceLabel } from "./labels";
 import styles from "./MatchDetailView.module.css";
@@ -13,6 +13,9 @@ export function MatchDetailView({ match }: MatchDetailViewProps) {
   const t = useTranslations("matches");
   const tRoot = useTranslations();
   const locale = useLocale();
+  const format = useFormatter();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const decision = match.status === "human_approved" || match.status === "human_rejected" ? match.status : null;
 
   const pim = [
     [t("name"), match.pim.name],
@@ -29,6 +32,23 @@ export function MatchDetailView({ match }: MatchDetailViewProps) {
 
   return (
     <>
+      {decision && match.lastDecision ? (
+        <section className={styles.opinion}>
+          <h3 className={styles.sideTitle}>{t("decision")}</h3>
+          <p className={styles.text}>
+            <span className={`status-pill pill-${statusTone(decision)}`}>{t(`decisions.${decision}`)}</span>{" "}
+            {tRoot("detail.decidedBy", {
+              author: match.lastDecision.author || "—",
+              date: format.dateTime(new Date(match.lastDecision.decidedAt), {
+                dateStyle: "short",
+                timeStyle: "short",
+                timeZone,
+              }),
+            })}
+          </p>
+          {match.lastDecision.comment ? <p className={styles.quote}>{match.lastDecision.comment}</p> : null}
+        </section>
+      ) : null}
       <div className={styles.sides}>
         <section className={styles.side}>
           <h3 className={styles.sideTitle}>{t("pim")}</h3>

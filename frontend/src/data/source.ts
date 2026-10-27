@@ -1,5 +1,4 @@
 import type {
-  AutoApprovedValue,
   AutoValidation,
   AutoValidationStep,
   DecisionResult,
@@ -14,8 +13,10 @@ import type {
   MatchDecisionItem,
   MatchFilters,
   MatchItem,
+  MatchListStatus,
   Page,
   Stats,
+  TableKey,
   Thresholds,
 } from "../domain/types";
 
@@ -75,32 +76,22 @@ export function fetchFacets(): Promise<Facets> {
   return call("/hotels/facets");
 }
 
-export function fetchHotels(
-  view: "review" | "pending",
-  filters: Filters,
-  cursor: string | null,
-): Promise<Page<HotelSummary>> {
-  // The verdict only filters matches, `outdated` only the fiches to review.
-  const outdated = view === "review" ? filters.outdated : undefined;
-  return call(
-    `/hotels${query({ view, ...filters, verdict: undefined, outdated, limit: PAGE_SIZE, cursor })}`,
-  );
+/** Fiches of one table of step 2 (PIM-55): `count` = their values in the table's status. */
+export function fetchHotels(view: TableKey, filters: Filters, cursor: string | null): Promise<Page<HotelSummary>> {
+  // The verdict only filters matches.
+  return call(`/hotels${query({ view, ...filters, verdict: undefined, limit: PAGE_SIZE, cursor })}`);
 }
 
-/** Values validated by the threshold, lowest score first (read only). */
-export function fetchAutoApprovedValues(filters: Filters, cursor: string | null): Promise<Page<AutoApprovedValue>> {
-  return call(`/enrichments/auto-approved${query({ ...filters, verdict: undefined, outdated: undefined, limit: PAGE_SIZE, cursor })}`);
-}
-
-export function fetchHotel(rid: string): Promise<HotelDetail> {
-  return call(`/hotels/${encodeURIComponent(rid)}`);
+/** With a table of step 2, `values` holds the fiche's values in that table; without, the whole fiche. */
+export function fetchHotel(rid: string, view?: TableKey): Promise<HotelDetail> {
+  return call(`/hotels/${encodeURIComponent(rid)}${query({ view })}`);
 }
 
 /** Details of several fiches (bulk decisions), a few calls at a time to spare the back. */
 export async function fetchHotelsDetail(rids: readonly string[]): Promise<HotelDetail[]> {
   const results: HotelDetail[] = [];
   for (let start = 0; start < rids.length; start += 4) {
-    results.push(...(await Promise.all(rids.slice(start, start + 4).map(fetchHotel))));
+    results.push(...(await Promise.all(rids.slice(start, start + 4).map((rid) => fetchHotel(rid)))));
   }
   return results;
 }
@@ -114,11 +105,11 @@ export function fetchFieldValues(pimField: string): Promise<FieldValues> {
 }
 
 export function fetchMatches(
-  { source, brand, verdict }: MatchFilters,
+  { search, source, brand, verdict }: MatchFilters,
   cursor: string | null,
-  status: "needs_review" | "pending_judgment" | "auto_approved" = "needs_review",
+  status: MatchListStatus,
 ): Promise<Page<MatchItem>> {
-  return call(`/matches${query({ status, source, brand, verdict, limit: PAGE_SIZE, cursor })}`);
+  return call(`/matches${query({ status, search, source, brand, verdict, limit: PAGE_SIZE, cursor })}`);
 }
 
 export function decideMatches(items: MatchDecisionItem[]): Promise<DecisionResult<"key">> {

@@ -7,55 +7,50 @@
     "subtitle": "PIM Accor · Fiches établissement",
     "language": "Langue",
     "noUser": "Utilisateur non identifié",
-    "settings": "Seuils d’automatisation"
+    "settings": "Seuils d’automatisation",
+    "help": "Visite guidée"
   },
-  "kpi": {
-    "matchesToReview": "Rapprochements à valider",
-    "hotelsToReview": "Fiches à valider",
-    "valuesToReview": "Attributs à valider",
-    "valuesPending": "Attributs en cours d’enrichissement",
-    "valuesApproved": "Attributs prêts à l’export"
+  "steps": {
+    "label": "Étapes de la validation",
+    "toCheck": "à vérifier",
+    "done": "Rien à vérifier",
+    "matches": {
+      "title": "Rapprochements",
+      "short": "Rapproch.",
+      "hint": "Est-ce le bon hôtel ? Un hôtel confirmé envoie ses valeurs à l’étape 2."
+    },
+    "values": {
+      "title": "Attributs",
+      "short": "Attributs",
+      "hint": "Les infos sont-elles justes ? Seuls les attributs validés partent à l’export.",
+      "arriving": "{count, plural, one {# nouvel attribut arrive} other {# nouveaux attributs arrivent}} sous 15 min."
+    }
   },
-  "legend": {
-    "item": "{label} ({count})",
-    "review": "Attributs à valider",
-    "pending": "En cours d’enrichissement",
-    "approved": "Validés"
+  "tables": {
+    "review": "À vérifier",
+    "auto_approved": "Confirmé auto",
+    "auto_rejected": "Rejeté auto",
+    "human": "Validé manuellement",
+    "valuesIn": "{values, plural, one {# attribut} other {# attributs}} dans {hotels, plural, one {# fiche} other {# fiches}}"
   },
-  "tabs": {
-    "matches": "Rapprochements à valider",
-    "review": "Attributs à valider",
-    "pending": "En cours",
-    "auto": "Validés automatiquement",
-    "matchesCount": "{count, plural, one {# rapprochement} other {# rapprochements}}",
-    "valuesCount": "{count, plural, one {# attribut} other {# attributs}}"
-  },
-  "pendingTab": {
-    "matches": "Rapprochements en attente de jugement",
-    "matchesHint": "L’agent juge les évaluera à son prochain passage ; ils bloquent l’export d’ici là.",
-    "matchesEmpty": "Aucun rapprochement en attente de jugement.",
-    "values": "Attributs en cours d’enrichissement",
-    "valuesHint": "Ces fiches ont un rapprochement validé : l’agent d’enrichissement les traitera à son prochain passage."
-  },
-  "autoTab": {
-    "matches": "Rapprochements validés automatiquement",
-    "matchesHint": "Score de l’agent juge au moins égal au seuil de validation en vigueur. Pour information : du score le plus bas au plus haut, les cas limites d’abord.",
-    "matchesEmpty": "Aucun rapprochement validé automatiquement pour ce filtre.",
-    "values": "Attributs validés automatiquement",
-    "valuesHint": "Score au moins égal au seuil de validation, sans alerte. Ils partiront à l’export. Pour information : les cas limites d’abord.",
-    "valuesEmpty": "Aucun attribut validé automatiquement pour ces filtres : le seuil de validation des attributs est peut-être désactivé (« Seuils d’automatisation »).",
-    "valuesShown": "{count, plural, one {# attribut affiché} other {# attributs affichés}}",
-    "attribute": "Attribut",
-    "value": "Valeur validée",
-    "excerpt": "Extrait de la source",
-    "score": "Score",
-    "threshold": "seuil {value}"
+  "tableHints": {
+    "matches": {
+      "auto_approved": "Score de l’agent juge au moins égal au seuil de validation : la source est utilisée pour l’hôtel. Cas limites d’abord ; ouvrez-en un pour le rejeter.",
+      "auto_rejected": "Score sous le seuil de rejet : la source n’est pas utilisée pour l’hôtel. Cas limites d’abord ; ouvrez-en un pour le confirmer quand même.",
+      "human": "Toutes les décisions des relecteurs, la plus récente d’abord. Ouvrez-en une pour revenir dessus."
+    },
+    "values": {
+      "auto_approved": "Score au moins égal au seuil de validation, sans alerte : ces attributs partiront à l’export. Ouvrez une fiche pour revenir dessus.",
+      "auto_rejected": "Score sous le seuil de rejet ou conflit avec le PIM : ces attributs ne partent pas à l’export. Ouvrez une fiche pour revenir dessus.",
+      "human": "Toutes les décisions des relecteurs (validées, rejetées, corrigées), la plus récente d’abord. Ouvrez une fiche pour revenir dessus."
+    }
   },
   "search": {
-    "placeholder": "Rechercher un hôtel, une ville…"
+    "placeholder": "Nom, ville ou code"
   },
   "filters": {
     "allBrands": "Toutes les marques",
+    "noBrand": "Aucune marque ne correspond.",
     "allSources": "Toutes les sources",
     "allFamilies": "Toutes les familles",
     "allPriorities": "Toutes les priorités",
@@ -90,7 +85,8 @@
     "toReview": "Attributs à valider",
     "score": "Score moyen",
     "info": "Informations",
-    "actions": "Actions"
+    "actions": "Actions",
+    "values": "Attributs"
   },
   "row": {
     "view": "Voir détail",
@@ -99,12 +95,12 @@
     "conflicts": "{count, plural, one {# conflit PIM} other {# conflits PIM}}",
     "select": "Sélectionner {name}",
     "selectAll": "Tout sélectionner",
-    "outdated": "{count, plural, one {# non prioritaire} other {# non prioritaires}}"
+    "outdated": "{count, plural, one {# non prioritaire} other {# non prioritaires}}",
+    "decidedAt": "Dernière décision le {date}"
   },
   "list": {
     "loading": "Chargement…",
     "empty": "Aucune fiche ne correspond à ces filtres.",
-    "emptyPending": "Aucun attribut en cours d’enrichissement pour ces filtres.",
     "error": "Impossible de charger la liste.",
     "retry": "Réessayer",
     "loadMore": "Charger plus",
@@ -129,7 +125,8 @@
     "toReview": "{count, plural, =0 {Rien à valider} one {# attribut à valider} other {# attributs à valider}}",
     "avgScore": "Score moyen {score}/100",
     "loading": "Chargement de la fiche…",
-    "error": "Impossible de charger la fiche."
+    "error": "Impossible de charger la fiche.",
+    "inTable": "{count, plural, =0 {Aucun attribut} one {# attribut} other {# attributs}} · {table}"
   },
   "value": {
     "current": "Valeur PIM actuelle",
@@ -164,7 +161,11 @@
     "decidedBy": "{author}, le {date}",
     "pimHas": "Le PIM contient « {value} »",
     "outdated": "Non prioritaires : à vérifier",
-    "outdatedHint": "Leur source ne décrit peut-être plus l’hôtel actuel (par exemple une page sous un ancien nom) : à vérifier après les autres valeurs."
+    "outdatedHint": "Leur source ne décrit peut-être plus l’hôtel actuel (par exemple une page sous un ancien nom) : à vérifier après les autres valeurs.",
+    "showAll": "Voir tous les attributs de la fiche",
+    "showTable": "Revenir aux attributs « {table} »",
+    "noneInTable": "Plus aucun attribut de cette fiche dans ce tableau.",
+    "finalValue": "Valeur retenue : {value}"
   },
   "decision": {
     "human_approved": "Validée",
@@ -222,7 +223,7 @@
     "scrapedName": "Nom scrapé",
     "pageName": "Nom de la page",
     "openPage": "Ouvrir la page source ↗",
-    "delay": "Une fois validé, l’hôtel est enrichi pour cette source au prochain passage du pipeline (toutes les 15 minutes) : ses valeurs apparaîtront ensuite dans « Attributs à valider ». Rejeté, la source n’est plus utilisée pour cet hôtel.",
+    "delay": "Une fois validé, l’hôtel est enrichi pour cette source au prochain passage du pipeline (toutes les 15 minutes) : ses valeurs apparaîtront ensuite à l’étape 2. Rejeté, la source n’est plus utilisée pour cet hôtel.",
     "empty": "Aucun rapprochement à valider pour ce filtre.",
     "approve": "Valider le rapprochement",
     "reject": "Rejeter le rapprochement",
@@ -252,7 +253,16 @@
       "same_hotel": "Même hôtel",
       "different_hotel": "Hôtel différent",
       "undetermined": "Indéterminé"
-    }
+    },
+    "emptyTable": "Aucun rapprochement dans ce tableau pour ces filtres.",
+    "approveAnyway": "Confirmer quand même",
+    "decision": "Décision",
+    "decisions": {
+      "human_approved": "Confirmé",
+      "human_rejected": "Rejeté"
+    },
+    "whyColumn": "À vérifier",
+    "reasonColumn": "Motif"
   },
   "bulkMatches": {
     "cancel": "Annuler",
@@ -283,13 +293,17 @@
     "record": "{date} · {author} · {hotels, plural, one {# hôtel} other {# hôtels}} · {rows, plural, one {# valeur} other {# valeurs}}",
     "unauthorized": "Utilisateur non identifié : action refusée par le serveur.",
     "busy": "Un export est en cours : attendez sa fin avant d’en relancer un.",
-    "blockedDetail": "L’export sera possible quand tout sera décidé. Il reste : {details}.",
     "waiting": {
-      "matchesToReview": "{count, plural, one {# rapprochement à valider} other {# rapprochements à valider}}",
-      "valuesToReview": "{count, plural, one {# attribut à valider} other {# attributs à valider}}",
+      "matchesToReview": "{count, plural, one {# rapprochement à vérifier} other {# rapprochements à vérifier}}",
+      "valuesToReview": "{count, plural, one {# attribut à vérifier} other {# attributs à vérifier}}",
       "matchesPending": "{count, plural, one {# rapprochement en attente de jugement} other {# rapprochements en attente de jugement}}",
       "valuesPending": "{count, plural, one {# attribut en cours d’enrichissement} other {# attributs en cours d’enrichissement}}"
-    }
+    },
+    "short": "Export",
+    "approvedUnit": "{count, plural, one {prêt} other {prêts}}",
+    "remaining": "Reste : {details}.",
+    "confirmShort": "Lancer ?",
+    "historyShort": "{count, plural, one {# export} other {# exports}}"
   },
   "settings": {
     "title": "Seuils de validation automatique",
@@ -324,5 +338,54 @@
     "error": "Impossible de charger les seuils.",
     "lastChange": "Modifié par {author} le {date}"
   },
-  "number": "{value, number}"
+  "number": "{value, number}",
+  "tour": {
+    "counter": "{current} sur {total}",
+    "skip": "Passer",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "done": "Terminer",
+    "steps": {
+      "steps": {
+        "title": "Deux étapes, puis l’export",
+        "body": "Étape 1 : vérifier que chaque page source décrit bien le bon hôtel. Étape 2 : vérifier les attributs que ces pages apportent. Cliquez sur une étape pour l’ouvrir ; l’export part quand tout est décidé."
+      },
+      "why": {
+        "title": "Pourquoi c’est à vérifier",
+        "body": "La raison donnée par l’agent juge et le résultat du contrôle automatique. Survolez le texte pour le lire en entier."
+      },
+      "matchDetail": {
+        "title": "Ouvrir un rapprochement",
+        "body": "« Voir détail » montre la fiche PIM et la page source côte à côte. En bas du détail : « Valider le rapprochement » ou « Rejeter le rapprochement », avec un commentaire si besoin."
+      },
+      "tables": {
+        "title": "Quatre tableaux par étape",
+        "body": "À vérifier : ce qui attend votre décision. Confirmé auto et Rejeté auto : ce que les seuils ont décidé seuls, à contrôler si besoin. Validé manuellement : toutes les décisions des relecteurs, avec auteur et date. On peut revenir sur chacune depuis son détail."
+      },
+      "fiche": {
+        "title": "Étape 2 : une ligne par fiche",
+        "body": "Ouvrez une fiche pour voir chaque attribut proposé, sa source et son score. Pour chaque attribut : Valider, Rejeter ou Corriger (valeur choisie dans les codes autorisés du PIM)."
+      },
+      "outdated": {
+        "title": "Valeurs non prioritaires",
+        "body": "Certaines valeurs viennent d’une page sous un ancien nom de l’hôtel : elles sont signalées et passent en fin de fiche. Ce filtre les masque ou les isole."
+      },
+      "filters": {
+        "title": "Filtres",
+        "body": "Cherchez un établissement par nom, ville ou code, ou filtrez par marque (tapez les premières lettres), source et avis du juge. Les filtres s’appliquent aux quatre tableaux."
+      },
+      "bulk": {
+        "title": "Décider en masse",
+        "body": "Cochez des lignes (ou toutes celles affichées) : une barre apparaît en bas de l’écran pour tout valider ou tout rejeter en une fois."
+      },
+      "export": {
+        "title": "Export du PIM enhanced",
+        "body": "Le bouton s’active quand plus rien n’attend de décision. Seuls les attributs validés partent ; l’historique donne accès aux fichiers déjà produits."
+      },
+      "help": {
+        "title": "Revoir la visite",
+        "body": "Ce bouton relance la visite à tout moment."
+      }
+    }
+  }
 }

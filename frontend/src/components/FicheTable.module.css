@@ -135,3 +135,22 @@
   align-items: flex-start;
   gap: 6px;
 }
+
+/* Long texts kept to two lines in the tables, complete on hover (title) */
+.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 320px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Deterministic check of a match, under the judge's reason */
+.check {
+  margin-top: 6px;
+  white-space: normal;
+  border-radius: 12px;
+}

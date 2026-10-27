@@ -11,6 +11,13 @@
   font-size: 15px;
 }
 
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
 .empty p {
   margin: 0 0 16px;
 }
@@ -42,20 +49,9 @@
   min-width: 0;
 }
 
-/* « En cours » tab: one heading per list */
-.section {
-  margin: 8px 0 12px;
-}
-
-.sectionTitle {
-  margin: 0;
-  font-size: 16px;
-  line-height: 22px;
-  color: var(--ink);
-}
-
-.sectionHint {
-  margin: 2px 0 0;
+/* What the table holds and what the reviewer can do there */
+.hint {
+  margin: -8px 0 16px;
   font-size: 13px;
   color: var(--text-muted);
 }

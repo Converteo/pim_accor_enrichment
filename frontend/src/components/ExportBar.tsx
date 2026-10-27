@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiError, exportFileUrl, fetchExecution, fetchExportStatus, startExport } from "@/data/source";
 import type { ExportExecution, ExportStatus, Stats } from "@/domain/types";
 import { errorText } from "./labels";
+import bar from "./StepBar.module.css";
 import styles from "./ExportBar.module.css";
 
 const POLL_MS = 3000;
@@ -22,7 +23,7 @@ type Execution = { id: string } & ExportExecution & {
   empty?: boolean;
 };
 
-/** Export of the PIM enhanced: blocked while values or matches still wait for a decision. */
+/** Export of the PIM enhanced, last segment of the step bar: blocked while values or matches still wait for a decision. */
 export function ExportBar({ stats }: ExportBarProps) {
   const t = useTranslations("export");
   const pending = stats?.pendingForExport;
@@ -121,114 +122,132 @@ export function ExportBar({ stats }: ExportBarProps) {
   const running = execution?.state === "running";
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  const canStart = Boolean(status?.canExport) && !running && !error;
+  // Why the button is off (or that it is ready): shown in its tooltip, read with the button.
+  const statusText = error
+    ? `${t("statusError")} ${errorMessage(error)}`
+    : !status
+      ? t("loading")
+      : status.runningExecutionId
+        ? t("busy")
+        : status.canExport
+          ? t("ready")
+          : // Detailed from /stats, read with the tabs, so that both agree even while the pipeline runs.
+            stats && stats.pendingForExport > 0
+            ? t("remaining", {
+                details: format.list(
+                  WAITING.filter((key) => stats[key] > 0).map((key) => t(`waiting.${key}`, { count: stats[key] })),
+                ),
+              })
+            : t("blocked", { count: status.pendingCount });
+  const executionText = execution
+    ? `${t(execution.empty ? "state.empty" : `state.${execution.state}`)}${execution.message ? ` ${execution.message}` : ""}`
+    : "";
+
   return (
-    <section className={styles.band} aria-labelledby={`${id}-title`}>
-      <div className={styles.row}>
-        <div className={styles.text}>
-          <h2 id={`${id}-title`} className={styles.title}>
-            {t("title")}
-          </h2>
-          <p id={`${id}-status`} className={styles.status} role="status">
-            {error
-              ? `${t("statusError")} ${errorMessage(error)}`
-              : !status
-                ? t("loading")
-                : status.runningExecutionId
-                  ? t("busy")
-                  : status.canExport
-                    ? t("ready")
-                    : // Detailed from /stats, read with the tabs, so that both agree even while the pipeline runs.
-                      stats && stats.pendingForExport > 0
-                      ? t("blockedDetail", {
-                          details: format.list(
-                            WAITING.filter((key) => stats[key] > 0).map((key) =>
-                              t(`waiting.${key}`, { count: stats[key] }),
-                            ),
-                          ),
-                        })
-                      : t("blocked", { count: status.pendingCount })}
-          </p>
-        </div>
-        <div className={styles.actions}>
-          {confirming ? (
+    <section className={styles.segment} aria-labelledby={`${id}-title`} data-tour="export">
+      <span className={bar.badge}>
+        <svg className={styles.icon} viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />
+        </svg>
+      </span>
+      <span className={bar.text}>
+        <h2 id={`${id}-title`} className={bar.title} title={t("title")}>
+          {t("short")}
+        </h2>
+        <span className={bar.figure}>
+          {/* The figure gives way to the export being followed; always mounted, so each change is announced. */}
+          <span
+            role="status"
+            className={execution?.state === "failed" ? `${styles.execution} ${styles.failed}` : styles.execution}
+            title={executionText || undefined}
+          >
+            {running ? <span className="spinner" aria-hidden="true" /> : null}
+            {executionText}
+          </span>
+          {execution ? null : (
             <>
-              <span id={`${id}-confirm`} className={styles.confirm}>
-                {t("confirm")}
-              </span>
-              <button
-                type="button"
-                className="btn btn-ghost btn-small"
-                // Replaces the launch button that had the focus.
-                autoFocus
-                aria-describedby={`${id}-confirm`}
-                onClick={cancel}
-              >
-                {t("cancel")}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-small"
-                aria-describedby={`${id}-confirm`}
-                onClick={launch}
-              >
-                {t("launch")}
-              </button>
+              <strong>{stats ? tRoot("number", { value: stats.valuesApproved }) : "—"}</strong>{" "}
+              <span className={bar.unit}>{t("approvedUnit", { count: stats?.valuesApproved ?? 0 })}</span>
             </>
-          ) : (
+          )}
+          {status && status.history.length > 0 ? (
+            <details className={styles.history}>
+              <summary>{t("historyShort", { count: status.history.length })}</summary>
+              <ul className={styles.panel}>
+                {status.history.map((record) => (
+                  <li key={record.exportId}>
+                    <span>
+                      {t("record", {
+                        date: format.dateTime(new Date(record.exportedAt), {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                          timeZone,
+                        }),
+                        author: record.triggeredBy,
+                        hotels: record.hotelCount,
+                        rows: record.rowCount,
+                      })}
+                    </span>
+                    <span className={styles.files}>
+                      {/* No `download`: the back sends Content-Disposition, and an error stays visible. */}
+                      {record.files.map((file) => (
+                        <a key={file} href={exportFileUrl(record.exportId, file)}>
+                          {file}
+                        </a>
+                      ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </span>
+      </span>
+      <span className={styles.actions}>
+        {confirming ? (
+          <>
+            <span id={`${id}-confirm`} className={styles.confirm}>
+              {t("confirmShort")}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-small"
+              // Replaces the launch button that had the focus.
+              autoFocus
+              aria-describedby={`${id}-confirm`}
+              onClick={cancel}
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-small"
+              aria-describedby={`${id}-confirm`}
+              onClick={launch}
+            >
+              {t("launch")}
+            </button>
+          </>
+        ) : (
+          <span className={styles.tipWrap}>
+            {/* aria-disabled rather than disabled: the button stays focusable, so its tooltip says why. */}
             <button
               ref={startRef}
               type="button"
               className="btn btn-primary btn-small"
-              disabled={!status?.canExport || running || Boolean(error)}
+              aria-disabled={!canStart}
               aria-describedby={`${id}-status`}
-              onClick={() => setConfirming(true)}
+              onClick={canStart ? () => setConfirming(true) : undefined}
             >
               {running ? t("running") : t("start")}
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* Always mounted, so screen readers announce each change of the execution. */}
-      <p
-        className={execution?.state === "failed" ? `${styles.execution} ${styles.failed}` : styles.execution}
-        role="status"
-      >
-        {execution ? t(execution.empty ? "state.empty" : `state.${execution.state}`) : ""}
-        {execution?.message ? ` ${execution.message}` : ""}
-      </p>
-
-      {status && status.history.length > 0 ? (
-        <details className={styles.history}>
-          <summary>{t("history", { count: status.history.length })}</summary>
-          <ul>
-            {status.history.map((record) => (
-              <li key={record.exportId}>
-                <span>
-                  {t("record", {
-                    date: format.dateTime(new Date(record.exportedAt), {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                      timeZone,
-                    }),
-                    author: record.triggeredBy,
-                    hotels: record.hotelCount,
-                    rows: record.rowCount,
-                  })}
-                </span>
-                <span className={styles.files}>
-                  {/* No `download`: the back sends Content-Disposition, and an error stays visible. */}
-                  {record.files.map((file) => (
-                    <a key={file} href={exportFileUrl(record.exportId, file)}>
-                      {file}
-                    </a>
-                  ))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
+            <span role="tooltip" id={`${id}-status`} className={styles.tip}>
+              {statusText}
+            </span>
+          </span>
+        )}
+      </span>
     </section>
   );
 }

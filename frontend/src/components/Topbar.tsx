@@ -1,17 +1,18 @@
 import { useTranslations } from "next-intl";
-import type { Stats } from "@/domain/types";
-import { KpiStrip } from "./KpiStrip";
+import type { ReactNode } from "react";
 import { LanguageSelect } from "./LanguageSelect";
-import { StatusDistribution } from "./StatusDistribution";
 import styles from "./Topbar.module.css";
 
 interface TopbarProps {
-  stats: Stats | null;
+  /** Hero content under the title: the step cards. */
+  children: ReactNode;
   author: string | null;
   onOpenSettings: () => void;
+  /** Relaunches the guided tour (PIM-60). */
+  onHelp: () => void;
 }
 
-export function Topbar({ stats, author, onOpenSettings }: TopbarProps) {
+export function Topbar({ children, author, onOpenSettings, onHelp }: TopbarProps) {
   const t = useTranslations("header");
 
   return (
@@ -31,6 +32,16 @@ export function Topbar({ stats, author, onOpenSettings }: TopbarProps) {
             <span className={styles.product}>{t("subtitle")}</span>
           </div>
           <div className={styles.navEnd}>
+            <button
+              type="button"
+              className={`${styles.settings} ${styles.help}`}
+              aria-label={t("help")}
+              title={t("help")}
+              data-tour="help"
+              onClick={onHelp}
+            >
+              ?
+            </button>
             <button type="button" className={styles.settings} onClick={onOpenSettings}>
               {t("settings")}
             </button>
@@ -44,8 +55,7 @@ export function Topbar({ stats, author, onOpenSettings }: TopbarProps) {
       <section className={styles.hero}>
         <div className={styles.heroInner}>
           <h1 className={styles.title}>{t("title")}</h1>
-          <KpiStrip stats={stats} />
-          <StatusDistribution stats={stats} />
+          {children}
         </div>
       </section>
     </>

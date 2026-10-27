@@ -1,0 +1,91 @@
+/* Above the page and the drawers: the page behind takes no click while the tour runs */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  animation: tour-in 0.3s ease-out;
+}
+
+@keyframes tour-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The element pointed at, cut out of the scrim */
+.spot {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 200vmax rgba(5, 0, 51, 0.45);
+  outline: 2px solid var(--brand-line);
+  pointer-events: none;
+  /* GLIDE_MS in GuidedTour.tsx */
+  transition:
+    top 0.48s cubic-bezier(0.65, 0, 0.35, 1),
+    left 0.48s cubic-bezier(0.65, 0, 0.35, 1),
+    width 0.48s cubic-bezier(0.65, 0, 0.35, 1),
+    height 0.48s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Scroll or resize while a bubble is shown: the halo sticks to the element */
+.follow {
+  transition: none;
+}
+
+.bubble {
+  position: fixed;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px 16px;
+  outline: none;
+  opacity: 0;
+  transform: translateY(6px);
+  visibility: hidden;
+  transition:
+    opacity 0.15s ease-in,
+    transform 0.15s ease-in,
+    visibility 0s linear 0.15s;
+}
+
+/* Fades in once the halo has reached the element */
+.visible {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition:
+    opacity 0.28s ease-out,
+    transform 0.28s ease-out,
+    visibility 0s;
+}
+
+.counter {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--brand-icon);
+}
+
+.title {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.body {
+  margin: 8px 0 16px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.skip {
+  margin-right: auto;
+  border-color: transparent;
+}
