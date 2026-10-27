@@ -74,8 +74,10 @@ variable "environments" {
     front_iap = optional(bool, false)
     # Comptes autorisés à changer les seuils de validation automatique dans l'interface (vide = tout relecteur Converteo)
     settings_editors = optional(list(string), [])
-    front_scaling    = optional(object({ min = number, max = number }), { min = 0, max = 2 })
-    back_scaling     = optional(object({ min = number, max = number }), { min = 0, max = 2 })
+    # Comptes Google hors Converteo ouverts dans IAP et autorisés à décider (exige front_iap)
+    external_reviewers = optional(list(string), [])
+    front_scaling      = optional(object({ min = number, max = number }), { min = 0, max = 2 })
+    back_scaling       = optional(object({ min = number, max = number }), { min = 0, max = 2 })
 
     # Pipeline d'enrichissement (pipeline/), réglages posés en variables d'environnement des jobs
     pipeline = optional(object({

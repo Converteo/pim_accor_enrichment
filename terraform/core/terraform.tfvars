@@ -68,6 +68,9 @@ environments = {
     # Seuls ces comptes peuvent changer les seuils de validation automatique dans l'interface
     settings_editors = ["brice.van-aken@converteo.com", "nicolas.wyseur@converteo.com"]
 
+    # Comptes Google hors Converteo : accès au front et décisions
+    external_reviewers = ["elise.bouvais@gmail.com"]
+
     # Planificateur repris : les rapprochements validés dans l'interface sont enrichis sans relance manuelle (coûts LLM à surveiller)
     pipeline = { scheduler_paused = false }
   }
