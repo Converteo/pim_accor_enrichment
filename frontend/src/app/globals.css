@@ -338,6 +338,23 @@ input[type="checkbox"] {
   filter: none;
 }
 
+/* Loading indicator in the colour of the text around it (PIM-61) */
+.spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .btn-small {
   padding: 6px 14px;
   font-size: 13px;

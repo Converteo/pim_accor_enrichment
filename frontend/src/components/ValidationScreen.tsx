@@ -632,7 +632,8 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
             </button>
           </div>
         ) : (
-          <p className={styles.empty} role="status">
+          <p className={`${styles.empty} ${styles.loading}`} role="status" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
             {t("drawer.loading")}
           </p>
         )}
@@ -762,7 +763,8 @@ export function ListFooter({
 
   if (status === "loading") {
     return (
-      <p className={styles.empty} role="status">
+      <p className={`${styles.empty} ${styles.loading}`} role="status" aria-busy="true">
+        <span className="spinner" aria-hidden="true" />
         {t("list.loading")}
       </p>
     );
@@ -787,7 +789,14 @@ export function ListFooter({
       <span>{shown}</span>
       {error ? <span role="alert">{errorText(t, error)}</span> : null}
       {hasMore ? (
-        <button type="button" className="btn btn-ghost" disabled={loadingMore} onClick={onMore}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          disabled={loadingMore}
+          aria-busy={loadingMore}
+          onClick={onMore}
+        >
+          {loadingMore ? <span className="spinner" aria-hidden="true" /> : null}
           {loadingMore ? t("list.loading") : t("list.loadMore")}
         </button>
       ) : null}
