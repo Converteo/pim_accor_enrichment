@@ -37,10 +37,13 @@ export interface HotelFilters {
 export type AutoApprovedFilters = Omit<HotelFilters, 'view' | 'outdated'>;
 
 export interface MatchFilters {
-  status: 'needs_review' | 'pending_judgment' | 'auto_approved';
+  /** human = human_approved + human_rejected. */
+  status: 'needs_review' | 'pending_judgment' | 'auto_approved' | 'auto_rejected' | 'human';
   source?: string;
   brand?: string;
   verdict?: string;
+  /** Nom PIM, ville ou RID. */
+  search?: string;
   limit: number;
   cursor?: string;
 }
@@ -201,6 +204,11 @@ const outdatedBySource = (from: string) => `
       CONCAT('Page source sous un ancien nom', IFNULL(CONCAT(' : ', COALESCE(page_name, scraped_name)), '')), NULL)) AS outdated
   FROM ${from} GROUP BY rid, source`;
 
+/** Recherche « Établissement » : nom, ville ou RID contient @search, sans tenir compte de la casse ni des accents. */
+const fold = (expr: string) => `REGEXP_REPLACE(NORMALIZE(LOWER(${expr}), NFD), r'\\pM', '')`;
+const searchHotel = (name: string, city: string, rid: string) =>
+  `(@search IS NULL OR STRPOS(${fold(`CONCAT(IFNULL(${name}, ''), ' ', IFNULL(${city}, ''), ' ', ${rid})`)}, ${fold('@search')}) > 0)`;
+
 const HOTEL_FILTER_TYPES = {
   brand: 'STRING',
   source: 'STRING',
@@ -281,8 +289,7 @@ export class BigQueryRepository extends Repository {
         FROM agg JOIN identity i USING (rid)
         WHERE selected > 0
           AND (@brand IS NULL OR i.brand = @brand)
-          AND (@search IS NULL
-            OR STRPOS(LOWER(CONCAT(IFNULL(i.name, ''), ' ', IFNULL(i.city, ''), ' ', rid)), LOWER(@search)) > 0)
+          AND ${searchHotel('i.name', 'i.city', 'rid')}
       )
       SELECT * FROM hotels WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
       {
@@ -351,11 +358,13 @@ export class BigQueryRepository extends Repository {
         SELECT COUNTIF(final_status = 'needs_review') AS matchesToReview,
           COUNTIF(final_status = 'pending_judgment') AS matchesPending,
           COUNTIF(final_status = 'auto_approved') AS matchesAutoApproved,
+          COUNTIF(final_status = 'auto_rejected') AS matchesAutoRejected,
+          COUNTIF(final_status IN ('human_approved', 'human_rejected')) AS matchesHuman,
           COUNTIF(final_status IN ('needs_review', 'pending_judgment')) AS matchesWaiting
         FROM m
       )
       -- pendingForExport : même compte que le job d'export (contrat-back.md § 3)
-      SELECT counts.*, matchesToReview, matchesPending, matchesAutoApproved, matchesWaiting + valuesToReview + valuesPending AS pendingForExport
+      SELECT counts.*, mcounts.* EXCEPT (matchesWaiting), matchesWaiting + valuesToReview + valuesPending AS pendingForExport
       FROM counts CROSS JOIN mcounts`);
     const keys = [
       'hotelsToReview',
@@ -364,6 +373,8 @@ export class BigQueryRepository extends Repository {
       'matchesToReview',
       'matchesPending',
       'matchesAutoApproved',
+      'matchesAutoRejected',
+      'matchesHuman',
       'valuesAutoApproved',
       'valuesPending',
       'valuesApproved',
@@ -415,31 +426,40 @@ export class BigQueryRepository extends Repository {
 
   async matches(f: MatchFilters): Promise<Page<MatchItem>> {
     const { matches } = this.t;
-    // Un curseur par liste. Validés automatiquement : score croissant, les cas limites (juste au-dessus du seuil) d'abord
-    const list = { needs_review: 'matches', pending_judgment: 'matches-pending', auto_approved: 'matches-auto' }[
-      f.status
-    ];
+    // Un curseur par liste. Confirmés / rejetés automatiquement : les cas limites (score proche du seuil) d'abord ;
+    // décisions humaines : la plus récente d'abord
+    const list = {
+      needs_review: 'matches',
+      pending_judgment: 'matches-pending',
+      auto_approved: 'matches-auto',
+      auto_rejected: 'matches-rejected',
+      human: 'matches-human',
+    }[f.status];
     const order =
-      f.status === 'auto_approved'
-        ? `FORMAT('%03d|%s|%s|%s', IFNULL(score, 0), source, rid, source_hash)`
-        : `FORMAT('%s|%03d|%s|%s', source, 100 - IFNULL(score, 0), rid, source_hash)`;
+      {
+        auto_approved: `FORMAT('%03d|%s|%s|%s', IFNULL(score, 0), source, rid, source_hash)`,
+        auto_rejected: `FORMAT('%03d|%s|%s|%s', 100 - IFNULL(score, 0), source, rid, source_hash)`,
+        human: `FORMAT('%016d|%s|%s|%s', 9999999999999999 - UNIX_MICROS(decided_at), source, rid, source_hash)`,
+      }[f.status as string] ?? `FORMAT('%s|%03d|%s|%s', source, 100 - IFNULL(score, 0), rid, source_hash)`;
     const rows = await this.bq.query<Row>(
       `SELECT * FROM (
         SELECT *, ${order} AS sort_key
         FROM ${matches}
-        WHERE final_status = @status AND (@source IS NULL OR source = @source)
+        WHERE final_status IN UNNEST(@statuses) AND (@source IS NULL OR source = @source)
           AND (@brand IS NULL OR pim_brand = @brand) AND (@verdict IS NULL OR verdict = @verdict)
+          AND ${searchHotel('pim_name', 'pim_city', 'rid')}
       )
       WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
       {
-        status: f.status,
+        statuses: f.status === 'human' ? ['human_approved', 'human_rejected'] : [f.status],
         source: f.source ?? null,
         brand: f.brand ?? null,
         verdict: f.verdict ?? null,
+        search: f.search ?? null,
         cursor: decodeCursor(list, f.cursor),
         limit: f.limit + 1,
       },
-      { source: 'STRING', brand: 'STRING', verdict: 'STRING' },
+      { source: 'STRING', brand: 'STRING', verdict: 'STRING', search: 'STRING' },
     );
     return page(list, rows, f.limit, matchItem);
   }
@@ -469,8 +489,7 @@ export class BigQueryRepository extends Repository {
           AND (@family IS NULL OR e.family = @family)
           AND (@priority IS NULL OR e.priority = @priority)
           AND (@brand IS NULL OR i.brand = @brand)
-          AND (@search IS NULL
-            OR STRPOS(LOWER(CONCAT(IFNULL(i.name, ''), ' ', IFNULL(i.city, ''), ' ', e.rid)), LOWER(@search)) > 0)
+          AND ${searchHotel('i.name', 'i.city', 'e.rid')}
       )
       WHERE sort_key > @cursor ORDER BY sort_key LIMIT @limit`,
       {

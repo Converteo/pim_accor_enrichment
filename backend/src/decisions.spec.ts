@@ -245,20 +245,23 @@ describe('checkMatchDecisions', () => {
     expect(rejected).toMatchObject([{ code }]);
   });
 
-  it.each(['auto_rejected', 'pending_judgment'])('refuse le statut %s', (status) => {
+  it('refuse le statut pending_judgment', () => {
+    const status = 'pending_judgment';
     expect(checkMatchDecisions([item()], new Map([[KEY, status]])).rejected).toMatchObject([
       { key: KEY, code: 'invalid_status' },
     ]);
   });
 
-  it.each(['human_rejected', 'human_approved'])(
-    'accepte %s sur un rapprochement validé automatiquement',
-    (decision) => {
-      const { rows, rejected } = checkMatchDecisions([item({ decision })], new Map([[KEY, 'auto_approved']]));
-      expect(rejected).toEqual([]);
-      expect(rows).toMatchObject([{ decision }]);
-    },
-  );
+  it.each([
+    ['human_rejected', 'auto_approved'],
+    ['human_approved', 'auto_approved'],
+    ['human_approved', 'auto_rejected'],
+    ['human_rejected', 'auto_rejected'],
+  ])('accepte %s sur un rapprochement %s (revenir sur la décision automatique)', (decision, status) => {
+    const { rows, rejected } = checkMatchDecisions([item({ decision })], new Map([[KEY, status]]));
+    expect(rejected).toEqual([]);
+    expect(rows).toMatchObject([{ decision }]);
+  });
 
   it('accepte de revenir sur une décision humaine', () => {
     const { rows } = checkMatchDecisions([item({ decision: 'human_rejected' })], new Map([[KEY, 'human_approved']]));

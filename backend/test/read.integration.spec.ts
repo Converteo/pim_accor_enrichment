@@ -102,6 +102,19 @@ describe.runIf(process.env.BQ_INTEGRATION)('BigQueryRepository (dev, lecture)', 
     expect((await repo.matches({ status: 'auto_approved', verdict: 'undetermined', limit: 1 })).items).toEqual([]);
   });
 
+  it('matches : rejetés auto, décisions humaines (plus récente d’abord) et recherche sans accents', async () => {
+    const rejected = await repo.matches({ status: 'auto_rejected', limit: 2 });
+    expect(rejected.items.every((x) => x.status === 'auto_rejected')).toBe(true);
+    const human = (await repo.matches({ status: 'human', limit: 50 })).items;
+    expect(human.length).toBeGreaterThan(0);
+    expect(human.every((x) => x.status.startsWith('human_') && x.lastDecision?.author)).toBe(true);
+    const dates = human.map((x) => x.lastDecision!.decidedAt);
+    expect(dates).toEqual([...dates].sort().reverse());
+    const found = await repo.matches({ status: 'auto_approved', search: 'são PAULO', limit: 5 });
+    expect(found.items.length).toBeGreaterThan(0);
+    expect(found.items.every((x) => /s[aã]o paulo/i.test(`${x.pim.name} ${x.pim.city}`))).toBe(true);
+  });
+
   it('fieldValues : types et codes depuis v_field_allowed_values', async () => {
     const fields = await repo.fieldValues(['WellnessCenterFreeWellnessCenterServices', 'ProductCheckIn', 'Inconnu']);
     const byName = new Map(fields.map((f) => [f.pimField, f]));

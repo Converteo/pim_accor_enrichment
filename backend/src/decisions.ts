@@ -153,8 +153,8 @@ export interface MatchDecisionRow {
 }
 
 const MATCH_DECISIONS = ['human_approved', 'human_rejected'];
-// auto_approved : contrôle humain de l'onglet « Validés automatiquement » (PIM-49) ; la décision prime ensuite
-const DECIDABLE_MATCH = ['needs_review', 'auto_approved', 'human_approved', 'human_rejected'];
+// auto_approved / auto_rejected : un relecteur revient sur la décision automatique (PIM-49, PIM-54) ; la sienne prime
+const DECIDABLE_MATCH = ['needs_review', 'auto_approved', 'auto_rejected', 'human_approved', 'human_rejected'];
 export const matchKey = (m: { rid: string; source: string; sourceHash: string }) =>
   `${m.rid}|${m.source}|${m.sourceHash}`;
 

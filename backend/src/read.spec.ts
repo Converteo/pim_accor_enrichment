@@ -82,6 +82,8 @@ describe('GET /hotels/facets et /stats', () => {
       matchesToReview: 3,
       matchesPending: 0,
       matchesAutoApproved: 4,
+      matchesAutoRejected: 1,
+      matchesHuman: 2,
       valuesAutoApproved: 0,
       valuesPending: 0,
       valuesApproved: 0,
@@ -114,18 +116,24 @@ describe('GET /matches', () => {
     expect(repo.matches).toHaveBeenCalledWith({ status: 'needs_review', source: 'expedia', limit: 5, cursor: 'x' });
   });
 
-  it.each(['needs_review', 'pending_judgment', 'auto_approved'])(
-    'filtre marque et avis du juge pour status=%s',
+  it.each(['needs_review', 'pending_judgment', 'auto_approved', 'auto_rejected', 'human'])(
+    'filtre marque, avis du juge et établissement pour status=%s',
     async (status) => {
       repo.matches.mockResolvedValue({ items: [], nextCursor: null });
       await request(app.getHttpServer())
-        .get(`/matches?status=${status}&brand=Ibis&verdict=undetermined&source=`)
+        .get(`/matches?status=${status}&brand=Ibis&verdict=undetermined&source=&search=%20Évry%20`)
         .expect(200);
-      expect(repo.matches).toHaveBeenCalledWith({ status, brand: 'Ibis', verdict: 'undetermined', limit: 50 });
+      expect(repo.matches).toHaveBeenCalledWith({
+        status,
+        brand: 'Ibis',
+        verdict: 'undetermined',
+        search: 'Évry',
+        limit: 50,
+      });
     },
   );
 
-  it.each(['pending_judgment', 'auto_approved'])('accepte status=%s', async (status) => {
+  it.each(['pending_judgment', 'auto_approved', 'auto_rejected', 'human'])('accepte status=%s', async (status) => {
     repo.matches.mockResolvedValue({ items: [], nextCursor: null });
     await request(app.getHttpServer()).get(`/matches?status=${status}`).expect(200);
     expect(repo.matches).toHaveBeenCalledWith({ status, limit: 50 });

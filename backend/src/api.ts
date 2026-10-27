@@ -113,6 +113,9 @@ export interface Stats {
   matchesPending: number;
   /** Validated by the thresholds, for information (« Validés automatiquement » tab). */
   matchesAutoApproved: number;
+  matchesAutoRejected: number;
+  /** human_approved + human_rejected (« Validé manuellement »). */
+  matchesHuman: number;
   valuesAutoApproved: number;
   valuesPending: number;
   valuesApproved: number;
