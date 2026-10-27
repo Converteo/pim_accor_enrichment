@@ -57,9 +57,9 @@ const HOTEL_COUNTS = {
   human: "hotelsHuman",
 } as const satisfies Record<TableKey, keyof Stats>;
 
-function Segment({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
+function Segment({ label, icon, tour, children }: { label: string; icon: ReactNode; tour?: string; children: ReactNode }) {
   return (
-    <label className={styles.segment}>
+    <label className={styles.segment} data-tour={tour}>
       <span className={styles.segmentLabel}>
         <svg {...iconProps}>{icon}</svg>
         {label}
@@ -83,7 +83,7 @@ export function Toolbar({ step, table, filters, stats, facets, onFilter, onTable
 
   return (
     <div className={styles.toolbar}>
-      <div className={styles.engine}>
+      <div className={styles.engine} data-tour="filters">
         <label className={`${styles.segment} ${styles.search}`}>
           <span className={styles.segmentLabel}>
             <svg {...iconProps}>
@@ -204,6 +204,7 @@ export function Toolbar({ step, table, filters, stats, facets, onFilter, onTable
         {outdatedFilter ? (
           <Segment
             label={t("filters.outdatedLabel")}
+            tour="outdated"
             icon={
               <>
                 <circle cx="12" cy="12" r="8.5" />
@@ -223,7 +224,7 @@ export function Toolbar({ step, table, filters, stats, facets, onFilter, onTable
           </Segment>
         ) : null}
       </div>
-      <div className={styles.tabs} role="group" aria-label={t(`steps.${STEP_KEYS[step]}.title`)}>
+      <div className={styles.tabs} data-tour="tables" role="group" aria-label={t(`steps.${STEP_KEYS[step]}.title`)}>
         {TABLE_ORDER.map((key) => {
           const active = table === key;
           const count = stats?.[step === 1 ? MATCH_COUNTS[key] : VALUE_COUNTS[key]];

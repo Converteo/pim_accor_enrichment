@@ -53,7 +53,7 @@ export function MatchTable({
         <thead>
           <tr>
             {readOnly ? null : (
-              <th className={`${styles.headCell} ${styles.checkCol}`} scope="col">
+              <th className={`${styles.headCell} ${styles.checkCol}`} scope="col" data-tour="select">
                 <input
                   type="checkbox"
                   checked={headerChecked}
@@ -138,7 +138,7 @@ export function MatchTable({
                     <div className={styles.city}>{codeLabel(t, "matches.judgeVerdicts", row.verdict)}</div>
                   ) : null}
                 </td>
-                <td className={styles.cell}>
+                <td className={styles.cell} data-tour="why">
                   <WhyCell row={row} />
                 </td>
                 {decisions ? (
@@ -175,6 +175,7 @@ export function MatchTable({
                       <button
                         type="button"
                         className="btn-icon link"
+                        data-tour="view"
                         onClick={(event) => {
                           stopRowOpen(event);
                           onOpen(key);

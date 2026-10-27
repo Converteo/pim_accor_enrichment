@@ -45,7 +45,7 @@ export function FicheTable({
         <thead>
           <tr>
             {selectable ? (
-              <th className={`${styles.headCell} ${styles.checkCol}`} scope="col">
+              <th className={`${styles.headCell} ${styles.checkCol}`} scope="col" data-tour="select">
                 <input
                   type="checkbox"
                   checked={headerChecked}
@@ -81,6 +81,7 @@ export function FicheTable({
               <tr
                 key={row.rid}
                 className={isSelected ? `${styles.row} ${styles.selected}` : styles.row}
+                data-tour="fiche"
                 onClick={() => onOpen(row.rid)}
               >
                 {selectable ? (

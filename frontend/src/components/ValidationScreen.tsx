@@ -34,6 +34,7 @@ import { ExportBar } from "./ExportBar";
 import { StatusDistribution } from "./StatusDistribution";
 import { STEP_KEYS, StepCards } from "./StepCards";
 import { FicheTable } from "./FicheTable";
+import { GuidedTour, type TourStep } from "./GuidedTour";
 import { HotelDetailView } from "./HotelDetailView";
 import { MatchDetailView } from "./MatchDetailView";
 import { MatchTable } from "./MatchTable";
@@ -45,6 +46,9 @@ import { useMatchReview } from "./useMatchReview";
 import { usePagedList } from "./usePagedList";
 import { ValueDecision } from "./ValueDecision";
 import styles from "./ValidationScreen.module.css";
+
+// Set once the tour was finished or skipped: it starts by itself on the first visit only (per browser).
+const TOUR_SEEN = "pim-tour-seen";
 
 const EMPTY_FILTERS: Filters = {
   search: "",
@@ -109,6 +113,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   const step: Step = urlStep === "1" ? 1 : urlStep === "2" ? 2 : defaultStep;
   const table: TableKey = TABLE_ORDER.find((key) => key === searchParams.get("table")) ?? "review";
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [touring, setTouring] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   // The search box filters on the back: wait for a pause in typing.
   const [query, setQuery] = useState<Filters>(EMPTY_FILTERS);
@@ -177,11 +182,26 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
       (loaded) => {
         setStats(loaded);
         if (loaded.matchesToReview === 0) setDefaultStep(2);
+        // The tour starts once the counters it points at are there.
+        try {
+          if (!localStorage.getItem(TOUR_SEEN)) setTouring(true);
+        } catch {
+          // Storage blocked: no automatic tour, the « ? » button still starts it.
+        }
       },
       () => undefined,
     );
     fetchFacets().then(setFacets, () => undefined);
   }, []);
+
+  const endTour = useCallback(() => {
+    setTouring(false);
+    try {
+      localStorage.setItem(TOUR_SEEN, "1");
+    } catch {
+      // Storage blocked: the tour will start again on the next visit.
+    }
+  }, [setTouring]);
 
   /** New thresholds change statuses at once: counters and lists are read again. */
   function onThresholdsSaved(message: string) {
@@ -409,18 +429,38 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
   const openMatch = matches.shown;
   const drawerOpen = openRid !== null || matches.open !== null || settingsOpen;
 
+  // Steps whose list turns out empty are skipped (PIM-60); each step only shows a screen, never decides.
+  const noMatches = () => step === 1 && matches.list.status === "ready" && matches.list.items.length === 0;
+  const noFiches = () => step === 2 && hotels.status === "ready" && hotels.items.length === 0;
+  const tourSteps: TourStep[] = [
+    { key: "steps", target: '[data-tour="steps"]' },
+    { key: "why", target: '[data-tour="why"]', before: () => navigate(1, "review"), skip: noMatches },
+    { key: "matchDetail", target: '[data-tour="view"]', before: () => navigate(1, "review"), skip: noMatches },
+    { key: "tables", target: '[data-tour="tables"]' },
+    { key: "fiche", target: '[data-tour="fiche"]', before: () => navigate(2, "review"), skip: noFiches },
+    { key: "outdated", target: '[data-tour="outdated"]', before: () => navigate(2, "review") },
+    { key: "filters", target: '[data-tour="filters"]' },
+    { key: "bulk", target: '[data-tour="select"]', before: () => navigate(2, "review"), skip: noFiches },
+    { key: "export", target: '[data-tour="export"]' },
+    { key: "help", target: '[data-tour="help"]' },
+  ];
+
   const summary = hotels.items.find((hotel) => hotel.rid === detail?.rid);
   const shownHotel = detail?.data?.hotel ?? summary;
 
   return (
     <>
       {/* The drawer is modal: the page behind it leaves the focus order and the accessibility tree. */}
-      <div inert={drawerOpen}>
+      <div inert={drawerOpen || touring}>
         <Topbar
           author={author}
           onOpenSettings={() => {
             onClose();
             setSettingsOpen(true);
+          }}
+          onHelp={() => {
+            onClose();
+            setTouring(true);
           }}
         >
           <StepCards step={step} stats={stats} onStep={(next) => navigate(next, "review")}>
@@ -682,6 +722,7 @@ export function ValidationScreen({ author }: ValidationScreenProps) {
         <AutoValidationPanel open={settingsOpen} onSaved={onThresholdsSaved} />
       </Drawer>
       <Notice notice={notice} onClose={() => setNotice(null)} />
+      {touring ? <GuidedTour steps={tourSteps} onClose={endTour} /> : null}
     </>
   );
 }

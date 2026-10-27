@@ -7,7 +7,8 @@
     "subtitle": "Accor PIM · Property records",
     "language": "Language",
     "noUser": "Unidentified user",
-    "settings": "Automation thresholds"
+    "settings": "Automation thresholds",
+    "help": "Guided tour"
   },
   "steps": {
     "matches": {
@@ -341,5 +342,54 @@
     "error": "Could not load the thresholds.",
     "lastChange": "Changed by {author} on {date}"
   },
-  "number": "{value, number}"
+  "number": "{value, number}",
+  "tour": {
+    "counter": "{current} of {total}",
+    "skip": "Skip",
+    "previous": "Previous",
+    "next": "Next",
+    "done": "Finish",
+    "steps": {
+      "steps": {
+        "title": "Two steps, then the export",
+        "body": "Step 1: check that each source page describes the right hotel. Step 2: check the attributes these pages bring. Click a card to switch steps; the export runs once everything is decided."
+      },
+      "why": {
+        "title": "Why it needs checking",
+        "body": "The judge agent’s reason and the result of the automatic check. Hover the text to read it in full."
+      },
+      "matchDetail": {
+        "title": "Open a match",
+        "body": "“View details” shows the PIM record and the source page side by side. At the bottom of the details: “Approve match” or “Reject match”, with a comment if needed."
+      },
+      "tables": {
+        "title": "Four tables per step",
+        "body": "To check: what waits for your decision. Auto-confirmed and Auto-rejected: what the thresholds decided alone, to check if needed. Manually reviewed: every reviewer decision, with author and date. Each one can be changed from its details."
+      },
+      "fiche": {
+        "title": "Step 2: one row per record",
+        "body": "Open a record to see each proposed attribute, its source and its score. For each attribute: Approve, Reject or Correct (value picked from the PIM’s allowed codes)."
+      },
+      "outdated": {
+        "title": "Low-priority values",
+        "body": "Some values come from a page under a former name of the hotel: they are flagged and come last in the record. This filter hides them or shows only them."
+      },
+      "filters": {
+        "title": "Filters",
+        "body": "Search a property by name, city or code, or filter by brand (type the first letters), source and judge’s opinion. Filters apply to the four tables."
+      },
+      "bulk": {
+        "title": "Bulk decisions",
+        "body": "Tick rows (or all shown rows): a bar appears at the bottom of the screen to approve or reject them all at once."
+      },
+      "export": {
+        "title": "PIM enhanced export",
+        "body": "The button turns on once nothing waits for a decision. Only approved attributes are exported; the history gives access to files already produced."
+      },
+      "help": {
+        "title": "See the tour again",
+        "body": "This button starts the tour again at any time."
+      }
+    }
+  }
 }

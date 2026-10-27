@@ -8,9 +8,11 @@ interface TopbarProps {
   children: ReactNode;
   author: string | null;
   onOpenSettings: () => void;
+  /** Relaunches the guided tour (PIM-60). */
+  onHelp: () => void;
 }
 
-export function Topbar({ children, author, onOpenSettings }: TopbarProps) {
+export function Topbar({ children, author, onOpenSettings, onHelp }: TopbarProps) {
   const t = useTranslations("header");
 
   return (
@@ -30,6 +32,16 @@ export function Topbar({ children, author, onOpenSettings }: TopbarProps) {
             <span className={styles.product}>{t("subtitle")}</span>
           </div>
           <div className={styles.navEnd}>
+            <button
+              type="button"
+              className={`${styles.settings} ${styles.help}`}
+              aria-label={t("help")}
+              title={t("help")}
+              data-tour="help"
+              onClick={onHelp}
+            >
+              ?
+            </button>
             <button type="button" className={styles.settings} onClick={onOpenSettings}>
               {t("settings")}
             </button>

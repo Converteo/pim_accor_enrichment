@@ -18,7 +18,7 @@ export function StepCards({ step, stats, onStep, children }: StepCardsProps) {
   const t = useTranslations("steps");
 
   return (
-    <div className={styles.steps}>
+    <div className={styles.steps} data-tour="steps">
       {([1, 2] as const).map((key) => {
         const name = STEP_KEYS[key];
         return (

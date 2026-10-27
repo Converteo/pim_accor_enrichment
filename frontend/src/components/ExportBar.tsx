@@ -122,7 +122,7 @@ export function ExportBar({ stats }: ExportBarProps) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
-    <section className={styles.band} aria-labelledby={`${id}-title`}>
+    <section className={styles.band} aria-labelledby={`${id}-title`} data-tour="export">
       <div className={styles.row}>
         <div className={styles.text}>
           <span className={styles.eyebrow}>{t("eyebrow")}</span>

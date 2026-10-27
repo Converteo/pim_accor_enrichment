@@ -7,7 +7,8 @@
     "subtitle": "PIM Accor · Fiches établissement",
     "language": "Langue",
     "noUser": "Utilisateur non identifié",
-    "settings": "Seuils d’automatisation"
+    "settings": "Seuils d’automatisation",
+    "help": "Visite guidée"
   },
   "steps": {
     "matches": {
@@ -341,5 +342,54 @@
     "error": "Impossible de charger les seuils.",
     "lastChange": "Modifié par {author} le {date}"
   },
-  "number": "{value, number}"
+  "number": "{value, number}",
+  "tour": {
+    "counter": "{current} sur {total}",
+    "skip": "Passer",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "done": "Terminer",
+    "steps": {
+      "steps": {
+        "title": "Deux étapes, puis l’export",
+        "body": "Étape 1 : vérifier que chaque page source décrit bien le bon hôtel. Étape 2 : vérifier les attributs que ces pages apportent. Cliquez sur une carte pour changer d’étape ; l’export part quand tout est décidé."
+      },
+      "why": {
+        "title": "Pourquoi c’est à vérifier",
+        "body": "La raison donnée par l’agent juge et le résultat du contrôle automatique. Survolez le texte pour le lire en entier."
+      },
+      "matchDetail": {
+        "title": "Ouvrir un rapprochement",
+        "body": "« Voir détail » montre la fiche PIM et la page source côte à côte. En bas du détail : « Valider le rapprochement » ou « Rejeter le rapprochement », avec un commentaire si besoin."
+      },
+      "tables": {
+        "title": "Quatre tableaux par étape",
+        "body": "À vérifier : ce qui attend votre décision. Confirmé auto et Rejeté auto : ce que les seuils ont décidé seuls, à contrôler si besoin. Validé manuellement : toutes les décisions des relecteurs, avec auteur et date. On peut revenir sur chacune depuis son détail."
+      },
+      "fiche": {
+        "title": "Étape 2 : une ligne par fiche",
+        "body": "Ouvrez une fiche pour voir chaque attribut proposé, sa source et son score. Pour chaque attribut : Valider, Rejeter ou Corriger (valeur choisie dans les codes autorisés du PIM)."
+      },
+      "outdated": {
+        "title": "Valeurs non prioritaires",
+        "body": "Certaines valeurs viennent d’une page sous un ancien nom de l’hôtel : elles sont signalées et passent en fin de fiche. Ce filtre les masque ou les isole."
+      },
+      "filters": {
+        "title": "Filtres",
+        "body": "Cherchez un établissement par nom, ville ou code, ou filtrez par marque (tapez les premières lettres), source et avis du juge. Les filtres s’appliquent aux quatre tableaux."
+      },
+      "bulk": {
+        "title": "Décider en masse",
+        "body": "Cochez des lignes (ou toutes celles affichées) : une barre apparaît en bas de l’écran pour tout valider ou tout rejeter en une fois."
+      },
+      "export": {
+        "title": "Export du PIM enhanced",
+        "body": "Le bouton s’active quand plus rien n’attend de décision. Seuls les attributs validés partent ; l’historique donne accès aux fichiers déjà produits."
+      },
+      "help": {
+        "title": "Revoir la visite",
+        "body": "Ce bouton relance la visite à tout moment."
+      }
+    }
+  }
 }
