@@ -146,5 +146,11 @@
   max-width: 320px;
   font-size: 13px;
   color: var(--text);
-  margin-top: 4px;
+}
+
+/* Deterministic check of a match, under the judge's reason */
+.check {
+  margin-top: 6px;
+  white-space: normal;
+  border-radius: 12px;
 }

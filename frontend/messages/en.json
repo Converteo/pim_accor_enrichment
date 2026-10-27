@@ -258,7 +258,9 @@
     "decisions": {
       "human_approved": "Confirmed",
       "human_rejected": "Rejected"
-    }
+    },
+    "whyColumn": "To check",
+    "reasonColumn": "Reason"
   },
   "bulkMatches": {
     "cancel": "Cancel",

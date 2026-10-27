@@ -19,6 +19,9 @@ interface MatchTableProps {
 
 const NONE: ReadonlySet<string> = new Set();
 
+// Pill tone of the deterministic check: only a doubt or a rejection stands out.
+const CHECK_TONES: Record<string, string> = { ok: "pill-pending", to_check: "pill-review", rejected: "pill-rejected" };
+
 /** Hotel × source matches of one table of step 1. */
 export function MatchTable({
   rows,
@@ -70,6 +73,9 @@ export function MatchTable({
             </th>
             <th className={styles.headCell} scope="col">
               {t("matches.judge")}
+            </th>
+            <th className={styles.headCell} scope="col">
+              {t(readOnly ? "matches.reasonColumn" : "matches.whyColumn")}
             </th>
             {decisions ? (
               <th className={styles.headCell} scope="col">
@@ -132,6 +138,9 @@ export function MatchTable({
                     <div className={styles.city}>{codeLabel(t, "matches.judgeVerdicts", row.verdict)}</div>
                   ) : null}
                 </td>
+                <td className={styles.cell}>
+                  <WhyCell row={row} />
+                </td>
                 {decisions ? (
                   <td className={styles.cell}>
                     {row.status === "human_approved" || row.status === "human_rejected" ? (
@@ -181,6 +190,33 @@ export function MatchTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Why the match is in its table without opening it (PIM-56): judge's reason, then the deterministic check. */
+function WhyCell({ row }: { row: MatchItem }) {
+  const t = useTranslations();
+  const reason = row.judgeReason ? codeLabel(t, "matches.reasons", row.judgeReason) : null;
+  const check = row.preVerdict
+    ? [codeLabel(t, "matches.verdicts", row.preVerdict), row.preReason].filter(Boolean).join(" · ")
+    : row.preReason;
+  const full = [reason, row.justification, check ? `${t("matches.check")} : ${check}` : null].filter(Boolean).join("\n");
+
+  return (
+    <div title={full || undefined}>
+      {reason || row.justification ? (
+        <div className={styles.clamp}>
+          {reason ? <strong>{reason}</strong> : null}
+          {reason && row.justification ? " · " : null}
+          {row.justification}
+        </div>
+      ) : null}
+      {check ? (
+        <span className={`status-pill ${CHECK_TONES[row.preVerdict ?? ""] ?? "pill-pending"} ${styles.check}`}>
+          {check}
+        </span>
+      ) : null}
     </div>
   );
 }
