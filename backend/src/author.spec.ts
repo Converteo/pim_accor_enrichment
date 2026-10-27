@@ -24,4 +24,10 @@ describe('authorFrom', () => {
       expect(e).toMatchObject({ status, response: { error: { code } } });
     }
   });
+
+  it('accepte un invité de EXTERNAL_REVIEWERS, et lui seul', () => {
+    const external = ['invitee@gmail.com'];
+    expect(authorFrom(' Invitee@Gmail.com ', external)).toBe('invitee@gmail.com');
+    expect(() => authorFrom('autre@gmail.com', external)).toThrow();
+  });
 });

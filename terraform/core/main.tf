@@ -180,6 +180,7 @@ module "cloud_run_back" {
     EXPORT_JOB            = module.pipeline_jobs["export"].name
     EXPORTS_BUCKET        = module.bucket_exports.name
     SETTINGS_EDITORS      = join(",", local.cfg.settings_editors)
+    EXTERNAL_REVIEWERS    = join(",", local.cfg.external_reviewers)
   }
 
   depends_on = [module.apis]
@@ -224,6 +225,17 @@ resource "google_iap_web_cloud_run_service_iam_member" "front_converteo" {
   cloud_run_service_name = module.cloud_run_front.name
   role                   = "roles/iap.httpsResourceAccessor"
   member                 = "domain:converteo.com"
+}
+
+# Accès au front via IAP : comptes invités hors Converteo (ils peuvent aussi décider, voir EXTERNAL_REVIEWERS)
+resource "google_iap_web_cloud_run_service_iam_member" "front_external" {
+  for_each = local.cfg.front_iap ? toset(local.cfg.external_reviewers) : toset([])
+
+  project                = var.project_id
+  location               = var.region
+  cloud_run_service_name = module.cloud_run_front.name
+  role                   = "roles/iap.httpsResourceAccessor"
+  member                 = "user:${each.value}"
 }
 
 # ---------- CI/CD : GitHub Actions → Cloud Build ----------

@@ -20,6 +20,8 @@ const schema = z.object({
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean),
     ),
+  // Comptes hors Converteo autorisés à décider, séparés par « , » (lus par author.ts)
+  EXTERNAL_REVIEWERS: z.string().optional(),
 });
 
 export type Config = z.infer<typeof schema>;
