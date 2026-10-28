@@ -227,6 +227,25 @@ resource "google_iap_web_cloud_run_service_iam_member" "front_converteo" {
   member                 = "domain:converteo.com"
 }
 
+# Client OAuth propre à l'IAP du front : le client géré par Google n'accepte que les comptes de l'organisation.
+# En statut « Testing » dans la console, seuls les « Test users » s'y connectent, comptes Converteo compris.
+data "google_secret_manager_secret_version" "front_iap_oauth" {
+  count  = local.cfg.front_iap && local.cfg.front_iap_oauth != null ? 1 : 0
+  secret = local.cfg.front_iap_oauth.secret_id
+}
+
+resource "google_iap_settings" "front" {
+  count = local.cfg.front_iap && local.cfg.front_iap_oauth != null ? 1 : 0
+
+  name = "projects/${data.google_project.this.number}/iap_web/cloud_run-${var.region}/services/${module.cloud_run_front.name}"
+  access_settings {
+    oauth_settings {
+      client_id     = local.cfg.front_iap_oauth.client_id
+      client_secret = data.google_secret_manager_secret_version.front_iap_oauth[0].secret_data
+    }
+  }
+}
+
 # Accès au front via IAP : comptes invités hors Converteo (ils peuvent aussi décider, voir EXTERNAL_REVIEWERS)
 resource "google_iap_web_cloud_run_service_iam_member" "front_external" {
   for_each = local.cfg.front_iap ? toset(local.cfg.external_reviewers) : toset([])
