@@ -68,8 +68,14 @@ environments = {
     # Seuls ces comptes peuvent changer les seuils de validation automatique dans l'interface
     settings_editors = ["brice.van-aken@converteo.com", "nicolas.wyseur@converteo.com"]
 
+    # Client OAuth de l'IAP (statut Testing : ajouter chaque utilisateur, Converteo compris, dans Audience → Test users)
+    front_iap_oauth = {
+      client_id = "475114935398-qb1544v70de05q9kqmdh6251vct32peo.apps.googleusercontent.com"
+      secret_id = "iap-front-oauth-secret"
+    }
+
     # Comptes Google hors Converteo : accès au front et décisions
-    external_reviewers = ["elise.bouvais@gmail.com"]
+    external_reviewers = ["elise.bouvais@gmail.com", "bricevanaken@gmail.com", "jean-baptiste.mermet@wivoo.fr"]
 
     # Planificateur repris : les rapprochements validés dans l'interface sont enrichis sans relance manuelle (coûts LLM à surveiller)
     pipeline = { scheduler_paused = false }

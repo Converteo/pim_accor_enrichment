@@ -74,10 +74,13 @@ variable "environments" {
     front_iap = optional(bool, false)
     # Comptes autorisés à changer les seuils de validation automatique dans l'interface (vide = tout relecteur Converteo)
     settings_editors = optional(list(string), [])
-    # Comptes Google hors Converteo ouverts dans IAP et autorisés à décider (exige front_iap)
+    # Comptes Google hors Converteo ouverts dans IAP et autorisés à décider (exige front_iap et front_iap_oauth)
     external_reviewers = optional(list(string), [])
-    front_scaling      = optional(object({ min = number, max = number }), { min = 0, max = 2 })
-    back_scaling       = optional(object({ min = number, max = number }), { min = 0, max = 2 })
+    # Client OAuth de l'IAP du front, créé dans la console (Google Auth Platform, audience External), et secret Secret Manager
+    # contenant son secret. Sans lui, IAP utilise le client géré par Google, qui refuse les comptes hors organisation.
+    front_iap_oauth = optional(object({ client_id = string, secret_id = string }))
+    front_scaling   = optional(object({ min = number, max = number }), { min = 0, max = 2 })
+    back_scaling    = optional(object({ min = number, max = number }), { min = 0, max = 2 })
 
     # Pipeline d'enrichissement (pipeline/), réglages posés en variables d'environnement des jobs
     pipeline = optional(object({
