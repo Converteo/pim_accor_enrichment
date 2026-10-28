@@ -75,7 +75,7 @@ environments = {
     }
 
     # Comptes Google hors Converteo : accès au front et décisions
-    external_reviewers = ["elise.bouvais@gmail.com", "bricevanaken@gmail.com", "jean-baptiste.mermet@wivoo.fr"]
+    external_reviewers = ["elise.bouvais@gmail.com", "jean-baptiste.mermet@wivoo.fr"]
 
     # Planificateur repris : les rapprochements validés dans l'interface sont enrichis sans relance manuelle (coûts LLM à surveiller)
     pipeline = { scheduler_paused = false }
